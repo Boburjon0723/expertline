@@ -1,0 +1,100 @@
+{
+  "expo": {
+    "name": "ExpertLine Mobile",
+    "slug": "expertline-mobile",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1220"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "uz.expertline.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B1220"
+      },
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "uz.expertline.mobile",
+      "bitcode": false,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Chat fonini sozlash uchun galereyadan rasm tanlash.",
+        "NSCameraUsageDescription": "Video qo‘ng‘iroq va dars paneli uchun kamera kerak.",
+        "NSMicrophoneUsageDescription": "Ovozli qo‘ng‘iroq va dars paneli uchun mikrofon kerak.",
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ],
+        "UIBackgroundModes": [
+          "audio",
+          "voip"
+        ]
+      }
+    },
+    "plugins": [
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "PORTRAIT_UP"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Chatga rasm yuborish uchun galereya kerak.",
+          "savePhotosPermission": "Rasmni saqlash uchun ruxsat kerak.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Video qo‘ng‘iroq va dars uchun kamera kerak.",
+          "microphonePermission": "Ovozli aloqa uchun mikrofon kerak.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Ovozli aloqa uchun mikrofon kerak."
+        }
+      ],
+      [
+        "@livekit/react-native-expo-plugin",
+        {
+          "android": {
+            "audioType": "communication"
+          }
+        }
+      ],
+      "@config-plugins/react-native-webrtc",
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "aca6e1d6-bd8b-4ec9-a1a3-d0ef1e6374b1"
+      }
+    }
+  }
+}

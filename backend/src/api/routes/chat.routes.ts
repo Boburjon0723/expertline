@@ -1,0 +1,37 @@
+import { Router } from 'express';
+import { createChat, getUserChats, getOrCreateSavedMessages, getMessages, sendChatMessage, getChatDetails, getRoomSubscriptionInfo, addParticipant, joinGroupWithSubscription, leaveGroup, updateGroupChat, getExpertGroups, getCommunities, joinCommunity, searchMessages, clearMessages, deleteChatEndpoint, deleteMessagesBulk, markAsRead, updateChatPrefs, postListingConsent, getConsultPanelAccessEndpoint, getChatPaymentStatusEndpoint, pinMessage, checkChatInvite, joinChatInvite } from '../controllers/chat.controller';
+import { authenticateToken } from '../../middleware/auth.middleware';
+
+const router = Router();
+
+router.use(authenticateToken); // Protect all routes
+
+router.post('/', createChat);
+router.get('/', getUserChats);
+router.post('/saved-messages', getOrCreateSavedMessages);
+router.get('/communities', getCommunities);
+router.post('/communities/:chatId/join', joinCommunity);
+router.get('/expert/:expertId', getExpertGroups); // Get expert's group chats
+/** Telegram-uslub: havola preview / join (/:chatId dan OLDIN) */
+router.get('/invite/:token', checkChatInvite);
+router.post('/invite/:token/join', joinChatInvite);
+router.get('/:chatId/messages', getMessages);
+router.post('/:chatId/messages', sendChatMessage);
+router.delete('/:chatId/messages', clearMessages);
+router.delete('/:chatId/messages/bulk', deleteMessagesBulk);
+router.post('/:chatId/read', markAsRead);
+router.patch('/:chatId/prefs', updateChatPrefs);
+router.post('/:chatId/listing-consent', postListingConsent);
+router.get('/:chatId/panel-access', getConsultPanelAccessEndpoint);
+router.get('/:chatId/payment-status', getChatPaymentStatusEndpoint);
+router.get('/:chatId/search', searchMessages);
+router.get('/:chatId/room-info', getRoomSubscriptionInfo);
+router.post('/:chatId/join-with-subscription', joinGroupWithSubscription);
+router.get('/:chatId', getChatDetails);
+router.delete('/:chatId', deleteChatEndpoint);
+router.post('/:chatId/participants', addParticipant);
+router.post('/:chatId/leave', leaveGroup);
+router.post('/:chatId/pin', pinMessage);
+router.patch('/:chatId', updateGroupChat);
+
+export default router;

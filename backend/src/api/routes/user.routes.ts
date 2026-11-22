@@ -1,0 +1,27 @@
+import { Router } from 'express';
+import {
+    getUsers, getProfile, updateProfile, searchUsers, listExperts, getContacts,
+    addContact, removeContact, getUserById, blockUser, unblockUser,
+    updateContact, getChatStats, getChatSharedMedia, registerPushToken
+} from '../controllers/user.controller';
+import { authenticateToken } from '../../middleware/auth.middleware';
+
+const router = Router();
+
+router.get('/', authenticateToken, getUsers);
+router.get('/me', authenticateToken, getProfile);
+router.put('/me', authenticateToken, updateProfile);
+router.get('/search', authenticateToken, searchUsers);
+router.get('/experts', authenticateToken, listExperts);
+router.get('/contacts', authenticateToken, getContacts);
+router.post('/contacts', authenticateToken, addContact);
+router.put('/contacts', authenticateToken, updateContact);
+router.delete('/contacts/:contactId', authenticateToken, removeContact);
+router.post('/block', authenticateToken, blockUser);
+router.post('/unblock', authenticateToken, unblockUser);
+router.post('/push-token', authenticateToken, registerPushToken);
+router.get('/chat-stats/:chatId', authenticateToken, getChatStats);
+router.get('/chat-shared/:chatId', authenticateToken, getChatSharedMedia);
+router.get('/:userId', authenticateToken, getUserById);
+
+export default router;
