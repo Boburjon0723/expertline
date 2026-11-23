@@ -628,6 +628,7 @@ model user_profiles {
   services_json          Json?
   expert_groups          String?
   expert_fee_total       Decimal?  @default(0) @db.Decimal(20, 4)
+  birthday               DateTime? @db.Date
   users                  users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -650,6 +651,7 @@ model users {
   telegram_chat_id                                                            BigInt?
   telegram_link_code                                                          String?                        @db.VarChar(32)
   phone_verified                                                              Boolean?                       @default(true)
+  is_active                                                                   Boolean?                       @default(true)
   admin_login_audit                                                           admin_login_audit[]
   bots                                                                        bots[]
   chat_messages_chat_messages_receiver_idTousers                              chat_messages[]                @relation("chat_messages_receiver_idTousers")
