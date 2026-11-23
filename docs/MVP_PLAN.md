@@ -30,7 +30,7 @@ Natija: uchala ilova lokal ishlaydi, `mvp-refactor` branch ochilgan, kod bazasi 
    ```
 4. Paketlar: har bir ilovada `npm install` (lock fayl bo'lsa `npm ci`).
 5. `.env` fayllar: `.env.example` dan nusxa, faqat lokal qiymatlar. LiveKit, AWS, Firebase kalitlari bo'sh.
-6. Sxema: `backend/database_schema.sql`, keyin `backend/migrations/ALL_RECENT_MIGRATIONS.sql`. Backend ishga tushganda `runAutoMigration()` ham ishlaydi.
+6. Sxema: `cd backend && npm run db:migrate` (Prisma migratsiyalari, `backend/prisma/migrations/`). Backend ishga tushganda `runAutoMigration()` ham ishlaydi va seed qatorlarni yozadi.
 7. Ishga tushirish: backend `npm run dev`, frontend `npm run dev`, mobile `npx expo start`. `GET /api/health` javob berishi kerak.
 8. Kod xaritasi: to'lov, auth va asosiy ekranlarga tegishli fayllar, route'lar va jadvallar → `docs/CODEBASE_MAP.md`.
 

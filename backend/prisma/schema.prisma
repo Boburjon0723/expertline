@@ -1,0 +1,710 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model admin_login_audit {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id        String?   @db.Uuid
+  phone_or_email String    @db.VarChar(255)
+  ip_address     String?   @db.VarChar(255)
+  user_agent     String?
+  success        Boolean
+  reason         String?   @db.VarChar(50)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  users          users?    @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+}
+
+model bots {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id      String    @db.Uuid
+  name         String    @db.VarChar(255)
+  username     String    @unique @db.VarChar(100)
+  token_prefix String    @db.VarChar(20)
+  token_hash   String    @db.VarChar(255)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([token_prefix], map: "idx_bots_token_prefix")
+  @@index([user_id], map: "idx_bots_user_id")
+  @@index([username], map: "idx_bots_username")
+}
+
+model chat_messages {
+  id                                     Int            @id @default(autoincrement())
+  session_id                             String?        @db.VarChar(255)
+  sender_id                              String?        @db.Uuid
+  receiver_id                            String?        @db.Uuid
+  text                                   String?
+  file_url                               String?
+  type                                   String?        @default("text") @db.VarChar(50)
+  created_at                             DateTime?      @default(now()) @db.Timestamptz(6)
+  users_chat_messages_receiver_idTousers users?         @relation("chat_messages_receiver_idTousers", fields: [receiver_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_chat_messages_sender_idTousers   users?         @relation("chat_messages_sender_idTousers", fields: [sender_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  live_sessions                          live_sessions? @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model chat_participants {
+  chat_id       String    @db.Uuid
+  user_id       String    @db.Uuid
+  joined_at     DateTime? @default(now()) @db.Timestamptz(6)
+  last_read_at  DateTime? @default(now()) @db.Timestamptz(6)
+  is_pinned     Boolean?  @default(false)
+  pinned_at     DateTime? @db.Timestamptz(6)
+  is_muted      Boolean?  @default(false)
+  is_archived   Boolean?  @default(false)
+  unread_marked Boolean?  @default(false)
+  chats         chats     @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([chat_id, user_id])
+}
+
+model chats {
+  id                    String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  creator_id            String?                 @db.Uuid
+  type                  String?                 @default("private") @db.VarChar(50)
+  name                  String?                 @db.VarChar(255)
+  description           String?
+  avatar_url            String?
+  link                  String?                 @unique @db.VarChar(255)
+  created_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  metadata              Json?                   @default("{}")
+  pinned_message_id     String?                 @db.Uuid
+  chat_participants     chat_participants[]
+  users                 users?                  @relation(fields: [creator_id], references: [id], onUpdate: NoAction)
+  listing_service_deals listing_service_deals[]
+  messages              messages[]
+}
+
+model company_wallets {
+  id                                                                                String                    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  axis_company_id                                                                   String                    @unique @db.VarChar(64)
+  owner_user_id                                                                     String?                   @db.Uuid
+  company_name                                                                      String?                   @db.VarChar(255)
+  balance                                                                           Decimal                   @default(0) @db.Decimal(18, 4)
+  locked_balance                                                                    Decimal                   @default(0) @db.Decimal(18, 4)
+  lifetime_earned                                                                   Decimal                   @default(0) @db.Decimal(18, 4)
+  lifetime_spent                                                                    Decimal                   @default(0) @db.Decimal(18, 4)
+  status                                                                            String                    @default("active") @db.VarChar(32)
+  created_at                                                                        DateTime?                 @default(now()) @db.Timestamptz(6)
+  updated_at                                                                        DateTime?                 @default(now()) @db.Timestamptz(6)
+  users                                                                             users?                    @relation(fields: [owner_user_id], references: [id], onUpdate: NoAction)
+  settlement_transactions_settlement_transactions_buyer_wallet_idTocompany_wallets  settlement_transactions[] @relation("settlement_transactions_buyer_wallet_idTocompany_wallets")
+  settlement_transactions_settlement_transactions_seller_wallet_idTocompany_wallets settlement_transactions[] @relation("settlement_transactions_seller_wallet_idTocompany_wallets")
+  settlement_wallet_links                                                           settlement_wallet_links[]
+}
+
+model escrow {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id     String?   @db.Uuid
+  service_id  String?   @db.Uuid
+  booking_id  String?   @db.Uuid
+  amount      Decimal   @db.Decimal(20, 4)
+  status      String?   @default("held") @db.VarChar(50)
+  held_at     DateTime? @default(now()) @db.Timestamptz(6)
+  released_at DateTime? @db.Timestamptz(6)
+  refunded_at DateTime? @db.Timestamptz(6)
+  metadata    Json?
+  services    services? @relation(fields: [service_id], references: [id], onUpdate: NoAction)
+  users       users?    @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model expenses {
+  id          Int       @id @default(autoincrement())
+  user_id     String?   @db.Uuid
+  amount      Decimal   @db.Decimal(15, 2)
+  category    String
+  description String?
+  type        String?   @default("expense")
+  date        DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, date(sort: Desc)], map: "idx_expenses_user_date")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model expert_reviews {
+  id                                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  expert_id                             String?   @db.Uuid
+  client_id                             String?   @db.Uuid
+  rating                                Int?
+  comment                               String?
+  created_at                            DateTime? @default(now()) @db.Timestamptz(6)
+  users_expert_reviews_client_idTousers users?    @relation("expert_reviews_client_idTousers", fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_expert_reviews_expert_idTousers users?    @relation("expert_reviews_expert_idTousers", fields: [expert_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model job_categories {
+  id                     Int       @id @default(autoincrement())
+  name_uz                String    @db.VarChar(255)
+  name_ru                String    @db.VarChar(255)
+  icon                   String?   @db.VarChar(100)
+  is_active              Boolean?  @default(true)
+  publication_price_mali Decimal?  @default(100.0000) @db.Decimal(20, 4)
+  created_at             DateTime? @default(now()) @db.Timestamp(6)
+  jobs                   jobs[]
+}
+
+model jobs {
+  id                   String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id              String?         @db.Uuid
+  title                String          @db.VarChar(255)
+  description          String?
+  price                String?         @db.VarChar(100)
+  category             String?         @db.VarChar(100)
+  type                 String?         @db.VarChar(50)
+  status               String?         @default("active") @db.VarChar(50)
+  contact_phone        String?         @db.VarChar(20)
+  created_at           DateTime?       @default(now()) @db.Timestamptz(6)
+  sub_type             String?         @default("seeker") @db.VarChar(20)
+  category_id          Int?
+  payment_status       String?         @default("unpaid") @db.VarChar(20)
+  publication_fee      Decimal?        @default(0) @db.Decimal(20, 4)
+  short_text           String?
+  full_name            String?         @db.VarChar(255)
+  birth_date           DateTime?       @db.Date
+  location             String?         @db.VarChar(255)
+  experience_years     Int?
+  salary_min           Decimal?        @db.Decimal(20, 4)
+  is_salary_negotiable Boolean?        @default(true)
+  skills_json          Json?
+  has_diploma          Boolean?        @default(false)
+  has_certificate      Boolean?        @default(false)
+  resume_url           String?
+  company_name         String?         @db.VarChar(255)
+  responsible_person   String?         @db.VarChar(255)
+  work_type            String?         @db.VarChar(50)
+  work_hours           String?         @db.VarChar(100)
+  day_off              String?         @db.VarChar(100)
+  age_range            String?         @db.VarChar(50)
+  gender_pref          String?         @db.VarChar(20)
+  requirements_json    Json?
+  salary_text          String?         @db.VarChar(255)
+  benefits_json        Json?
+  apply_method_json    Json?
+  job_categories       job_categories? @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                users?          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model listing_service_deals {
+  id                                           String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  chat_id                                      String        @db.Uuid
+  expert_id                                    String        @db.Uuid
+  client_id                                    String        @db.Uuid
+  amount                                       Decimal       @db.Decimal(20, 4)
+  currency                                     String?       @default("MALI") @db.VarChar(10)
+  status                                       String        @default("pending_payment") @db.VarChar(32)
+  transaction_id                               String?       @db.Uuid
+  created_at                                   DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at                                   DateTime?     @default(now()) @db.Timestamptz(6)
+  chats                                        chats         @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_listing_service_deals_client_idTousers users         @relation("listing_service_deals_client_idTousers", fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_listing_service_deals_expert_idTousers users         @relation("listing_service_deals_expert_idTousers", fields: [expert_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transactions                                 transactions? @relation(fields: [transaction_id], references: [id], onUpdate: NoAction)
+
+  @@index([chat_id], map: "idx_listing_deals_chat")
+  @@index([status], map: "idx_listing_deals_status")
+}
+
+model live_sessions {
+  id                    String          @id @db.VarChar(255)
+  mentor_id             String?         @db.Uuid
+  title                 String?         @db.VarChar(255)
+  status                String?         @default("active") @db.VarChar(50)
+  recording_url         String?
+  created_at            DateTime?       @default(now()) @db.Timestamptz(6)
+  egress_id             String?         @db.VarChar(255)
+  recording_staging_key String?
+  chat_messages         chat_messages[]
+  users                 users?          @relation(fields: [mentor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model messages {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  chat_id    String?   @db.Uuid
+  sender_id  String?   @db.Uuid
+  content    String
+  type       String?   @default("text") @db.VarChar(50)
+  metadata   Json?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  is_read    Boolean?  @default(false)
+  chats      chats?    @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users?    @relation(fields: [sender_id], references: [id], onUpdate: NoAction)
+
+  @@index([chat_id, created_at(sort: Desc)], map: "idx_messages_chat_created")
+}
+
+model notifications {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  type       String    @db.VarChar(100)
+  title      String    @db.VarChar(255)
+  message    String?
+  data       Json?
+  is_read    Boolean?  @default(false)
+  read_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_notifications_user")
+}
+
+model password_reset_codes {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  code       String    @db.VarChar(10)
+  expires_at DateTime  @db.Timestamptz(6)
+  is_used    Boolean?  @default(false)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model phone_verification_codes {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  code       String    @db.VarChar(10)
+  expires_at DateTime  @db.Timestamptz(6)
+  is_used    Boolean?  @default(false)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model platform_balance {
+  id                          Int       @id @default(autoincrement())
+  balance                     Decimal?  @default(0.0000) @db.Decimal(20, 4)
+  total_fees_collected        Decimal?  @default(0.0000) @db.Decimal(20, 4)
+  total_commissions_collected Decimal?  @default(0.0000) @db.Decimal(20, 4)
+  updated_at                  DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model platform_settings {
+  id                      Int       @id @default(autoincrement())
+  expert_subscription_fee Decimal?  @default(20.00) @db.Decimal(10, 2)
+  commission_rate         Decimal?  @default(0.10) @db.Decimal(4, 2)
+  desktop_download_url    String?
+  desktop_version         String?   @db.VarChar(20)
+  updated_at              DateTime? @default(now()) @db.Timestamptz(6)
+  admin_card_number       String?   @db.VarChar(32)
+}
+
+model push_tokens {
+  id         Int       @id @default(autoincrement())
+  user_id    String    @db.Uuid
+  token      String
+  platform   String?   @default("expo") @db.VarChar(20)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([user_id, token])
+}
+
+model quiz_options {
+  id             String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  question_id    String         @db.Uuid
+  option_text    String
+  is_correct     Boolean?       @default(false)
+  order_index    Int            @default(0)
+  created_at     DateTime?      @default(now()) @db.Timestamptz(6)
+  quiz_questions quiz_questions @relation(fields: [question_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model quiz_questions {
+  id            String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  quiz_id       String         @db.Uuid
+  question_text String
+  question_type String?        @default("multiple_choice") @db.VarChar(50)
+  order_index   Int            @default(0)
+  created_at    DateTime?      @default(now()) @db.Timestamptz(6)
+  quiz_options  quiz_options[]
+  quizzes       quizzes        @relation(fields: [quiz_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model quiz_results {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  quiz_id         String    @db.Uuid
+  student_id      String    @db.Uuid
+  score           Int?      @default(0)
+  total_questions Int?      @default(0)
+  completed_at    DateTime? @default(now()) @db.Timestamptz(6)
+  quizzes         quizzes   @relation(fields: [quiz_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           users     @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([quiz_id, student_id])
+}
+
+model quizzes {
+  id             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  session_id     String           @db.VarChar(255)
+  mentor_id      String?          @db.Uuid
+  title          String           @db.VarChar(255)
+  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  quiz_questions quiz_questions[]
+  quiz_results   quiz_results[]
+  users          users?           @relation(fields: [mentor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model security_event_audit {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  event      String    @db.VarChar(64)
+  user_id    String?   @db.Uuid
+  ip_address String?   @db.VarChar(255)
+  user_agent String?
+  success    Boolean
+  reason     String?   @db.VarChar(255)
+  metadata   Json      @default("{}")
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users?    @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_security_event_audit_created_at")
+  @@index([event], map: "idx_security_event_audit_event")
+}
+
+model service_sessions {
+  id                                      Int                     @id @default(autoincrement())
+  expert_id                               String?                 @db.Uuid
+  client_id                               String?                 @db.Uuid
+  chat_id                                 String?
+  amount_mali                             Decimal                 @db.Decimal(15, 8)
+  status                                  service_session_status? @default(initiated)
+  started_at                              DateTime?               @default(now()) @db.Timestamp(6)
+  completed_at                            DateTime?               @db.Timestamp(6)
+  updated_at                              DateTime?               @default(now()) @db.Timestamp(6)
+  users_service_sessions_client_idTousers users?                  @relation("service_sessions_client_idTousers", fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_service_sessions_expert_idTousers users?                  @relation("service_sessions_expert_idTousers", fields: [expert_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model services {
+  id               String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  provider_id      String?   @db.Uuid
+  category         String    @db.VarChar(100)
+  title            String    @db.VarChar(255)
+  description      String?
+  price_mali       Decimal   @db.Decimal(20, 4)
+  duration_minutes Int?      @default(60)
+  is_active        Boolean?  @default(true)
+  rating           Decimal?  @default(0.00) @db.Decimal(3, 2)
+  total_bookings   Int?      @default(0)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  escrow           escrow[]
+  users            users?    @relation(fields: [provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model session_materials {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  session_id      String    @db.VarChar(255)
+  uploader_id     String?   @db.Uuid
+  title           String    @db.VarChar(255)
+  file_url        String
+  file_type       String?   @db.VarChar(50)
+  file_size_bytes BigInt?   @default(0)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  users           users?    @relation(fields: [uploader_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model sessions {
+  id                                String    @id @db.VarChar(255)
+  service_id                        String?   @db.Uuid
+  provider_id                       String?   @db.Uuid
+  client_id                         String?   @db.Uuid
+  escrow_id                         String?   @db.Uuid
+  video_url                         String?
+  platform                          String?   @default("jitsi") @db.VarChar(50)
+  status                            String?   @default("scheduled") @db.VarChar(50)
+  started_at                        DateTime? @db.Timestamptz(6)
+  ended_at                          DateTime? @db.Timestamptz(6)
+  duration_seconds                  Int?
+  metadata                          Json?
+  created_at                        DateTime? @default(now()) @db.Timestamptz(6)
+  users_sessions_client_idTousers   users?    @relation("sessions_client_idTousers", fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_sessions_provider_idTousers users?    @relation("sessions_provider_idTousers", fields: [provider_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model settlement_nonces {
+  key_id     String   @db.VarChar(64)
+  nonce      String   @db.VarChar(128)
+  expires_at DateTime @db.Timestamptz(6)
+
+  @@id([key_id, nonce])
+}
+
+model settlement_transactions {
+  id                                                                        String                    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  type                                                                      String                    @db.VarChar(16)
+  status                                                                    String                    @db.VarChar(32)
+  axis_order_id                                                             String?                   @db.VarChar(128)
+  buyer_company_id                                                          String?                   @db.VarChar(64)
+  seller_company_id                                                         String?                   @db.VarChar(64)
+  buyer_wallet_id                                                           String?                   @db.Uuid
+  seller_wallet_id                                                          String?                   @db.Uuid
+  amount                                                                    Decimal                   @db.Decimal(18, 4)
+  commission_rate                                                           Decimal                   @default(0.01) @db.Decimal(8, 6)
+  commission_amount                                                         Decimal                   @default(0) @db.Decimal(18, 4)
+  net_amount                                                                Decimal                   @default(0) @db.Decimal(18, 4)
+  idempotency_key                                                           String                    @unique @db.VarChar(128)
+  related_hold_id                                                           String?                   @db.Uuid
+  metadata                                                                  Json                      @default("{}")
+  created_at                                                                DateTime?                 @default(now()) @db.Timestamptz(6)
+  updated_at                                                                DateTime?                 @default(now()) @db.Timestamptz(6)
+  company_wallets_settlement_transactions_buyer_wallet_idTocompany_wallets  company_wallets?          @relation("settlement_transactions_buyer_wallet_idTocompany_wallets", fields: [buyer_wallet_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  settlement_transactions                                                   settlement_transactions?  @relation("settlement_transactionsTosettlement_transactions", fields: [related_hold_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_settlement_transactions                                             settlement_transactions[] @relation("settlement_transactionsTosettlement_transactions")
+  company_wallets_settlement_transactions_seller_wallet_idTocompany_wallets company_wallets?          @relation("settlement_transactions_seller_wallet_idTocompany_wallets", fields: [seller_wallet_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([axis_order_id], map: "idx_settlement_tx_order")
+}
+
+model settlement_wallet_links {
+  id                String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  company_wallet_id String          @db.Uuid
+  axis_company_id   String          @db.VarChar(64)
+  key_id            String          @unique @db.VarChar(64)
+  hmac_secret_hash  String
+  status            String          @default("active") @db.VarChar(32)
+  created_at        DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?       @default(now()) @db.Timestamptz(6)
+  company_wallets   company_wallets @relation(fields: [company_wallet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model specialist_notes {
+  id                                          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  specialist_id                               String?   @db.Uuid
+  client_id                                   String?   @db.Uuid
+  booking_id                                  String?   @db.Uuid
+  content                                     String
+  is_private                                  Boolean?  @default(true)
+  shared_with_client                          Boolean?  @default(false)
+  created_at                                  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at                                  DateTime? @default(now()) @db.Timestamptz(6)
+  note_type                                   String?   @default("client") @db.VarChar(20)
+  users_specialist_notes_client_idTousers     users?    @relation("specialist_notes_client_idTousers", fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_specialist_notes_specialist_idTousers users?    @relation("specialist_notes_specialist_idTousers", fields: [specialist_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model student_mentor_subscriptions {
+  id                                                   String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  student_id                                           String        @db.Uuid
+  mentor_id                                            String        @db.Uuid
+  started_at                                           DateTime?     @default(now()) @db.Timestamptz(6)
+  expires_at                                           DateTime      @db.Timestamptz(6)
+  amount_paid                                          Decimal       @default(0) @db.Decimal(20, 2)
+  transaction_id                                       String?       @db.Uuid
+  created_at                                           DateTime?     @default(now()) @db.Timestamptz(6)
+  users_student_mentor_subscriptions_mentor_idTousers  users         @relation("student_mentor_subscriptions_mentor_idTousers", fields: [mentor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_student_mentor_subscriptions_student_idTousers users         @relation("student_mentor_subscriptions_student_idTousers", fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transactions                                         transactions? @relation(fields: [transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([student_id, mentor_id])
+  @@unique([student_id, mentor_id], map: "uq_subscriptions_student_mentor")
+  @@index([expires_at], map: "idx_subscriptions_expires")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model token_balances {
+  user_id               String    @id @db.Uuid
+  balance               Decimal?  @default(0.0000) @db.Decimal(20, 4)
+  locked_balance        Decimal?  @default(0.0000) @db.Decimal(20, 4)
+  pin_hash              String?   @db.VarChar(255)
+  is_locked             Boolean?  @default(false)
+  recovery_status       String?   @db.VarChar(50)
+  recovery_requested_at DateTime? @db.Timestamptz(6)
+  lifetime_earned       Decimal?  @default(0.0000) @db.Decimal(20, 4)
+  lifetime_spent        Decimal?  @default(0.0000) @db.Decimal(20, 4)
+  updated_at            DateTime? @default(now()) @db.Timestamptz(6)
+  users                 users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model topup_requests {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  amount     Decimal   @db.Decimal(20, 2)
+  status     String?   @default("pending") @db.VarChar(20)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model transactions {
+  id                                    String                         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sender_id                             String?                        @db.Uuid
+  receiver_id                           String?                        @db.Uuid
+  amount                                Decimal                        @db.Decimal(20, 4)
+  fee                                   Decimal?                       @default(0) @db.Decimal(20, 4)
+  net_amount                            Decimal                        @db.Decimal(20, 4)
+  type                                  String                         @db.VarChar(50)
+  status                                String?                        @default("pending") @db.VarChar(50)
+  reference_type                        String?                        @db.VarChar(64)
+  reference_id                          String?                        @db.Uuid
+  note                                  String?
+  metadata                              Json?
+  created_at                            DateTime?                      @default(now()) @db.Timestamptz(6)
+  listing_service_deals                 listing_service_deals[]
+  student_mentor_subscriptions          student_mentor_subscriptions[]
+  users_transactions_receiver_idTousers users?                         @relation("transactions_receiver_idTousers", fields: [receiver_id], references: [id], onUpdate: NoAction)
+  users_transactions_sender_idTousers   users?                         @relation("transactions_sender_idTousers", fields: [sender_id], references: [id], onUpdate: NoAction)
+
+  @@index([receiver_id], map: "idx_transactions_receiver")
+  @@index([reference_type, reference_id], map: "idx_transactions_reference")
+  @@index([sender_id, created_at(sort: Desc)], map: "idx_transactions_sender_created")
+}
+
+model user_blocks {
+  id                                  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  blocker_id                          String?   @db.Uuid
+  blocked_id                          String?   @db.Uuid
+  created_at                          DateTime? @default(now()) @db.Timestamptz(6)
+  users_user_blocks_blocked_idTousers users?    @relation("user_blocks_blocked_idTousers", fields: [blocked_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_user_blocks_blocker_idTousers users?    @relation("user_blocks_blocker_idTousers", fields: [blocker_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([blocker_id, blocked_id])
+}
+
+model user_contacts {
+  id                                         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                                    String?   @db.Uuid
+  contact_user_id                            String?   @db.Uuid
+  custom_name                                String?   @db.VarChar(255)
+  custom_surname                             String?   @db.VarChar(255)
+  created_at                                 DateTime? @default(now()) @db.Timestamptz(6)
+  users_user_contacts_contact_user_idTousers users?    @relation("user_contacts_contact_user_idTousers", fields: [contact_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_user_contacts_user_idTousers         users?    @relation("user_contacts_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, contact_user_id])
+}
+
+model user_crypto_keys {
+  user_id    String    @id @db.Uuid
+  alg        String    @default("x25519") @db.VarChar(16)
+  public_key String
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_profiles {
+  user_id                String    @id @db.Uuid
+  bio                    String?
+  is_expert              Boolean?  @default(false)
+  profession             String?   @db.VarChar(255)
+  specialization         String?
+  experience_years       Int?      @default(0)
+  service_price          Decimal?  @default(0) @db.Decimal(20, 4)
+  working_hours          String?   @db.VarChar(255)
+  languages              String?
+  rating                 Decimal?  @default(0.00) @db.Decimal(3, 2)
+  verified_status        String?   @default("unverified") @db.VarChar(50)
+  wiloyat                String?   @db.VarChar(100)
+  tuman                  String?   @db.VarChar(100)
+  updated_at             DateTime? @default(now()) @db.Timestamptz(6)
+  specialization_details String?
+  has_diploma            Boolean?  @default(false)
+  institution            String?   @db.VarChar(255)
+  current_workplace      String?   @db.VarChar(255)
+  diploma_url            String?
+  certificate_url        String?
+  id_url                 String?
+  selfie_url             String?
+  resume_url             String?
+  anketa_url             String?
+  pricing_model          String?   @default("hourly") @db.VarChar(20)
+  hourly_rate            Decimal?  @default(0) @db.Decimal(20, 4)
+  currency               String?   @default("MALI") @db.VarChar(10)
+  service_languages      String?
+  service_format         String?   @db.VarChar(100)
+  bio_expert             String?
+  specialty_desc         String?
+  expert_proposal        String?
+  services_json          Json?
+  expert_groups          String?
+  expert_fee_total       Decimal?  @default(0) @db.Decimal(20, 4)
+  users                  users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id                                                                          String                         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  phone                                                                       String                         @unique @db.VarChar(20)
+  password_hash                                                               String                         @db.VarChar(255)
+  name                                                                        String                         @db.VarChar(255)
+  surname                                                                     String?                        @db.VarChar(255)
+  age                                                                         Int?
+  username                                                                    String?                        @unique @db.VarChar(100)
+  email                                                                       String?                        @db.VarChar(255)
+  avatar_url                                                                  String?
+  role                                                                        String?                        @default("user") @db.VarChar(50)
+  created_at                                                                  DateTime?                      @default(now()) @db.Timestamptz(6)
+  updated_at                                                                  DateTime?                      @default(now()) @db.Timestamptz(6)
+  refresh_token                                                               String?
+  is_expert_active                                                            Boolean?                       @default(false)
+  subscription_end_date                                                       DateTime?                      @db.Timestamptz(6)
+  telegram_chat_id                                                            BigInt?
+  telegram_link_code                                                          String?                        @db.VarChar(32)
+  phone_verified                                                              Boolean?                       @default(true)
+  admin_login_audit                                                           admin_login_audit[]
+  bots                                                                        bots[]
+  chat_messages_chat_messages_receiver_idTousers                              chat_messages[]                @relation("chat_messages_receiver_idTousers")
+  chat_messages_chat_messages_sender_idTousers                                chat_messages[]                @relation("chat_messages_sender_idTousers")
+  chat_participants                                                           chat_participants[]
+  chats                                                                       chats[]
+  company_wallets                                                             company_wallets[]
+  escrow                                                                      escrow[]
+  expenses                                                                    expenses[]
+  expert_reviews_expert_reviews_client_idTousers                              expert_reviews[]               @relation("expert_reviews_client_idTousers")
+  expert_reviews_expert_reviews_expert_idTousers                              expert_reviews[]               @relation("expert_reviews_expert_idTousers")
+  jobs                                                                        jobs[]
+  listing_service_deals_listing_service_deals_client_idTousers                listing_service_deals[]        @relation("listing_service_deals_client_idTousers")
+  listing_service_deals_listing_service_deals_expert_idTousers                listing_service_deals[]        @relation("listing_service_deals_expert_idTousers")
+  live_sessions                                                               live_sessions[]
+  messages                                                                    messages[]
+  notifications                                                               notifications[]
+  password_reset_codes                                                        password_reset_codes[]
+  phone_verification_codes                                                    phone_verification_codes[]
+  quiz_results                                                                quiz_results[]
+  quizzes                                                                     quizzes[]
+  security_event_audit                                                        security_event_audit[]
+  service_sessions_service_sessions_client_idTousers                          service_sessions[]             @relation("service_sessions_client_idTousers")
+  service_sessions_service_sessions_expert_idTousers                          service_sessions[]             @relation("service_sessions_expert_idTousers")
+  services                                                                    services[]
+  session_materials                                                           session_materials[]
+  sessions_sessions_client_idTousers                                          sessions[]                     @relation("sessions_client_idTousers")
+  sessions_sessions_provider_idTousers                                        sessions[]                     @relation("sessions_provider_idTousers")
+  specialist_notes_specialist_notes_client_idTousers                          specialist_notes[]             @relation("specialist_notes_client_idTousers")
+  specialist_notes_specialist_notes_specialist_idTousers                      specialist_notes[]             @relation("specialist_notes_specialist_idTousers")
+  student_mentor_subscriptions_student_mentor_subscriptions_mentor_idTousers  student_mentor_subscriptions[] @relation("student_mentor_subscriptions_mentor_idTousers")
+  student_mentor_subscriptions_student_mentor_subscriptions_student_idTousers student_mentor_subscriptions[] @relation("student_mentor_subscriptions_student_idTousers")
+  token_balances                                                              token_balances?
+  topup_requests                                                              topup_requests[]
+  transactions_transactions_receiver_idTousers                                transactions[]                 @relation("transactions_receiver_idTousers")
+  transactions_transactions_sender_idTousers                                  transactions[]                 @relation("transactions_sender_idTousers")
+  user_blocks_user_blocks_blocked_idTousers                                   user_blocks[]                  @relation("user_blocks_blocked_idTousers")
+  user_blocks_user_blocks_blocker_idTousers                                   user_blocks[]                  @relation("user_blocks_blocker_idTousers")
+  user_contacts_user_contacts_contact_user_idTousers                          user_contacts[]                @relation("user_contacts_contact_user_idTousers")
+  user_contacts_user_contacts_user_idTousers                                  user_contacts[]                @relation("user_contacts_user_idTousers")
+  user_crypto_keys                                                            user_crypto_keys?
+  user_profiles                                                               user_profiles?
+}
+
+model whiteboard_snapshots {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  session_id    String    @db.VarChar(255)
+  snapshot_data String
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+enum service_session_status {
+  initiated
+  ongoing
+  completed
+  cancelled
+  disputed
+}

@@ -15,7 +15,11 @@ Manba: kodning o'zi va lokal bazadagi haqiqiy sxema (ARCHITECTURE.md emas). 1–
 | Mobile | `cd mobile-app && npx expo start` (`.env`: `EXPO_PUBLIC_API_URL=http://localhost:4000`) |
 | Bot | `BOT_TOKEN` siz ishlamaydi — lokal ishga tushirilmaydi |
 
-Sxemani noldan qurish tartibi (hujjatdagidan farq qiladi):
+Sxemani noldan qurish: `cd backend && npm run db:migrate` (Prisma, `prisma/migrations/`). `0_init` — 43 jadval, funksiya va triggerlar bilan baseline. Yangi o'zgarish: `prisma/schema.prisma` ni tahrirlab `npm run db:migrate:dev -- --name <nom>` (lokal bazada). Ilova kodi hali `pg` bilan ishlaydi; Prisma faqat sxema uchun.
+
+Baseline'ga kirmagan jadvallar — kodda ishlatiladi, lekin `CREATE TABLE` hech qayerda yo'q: `bookings` (`consultSession.service.ts`, `escrow.service.ts`), `case_folders`, `courses`, `groups`, `group_members` (`models/postgres/`). `wallets` faqat bir martalik skriptlarda.
+
+Eski qo'lda tartib (tarix uchun; baseline shundan + `migrate.ts`, `scripts/migrate-quizzes.ts`, `src/scripts/init_topup_db.ts` dan olingan):
 
 1. `psql < backend/database_schema.sql` — 188-qatorda ortiqcha `推` belgisi bor, xato beradi, lekin jadvallar yaratiladi.
 2. Backendni bir marta ishga tushirish — `runAutoMigration()` (`backend/src/index.ts:57`) qolgan jadvallarni yaratadi.

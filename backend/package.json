@@ -9,7 +9,10 @@
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "npx tsc",
     "start": "node dist/index.js",
-    "clear-messages": "npx ts-node scripts/clear-all-messages.ts"
+    "clear-messages": "npx ts-node scripts/clear-all-messages.ts",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:status": "prisma migrate status"
   },
   "keywords": [],
   "author": "",
@@ -55,6 +58,7 @@
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
     "nodemon": "^3.1.11",
+    "prisma": "^7.10.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vitest": "^3.2.6"
