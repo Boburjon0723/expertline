@@ -29,6 +29,21 @@ if (!admin.apps.length && serviceAccount) {
     console.log(`[Firebase] Initialized with bucket: ${bucketName}`);
 }
 
-export const bucket = admin.storage().bucket();
-export const db = admin.firestore();
+const firebaseConfigured = admin.apps.length > 0;
+
+if (!firebaseConfigured) {
+    console.warn('[Firebase] Not configured (no FIREBASE_SERVICE_ACCOUNT / serviceAccountKey.json). File uploads to Firebase Storage are disabled.');
+}
+
+function notConfigured(name: string): never {
+    throw new Error(`[Firebase] ${name} is unavailable: Firebase is not configured.`);
+}
+
+/** Lazy proxies so the server can boot locally without Firebase credentials. */
+export const bucket: ReturnType<ReturnType<typeof admin.storage>['bucket']> = firebaseConfigured
+    ? admin.storage().bucket()
+    : (new Proxy({}, { get: () => notConfigured('Storage bucket') }) as any);
+export const db: ReturnType<typeof admin.firestore> = firebaseConfigured
+    ? admin.firestore()
+    : (new Proxy({}, { get: () => notConfigured('Firestore') }) as any);
 export default admin;
