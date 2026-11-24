@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getCachedMediaUri, peekCachedMediaUriSync } from "../lib/media-cache";
 import { ImageBackground, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import {
   nativeImageBlurRadius,
@@ -16,6 +17,37 @@ type Props = {
   isChatWindow?: boolean;
 };
 
+
+/** Masofaviy fon URL ni lokal faylga aylantiradi (birinchi martadan keyin sinxron). */
+function useCachedBackground(remote?: string | null): string | null {
+  const isRemote = !!remote && /^https?:\/\//i.test(remote);
+  const [local, setLocal] = useState<string | null>(() =>
+    isRemote ? peekCachedMediaUriSync(remote) : remote || null
+  );
+  useEffect(() => {
+    if (!remote) {
+      setLocal(null);
+      return;
+    }
+    if (!isRemote) {
+      setLocal(remote);
+      return;
+    }
+    const sync = peekCachedMediaUriSync(remote);
+    if (sync) {
+      setLocal(sync);
+      return;
+    }
+    let alive = true;
+    void getCachedMediaUri(remote, "image", { force: true })
+      .then((p) => alive && setLocal(p || remote))
+      .catch(() => alive && setLocal(remote));
+    return () => {
+      alive = false;
+    };
+  }, [remote, isRemote]);
+  return local;
+}
 
 export function ChatBackground({ children, contentStyle, isChatWindow }: Props) {
   const imageBlur = useAppearanceStore((s) => s.imageBlur);
@@ -35,7 +67,9 @@ export function ChatBackground({ children, contentStyle, isChatWindow }: Props) 
   // If it's a solid theme but NOT the chat window, use solid background
   const shouldUseSolidColor = (isTelegram || isPureDark) && !isChatWindow;
   
-  const uri = themeId === "vibrant" || isChatWindow ? backgroundUri : themeData.background;
+  const remoteUri = themeId === "vibrant" || isChatWindow ? backgroundUri : themeData.background;
+  // Fon rasmi diskda keshlanadi: chat har ochilganda tarmoqdan qayta yuklanib, 1 soniya qora turmasin.
+  const uri = useCachedBackground(remoteUri);
 
   // For solid colors, we use black overlay to "dim" the solid base color.
   // For image backgrounds, we use the theme color to "tint" the image.
@@ -61,8 +95,9 @@ export function ChatBackground({ children, contentStyle, isChatWindow }: Props) 
 
   return (
     <ImageBackground
-      source={{ uri }}
-      style={styles.bg}
+      source={uri ? { uri } : undefined}
+      style={[styles.bg, { backgroundColor: `rgb(${overlayBaseColor})` }]}
+      fadeDuration={0}
       blurRadius={blurR}
       resizeMode="cover"
     >

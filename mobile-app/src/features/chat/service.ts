@@ -243,6 +243,9 @@ export async function getChatsRequest(): Promise<Chat[]> {
           ? new Date(chat.lastMessageAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           : "",
         unreadCount: Number(chat.unread) || 0,
+        lastSenderId: chat.lastSenderId != null ? String(chat.lastSenderId) : null,
+        lastMessageIsRead: !!chat.lastMessageIsRead,
+        lastMessageAt: chat.lastMessageAt ? String(chat.lastMessageAt) : null,
         avatarUrl: chat.is_saved_messages ? null : getFullUrl(pickChatAvatarPath(chat)),
         otherUserId: chat.is_saved_messages
           ? null

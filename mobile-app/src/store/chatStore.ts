@@ -20,6 +20,8 @@ interface ChatState {
   addMessageLocally: (chatId: string, message: Message) => void;
   updateMessageLocally: (chatId: string, messageId: string, updates: Partial<Message>) => void;
   removeMessagesLocally: (chatId: string, messageIds: string[]) => void;
+  /** Vaqtinchalik xabarni server xabari bilan O'Z JOYIDA almashtiradi (albom tartibi buzilmasin). */
+  replaceMessageLocally: (chatId: string, oldId: string, message: Message) => void;
   clearMessagesLocally: (chatId: string) => void;
   removeChatLocally: (chatId: string) => void;
   updateChatLocally: (chatId: string, updates: Partial<Chat>) => void;
@@ -158,6 +160,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => {
       const current = state.messages[id] || [];
       const newMessages = current.filter((m) => !idSet.has(String(m.id)));
+      void persistMessages(id, newMessages);
+      return { messages: { ...state.messages, [id]: newMessages } };
+    });
+  },
+
+  replaceMessageLocally: (chatId, oldId, message) => {
+    const id = String(chatId);
+    set((state) => {
+      const current = state.messages[id] || [];
+      // Socket orqali allaqachon kelgan bo'lsa — dublikatni olib tashlaymiz.
+      const withoutDup = current.filter((m) => m.id !== message.id);
+      const idx = withoutDup.findIndex((m) => m.id === oldId);
+      const newMessages =
+        idx >= 0
+          ? [...withoutDup.slice(0, idx), message, ...withoutDup.slice(idx + 1)]
+          : [...withoutDup, message];
       void persistMessages(id, newMessages);
       return { messages: { ...state.messages, [id]: newMessages } };
     });

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Image, ImageStyle, Pressable, StyleProp, View, ActivityIndicator } from "react-native";
-import { CloudDownload } from "lucide-react-native";
-import { getCachedMediaUri } from "../lib/media-cache";
+import { Image, ImageStyle, Pressable, StyleProp, View, ViewStyle } from "react-native";
+import { ArrowDown } from "lucide-react-native";
+import { getCachedMediaUri, peekCachedMediaUriSync } from "../lib/media-cache";
 import { subscribeMediaPrefs } from "../lib/media-prefs";
 
 interface CachedImageProps {
@@ -14,6 +14,8 @@ interface CachedImageProps {
   /** Avatar/stiker — avtomatik o‘chiq bo‘lsa ham keshga yoziladi */
   alwaysCache?: boolean;
   onLongPress?: () => void;
+  /** Kichik nusxa (data URI) — yuklanmaguncha xira ko'rsatiladi (Telegram kabi). */
+  thumb?: string | null;
 }
 
 export const CachedImage = ({
@@ -25,8 +27,10 @@ export const CachedImage = ({
   forceCache = false,
   alwaysCache = false,
   onLongPress,
+  thumb,
 }: CachedImageProps) => {
-  const [localUri, setLocalUri] = useState<string | null>(null);
+  // Keshda bor bo'lsa birinchi kadrdanoq (spinnersiz) ko'rsatiladi.
+  const [localUri, setLocalUri] = useState<string | null>(() => peekCachedMediaUriSync(uri));
   const [needsDownload, setNeedsDownload] = useState(false);
   const [prefTick, setPrefTick] = useState(0);
 
@@ -89,19 +93,21 @@ export const CachedImage = ({
         onPress={() => void pull()}
         onLongPress={onLongPress}
         delayLongPress={280}
-        style={[style, { alignItems: "center", justifyContent: "center", backgroundColor: "#0e1621" }]}
+        style={[style, { alignItems: "center", justifyContent: "center", backgroundColor: "#0e1621", overflow: "hidden" }]}
       >
-        <CloudDownload color="#fff" size={28} />
+        {thumb ? (
+          <Image source={{ uri: thumb }} blurRadius={12} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+        ) : null}
+        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" }}>
+          <ArrowDown color="#fff" size={24} strokeWidth={2.4} />
+        </View>
       </Pressable>
     );
   }
 
   if (!localUri) {
-    return (
-      <View style={style}>
-        <ActivityIndicator color="#fff" style={{ flex: 1 }} />
-      </View>
-    );
+    // Spinner o'rniga tinch fon — avatar/rasm joyi miltillamaydi.
+    return <View style={[style as StyleProp<ViewStyle>, { backgroundColor: "rgba(255,255,255,0.06)" }]} />;
   }
 
   return (

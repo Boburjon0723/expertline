@@ -20,7 +20,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Send, ArrowLeft, MoreVertical, Paperclip, Smile, Phone, Video as VideoIcon, Play, Download, X, CloudDownload, Trash2, Forward, CheckCircle, Save, Mic, MicOff, VideoOff, CreditCard, Circle, Search, Pin, Copy } from "lucide-react-native";
+import { Send, ArrowLeft, MoreVertical, Paperclip, Smile, Phone, Video as VideoIcon, Play, Download, X, CloudDownload, ArrowDown, Trash2, Forward, CheckCircle, Save, Mic, MicOff, VideoOff, CreditCard, Circle, Search, Pin, Copy } from "lucide-react-native";
 import * as Clipboard from "expo-clipboard";
 import { useAuthLocale } from "../../auth/locale";
 import { Chat, Message } from "../types";
@@ -96,7 +96,15 @@ import { CachedImage } from "../../../components/CachedImage";
 import { API_URL } from "../../../lib/config";
 import { setCurrentChatId, getSocket } from "../../../lib/socket";
 import { decryptMessage } from "../../../lib/e2e-chat";
-import { enqueueChatUpload, type UploadInfo } from "../../../lib/upload-queue";
+import {
+  enqueueChatUpload,
+  MEDIA_BUBBLE_WIDTH,
+  mediaAspect,
+  newAlbumId,
+  type UploadInfo,
+} from "../../../lib/upload-queue";
+import { AlbumGrid } from "../components/AlbumGrid";
+import { animateLayout, configureKeyboardAnimation, PopIn } from "../../../lib/motion";
 import { isBlockedAppPackage } from "../../../lib/blocked-files";
 import { UploadingMediaBubble } from "../components/UploadingMediaBubble";
 
@@ -603,6 +611,17 @@ function prettyFileName(url: string, fallback: string) {
   }
 }
 
+/**
+ * Telegram uslubi: video yuborishdan oldin iOS da H.264 720p MP4 ga siqiladi.
+ * 1 daqiqalik 4K video ~400 MB → ~25-40 MB; HEVC .MOV brauzerlarda ochilmaydigan muammo ham yo'qoladi.
+ * (Android picker'da bu sozlama yo'q — asl fayl yuboriladi.)
+ */
+const CHAT_VIDEO_COMPRESSION = {
+  videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
+  // HEIC rasmlar o'z holicha (.heic) kelardi — brauzerlar ko'rsatmaydi. "Compatible" — JPEG/H.264.
+  preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+} as const;
+
 function formatBytes(n?: number | null) {
   if (!n || n <= 0) return null;
   if (n < 1024) return `${n} B`;
@@ -618,28 +637,49 @@ const MediaAttachment = ({
   onLongPress,
   timeLabel,
   ticks,
+  aspect = 3 / 4,
+  isMe = false,
+  thumb,
 }: {
+  /** Kichik nusxa (data URI) — yuklanmaguncha xira fon. */
+  thumb?: string | null;
   uri: string;
   isVideo: boolean;
   onPress: () => void;
   onLongPress?: () => void;
   timeLabel?: string;
   ticks?: string;
+  /** eni/bo'yi — joy yuklanishdan oldin ham shu nisbatda (sakrash yo'q). */
+  aspect?: number;
+  /** O'z rasmlari avtomatik yuklash o'chiq bo'lsa ham darhol ko'rinadi. */
+  isMe?: boolean;
 }) => {
   const [loading, setLoading] = useState(true);
   const [durationLabel, setDurationLabel] = useState("");
-  const cached = useCachedMedia(uri, isVideo ? "video" : "image");
+  const [fetching, setFetching] = useState(false);
+  const cached = useCachedMedia(uri, isVideo ? "video" : "image", isMe && !isVideo);
   const src = cached.localUri;
 
+  // Telegram: avtomatik yuklash o'chiq bo'lsa birinchi bosish faqat yuklaydi (chatning o'zida ko'rinadi),
+  // keyingi bosish to'liq ekranda ochadi.
   const handlePress = async () => {
     if (cached.needsDownload || !src) {
-      await getCachedMediaUri(uri, isVideo ? "video" : "image", { force: true });
+      if (fetching) return;
+      setFetching(true);
+      try {
+        await getCachedMediaUri(uri, isVideo ? "video" : "image", { force: true });
+      } catch {
+        Alert.alert("Rasm", "Yuklab bo'lmadi. Qayta urinib ko'ring.");
+      } finally {
+        setFetching(false);
+      }
+      return;
     }
     onPress();
   };
 
   return (
-    <View style={styles.mediaWrapper}>
+    <View style={[styles.mediaWrapper, { width: MEDIA_BUBBLE_WIDTH, aspectRatio: aspect }]}>
       <Pressable
         onPress={() => void handlePress()}
         onLongPress={onLongPress}
@@ -647,8 +687,12 @@ const MediaAttachment = ({
         style={styles.mediaContainer}
       >
         {cached.needsDownload && !src ? (
-          <View style={[styles.mediaImage, styles.mediaPlaceholder]}>
-            <CloudDownload color="#fff" size={32} />
+          <View style={[styles.mediaImage, styles.mediaPlaceholder, { backgroundColor: "#0e1621" }]}>
+            {thumb ? <Image source={{ uri: thumb }} blurRadius={14} style={StyleSheet.absoluteFill} /> : null}
+            {/* Telegram: o'rtada to'q dumaloq tugma */}
+            <View style={styles.tgDownloadCircle}>
+              {fetching ? <ActivityIndicator color="#fff" /> : <ArrowDown color="#fff" size={26} strokeWidth={2.4} />}
+            </View>
           </View>
         ) : !isVideo && src ? (
           <>
@@ -970,10 +1014,15 @@ export function ChatDetailScreen({ route, navigation }: Props) {
   useEffect(() => {
     const showEv = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEv = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    // Pastki bo'shliq klaviatura bilan bir xil egri chiziqda o'zgaradi (sakrash yo'q).
     const show = Keyboard.addListener(showEv, (e) => {
+      configureKeyboardAnimation(e);
       setKeyboardHeight(e.endCoordinates?.height ?? 0);
     });
-    const hide = Keyboard.addListener(hideEv, () => setKeyboardHeight(0));
+    const hide = Keyboard.addListener(hideEv, (e) => {
+      configureKeyboardAnimation(e);
+      setKeyboardHeight(0);
+    });
     return () => {
       show.remove();
       hide.remove();
@@ -1440,10 +1489,12 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     setSelectedMessageIds([]);
   }, []);
 
-  const toggleMessageSelected = useCallback((messageId: string) => {
-    setSelectedMessageIds((prev) =>
-      prev.includes(messageId) ? prev.filter((id) => id !== messageId) : [...prev, messageId]
-    );
+  /** Albom (yoki bitta xabar) — barchasi belgilangan bo'lsa olib tashlaydi, aks holda hammasini belgilaydi. */
+  const toggleGroupSelected = useCallback((ids: string[]) => {
+    setSelectedMessageIds((prev) => {
+      const all = ids.every((id) => prev.includes(id));
+      return all ? prev.filter((id) => !ids.includes(id)) : [...prev, ...ids.filter((id) => !prev.includes(id))];
+    });
   }, []);
 
   const handleDeleteSelected = useCallback(() => {
@@ -1671,6 +1722,21 @@ export function ChatDetailScreen({ route, navigation }: Props) {
    */
   const keyboardBottomInset =
     keyboardHeight > 0 ? keyboardHeight : Math.max(insets.bottom, 8);
+
+  // Yozish maydoni holati (javob/tahrir paneli, ovoz yozish, belgilash, matn bor/yo'q) o'zgarsa —
+  // keyingi joylashuv silliq animatsiya bilan. Render paytida: LayoutAnimation commit dan oldin sozlanishi kerak.
+  const composerMode = [
+    replyTo?.id ?? "",
+    editingMessage?.id ?? "",
+    isRecording ? 1 : 0,
+    isSelecting ? 1 : 0,
+    inputText.trim() ? 1 : 0,
+  ].join("|");
+  const composerModeRef = useRef(composerMode);
+  if (composerModeRef.current !== composerMode) {
+    composerModeRef.current = composerMode;
+    animateLayout(180);
+  }
 
   useEffect(() => {
     if (keyboardHeight > 0) {
@@ -1921,6 +1987,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
       quality: 0.85,
       allowsMultipleSelection: true,
       selectionLimit: 10,
+      ...CHAT_VIDEO_COMPRESSION,
     });
     if (res.canceled || !res.assets?.length) return;
     await queuePendingFiles(
@@ -1931,6 +1998,9 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           (asset.type === "video" ? `video_${Date.now()}.mp4` : `photo_${Date.now()}.jpg`),
         mime: asset.mimeType || (asset.type === "video" ? "video/mp4" : "image/jpeg"),
         size: asset.fileSize,
+        width: asset.width || undefined,
+        height: asset.height || undefined,
+        durationMs: asset.duration || undefined,
       }))
     );
   }, [queuePendingFiles]);
@@ -1944,6 +2014,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     const res = await ImagePicker.launchCameraAsync({
       mediaTypes: ["images", "videos"],
       quality: 0.85,
+      ...CHAT_VIDEO_COMPRESSION,
     });
     if (res.canceled || !res.assets?.[0]) return;
     const asset = res.assets[0];
@@ -1955,6 +2026,9 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           (asset.type === "video" ? `camera_${Date.now()}.mp4` : `camera_${Date.now()}.jpg`),
         mime: asset.mimeType || (asset.type === "video" ? "video/mp4" : "image/jpeg"),
         size: asset.fileSize,
+        width: asset.width || undefined,
+        height: asset.height || undefined,
+        durationMs: asset.duration || undefined,
       },
     ]);
   }, [queuePendingFiles]);
@@ -1988,14 +2062,25 @@ export function ChatDetailScreen({ route, navigation }: Props) {
       if (!chatId) return;
       const batch = [...pendingSendFiles];
       setPendingSendFiles([]);
+      // 2+ rasm/video (fayl sifatida emas) — albom bo'lib ketadi.
+      const isMediaFile = (mime: string) => /^(image|video)\//i.test(mime);
+      const mediaCount = asDocument ? 0 : batch.filter((f) => isMediaFile(f.mime)).length;
+      const albumId = mediaCount >= 2 ? newAlbumId() : null;
+      let albumIndex = 0;
       batch.forEach((f, i) => {
+        const album =
+          albumId && isMediaFile(f.mime) ? { id: albumId, index: albumIndex++ } : undefined;
         enqueueChatUpload({
+          album,
           chatId,
           senderId: currentUserId,
           uri: f.uri,
           name: f.name,
           mime: f.mime,
           size: f.size,
+          width: f.width,
+          height: f.height,
+          durationMs: f.durationMs,
           caption: i === 0 && caption ? caption : undefined,
           ...(asDocument ? { forceType: "file" as const } : {}),
         });
@@ -2166,7 +2251,35 @@ export function ChatDetailScreen({ route, navigation }: Props) {
       });
     };
 
+    // Albom: bir xil albumId li (shu yuboruvchidan) rasm/videolar bitta elementga yig'iladi —
+    // birinchisi o'rnida, albumIndex bo'yicha tartiblangan. Orada boshqa xabar bo'lsa ham albom buzilmaydi.
+    const albumKey = (m: Message): string | null => {
+      const aid = m.metadata?.albumId;
+      const typ = String(m.messageType || "").toLowerCase();
+      if (!aid || (typ !== "image" && typ !== "video")) return null;
+      return `${aid}|${m.senderId}`;
+    };
+    const albums = new Map<string, Message[]>();
     filteredMessages.forEach((m) => {
+      const k = albumKey(m);
+      if (k) albums.set(k, [...(albums.get(k) || []), m]);
+    });
+    const emittedAlbums = new Set<string>();
+
+    filteredMessages.forEach((orig) => {
+      let m: Message & { albumItems?: Message[] } = orig;
+      const k = albumKey(orig);
+      if (k) {
+        if (emittedAlbums.has(k)) return;
+        emittedAlbums.add(k);
+        const group = albums.get(k) || [];
+        if (group.length > 1) {
+          const sorted = [...group].sort(
+            (a, b) => Number(a.metadata?.albumIndex ?? 0) - Number(b.metadata?.albumIndex ?? 0)
+          );
+          m = { ...orig, albumItems: sorted };
+        }
+      }
       const raw = m.createdAt;
       const parsed =
         typeof raw === "number"
@@ -2285,7 +2398,10 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     const isMe = currentUserId.length > 0 && item.senderId === currentUserId;
     const hasAttachment = Boolean(item.remoteFileUrl);
     /** Yuklanayotgan media (lib/upload-queue) — chatda darhol, ustida jarayon. */
-    const uploadInfo = (item.metadata?.upload as UploadInfo | undefined) || null;
+    const albumItems = (item.albumItems as Message[] | undefined) || null;
+    const groupIds: string[] = albumItems ? albumItems.map((a) => a.id) : [item.id];
+    const groupSelected = groupIds.every((id) => selectedMessageIds.includes(id));
+    const uploadInfo = albumItems ? null : (item.metadata?.upload as UploadInfo | undefined) || null;
     const opening = openingFileId === item.id;
     
     // Birlashish logikasi (Grouping)
@@ -2316,8 +2432,11 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     const hasRawUrlText = item.text && (item.text === item.remoteFileUrl || item.text.startsWith?.("http"));
     const isGroupJoinInvite =
       item.messageType === "group_join_invite" || item.metadata?.kind === "group_join";
-    const captionText =
-      typeof item.metadata?.caption === "string" ? item.metadata.caption : "";
+    const captionText = albumItems
+      ? String(albumItems.find((a) => typeof a.metadata?.caption === "string" && a.metadata.caption)?.metadata?.caption || "")
+      : typeof item.metadata?.caption === "string"
+        ? item.metadata.caption
+        : "";
     const displayText =
       isSticker || isGroupJoinInvite
         ? null
@@ -2360,6 +2479,30 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             </Text>
           </View>
         ) : null}
+        {albumItems ? (
+          <AlbumGrid
+            items={albumItems}
+            isMe={isMe}
+            timeLabel={
+              !displayText
+                ? `${String(albumItems[albumItems.length - 1].timestamp || "")}${
+                    isMe ? (albumItems.every((a) => a.status === "read") ? " ✓✓" : " ✓") : ""
+                  }`
+                : undefined
+            }
+            onOpen={(m) => {
+              if (isSelecting) {
+                toggleGroupSelected(groupIds);
+                return;
+              }
+              if (!m.remoteFileUrl) return;
+              const vid = m.messageType === "video" || /\.(mp4|mov|avi|mkv)(\?|$)/i.test(m.remoteFileUrl);
+              if (vid) openVideo(m.remoteFileUrl);
+              else openImage(m.remoteFileUrl);
+            }}
+            onLongPress={(m) => (isSelecting ? toggleGroupSelected(groupIds) : openMessageMenu(m))}
+          />
+        ) : null}
         {uploadInfo ? (
           <UploadingMediaBubble
             tempId={item.id}
@@ -2378,9 +2521,13 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             />
           </View>
         ) : null}
-        {hasAttachment && isMedia && isVideo ? (
+        {!albumItems && hasAttachment && isMedia && isVideo ? (
           <TelegramVideoBubble
             uri={item.remoteFileUrl!}
+            aspect={mediaAspect(item.metadata)}
+            thumb={typeof item.metadata?.thumb === "string" ? item.metadata.thumb : null}
+            durationMs={Number(item.metadata?.durationMs) || null}
+            size={Number(item.metadata?.size || item.metadata?.fileSize) || null}
             timeLabel={!displayText ? String(item.timestamp || "") : undefined}
             ticks={
               !displayText && isMe
@@ -2393,10 +2540,13 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             onLongPress={() => openMessageMenu(item)}
           />
         ) : null}
-        {hasAttachment && isMedia && !isVideo ? (
+        {!albumItems && hasAttachment && isMedia && !isVideo ? (
            <MediaAttachment 
              uri={item.remoteFileUrl!} 
              isVideo={false} 
+             aspect={mediaAspect(item.metadata)}
+             isMe={isMe}
+             thumb={typeof item.metadata?.thumb === "string" ? item.metadata.thumb : null}
              timeLabel={!displayText ? String(item.timestamp || "") : undefined}
              ticks={
                !displayText && isMe
@@ -2611,6 +2761,8 @@ export function ChatDetailScreen({ route, navigation }: Props) {
            <View style={[
              styles.bubbleFooter,
              displayText ? { marginLeft: 8, marginBottom: 2 } : {},
+             // Stiker pufakchasiz — vaqt fon ustida o'qilsin (Telegram kabi yarim shaffof "pill").
+             isSticker && !displayText ? styles.stickerTimePill : null,
            ]}>
              <Text style={[styles.timestamp, { color: isMe ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.5)" }]}>
                {item.e2e ? "🔒 " : ""}{item.timestamp}
@@ -2643,15 +2795,28 @@ export function ChatDetailScreen({ route, navigation }: Props) {
       borderBottomLeftRadius: isConsecutiveNext ? 6 : 4,
     };
 
+    // Telegram: izohsiz/javobsiz rasm-video-albom pufakchasiz — fon va ichki bo'shliqsiz, faqat yumaloq burchaklar.
+    const isBareMedia =
+      (isMedia || !!albumItems || !!uploadInfo) &&
+      (hasAttachment || !!albumItems || !!uploadInfo) &&
+      !displayText &&
+      !(item.parentId && item.parentPreview);
+
+    // Endigina kelgan/yuborilgan xabar mayin paydo bo'ladi (chat ochilgandagi eski xabarlar emas).
+    const createdMs =
+      typeof item.createdAt === "number" ? item.createdAt : Date.parse(String(item.createdAt || ""));
+    const isFresh = Number.isFinite(createdMs) && Date.now() - createdMs < 4000;
+
     return (
+      <PopIn enabled={isFresh} from={0.92}>
       <View style={[styles.messageRow, isMe ? styles.myMessageRow : styles.otherMessageRow, { marginBottom: isConsecutiveNext ? 2 : 12 }]}>
         {isSelecting && (
           <Pressable
-            onPress={() => toggleMessageSelected(item.id)}
+            onPress={() => toggleGroupSelected(groupIds)}
             style={styles.selectCheckWrap}
             hitSlop={8}
           >
-            {selectedMessageIds.includes(item.id) ? (
+            {groupSelected ? (
               <CheckCircle color="#3b82f6" size={22} />
             ) : (
               <Circle color="rgba(255,255,255,0.45)" size={22} />
@@ -2660,11 +2825,11 @@ export function ChatDetailScreen({ route, navigation }: Props) {
         )}
         <Pressable 
           onPress={() => {
-            if (isSelecting) toggleMessageSelected(item.id);
+            if (isSelecting) toggleGroupSelected(groupIds);
           }}
           onLongPress={() => {
             if (isSelecting) {
-              toggleMessageSelected(item.id);
+              toggleGroupSelected(groupIds);
               return;
             }
             openMessageMenu(item);
@@ -2678,7 +2843,8 @@ export function ChatDetailScreen({ route, navigation }: Props) {
                 ? styles.myBubbleBase
                 : styles.otherBubbleBase,
             !isSticker && dynamicBubbleStyle,
-            isSelecting && selectedMessageIds.includes(item.id) && styles.bubbleSelected,
+            isBareMedia && styles.bareMediaBubble,
+            isSelecting && groupSelected && styles.bubbleSelected,
             songFocusId === item.id && styles.bubbleSongFocus,
           ]}
         >
@@ -2690,6 +2856,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
            )}
         </Pressable>
       </View>
+      </PopIn>
     );
   };
 
@@ -2840,21 +3007,25 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             </Pressable>
           </View>
           {inputText.trim() ? (
-            <Pressable
-              style={[styles.sendButton, busy && styles.sendButtonDisabled]}
-              onPress={() => void sendMessage()}
-              disabled={busy || composerLocked}
-            >
-              {sending ? <ActivityIndicator color="#fff" size="small" /> : <Send color="#fff" size={20} />}
-            </Pressable>
+            <PopIn key="send">
+              <Pressable
+                style={[styles.sendButton, busy && styles.sendButtonDisabled]}
+                onPress={() => void sendMessage()}
+                disabled={busy || composerLocked}
+              >
+                {sending ? <ActivityIndicator color="#fff" size="small" /> : <Send color="#fff" size={20} />}
+              </Pressable>
+            </PopIn>
           ) : (
-            <Pressable
-              style={[styles.sendButton, (busy || composerLocked) && styles.sendButtonDisabled]}
-              onPress={() => void startRecording()}
-              disabled={busy || composerLocked}
-            >
-              <Mic color="#fff" size={20} />
-            </Pressable>
+            <PopIn key="mic">
+              <Pressable
+                style={[styles.sendButton, (busy || composerLocked) && styles.sendButtonDisabled]}
+                onPress={() => void startRecording()}
+                disabled={busy || composerLocked}
+              >
+                <Mic color="#fff" size={20} />
+              </Pressable>
+            </PopIn>
           )}
         </View>
         )}
@@ -3766,6 +3937,26 @@ const styles = StyleSheet.create({
   stickerImage: {
     width: 112,
     height: 112,
+  },
+  tgDownloadCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stickerTimePill: {
+    alignSelf: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  bareMediaBubble: {
+    backgroundColor: "transparent",
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   stickerBubble: {
     backgroundColor: "transparent",

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  Animated,
   Image,
   Pressable,
   ScrollView,
@@ -11,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import * as MediaLibrary from "expo-media-library";
 import { Camera, File, Image as ImageIcon, type LucideIcon } from "lucide-react-native";
+import { useSheetAnimation } from "../../../lib/motion";
 
 export type AttachAction = "gallery" | "file" | "camera";
 
@@ -34,6 +36,7 @@ type Props = {
 export function TelegramAttachSheet({ visible, onClose, onPick, onPickRecent }: Props) {
   const insets = useSafeAreaInsets();
   const [recents, setRecents] = useState<Recent[]>([]);
+  const { progress, mounted } = useSheetAnimation(visible);
 
   useEffect(() => {
     if (!visible || isExpoGo) {
@@ -84,12 +87,21 @@ export function TelegramAttachSheet({ visible, onClose, onPick, onPickRecent }: 
     { id: "file", label: "Fayl", color: "#f0a030", Icon: File },
   ];
 
-  if (!visible) return null;
+  // Pastdan silliq chiqadi, yopilganda pastga tushib keyin yo'qoladi; fon asta qorayadi.
+  if (!mounted) return null;
 
   return (
-    <View style={styles.overlay}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+    <View style={styles.overlay} pointerEvents={visible ? "auto" : "none"}>
+      <Animated.View style={[styles.backdropFill, { opacity: progress }]}>
+        <Pressable style={styles.backdrop} onPress={onClose} />
+      </Animated.View>
+      <Animated.View
+        style={[
+          styles.sheet,
+          { paddingBottom: Math.max(insets.bottom, 16) },
+          { transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) }] },
+        ]}
+      >
         <View style={styles.handle} pointerEvents="none" />
         <ScrollView
           horizontal
@@ -142,7 +154,7 @@ export function TelegramAttachSheet({ visible, onClose, onPick, onPickRecent }: 
             </Pressable>
           ))}
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -153,6 +165,9 @@ const styles = StyleSheet.create({
     zIndex: 2000,
     elevation: 2000,
     justifyContent: "flex-end",
+  },
+  backdropFill: {
+    ...StyleSheet.absoluteFillObject,
   },
   backdrop: {
     flex: 1,

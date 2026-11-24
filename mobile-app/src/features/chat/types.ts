@@ -13,6 +13,11 @@ export interface Chat {
   muted?: boolean;
   pinned?: boolean;
   archived?: boolean;
+  /** Oxirgi xabar yuboruvchisi va o'qilganmi — ro'yxatda ✓ / ✓✓ uchun */
+  lastSenderId?: string | null;
+  lastMessageIsRead?: boolean;
+  /** ISO — ro'yxatda vaqt/sana yorlig'i uchun */
+  lastMessageAt?: string | null;
 }
 
 export interface Message {

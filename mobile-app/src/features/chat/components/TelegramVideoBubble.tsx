@@ -1,6 +1,7 @@
+import { MEDIA_BUBBLE_WIDTH } from "../../../lib/upload-queue";
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { ArrowDown, Play, VolumeX, X } from "lucide-react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ArrowDown, Play, X } from "lucide-react-native";
 import {
   cancelMediaDownload,
   peekCachedMediaUri,
@@ -8,7 +9,25 @@ import {
   subscribeMediaCache,
 } from "../../../lib/media-cache";
 
+function formatDur(ms: number) {
+  const t = Math.round(ms / 1000);
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+}
+
+function formatMb(bytes?: number | null) {
+  if (!bytes || bytes <= 0) return "";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+}
+
 type Props = {
+  /** eni/bo'yi (metadata o'lchamidan) */
+  aspect?: number;
+  /** Kichik nusxa (data URI) — birinchi kadr o'rnida xira fon */
+  thumb?: string | null;
+  /** Davomiylik (ms) va hajm (bayt) — chap tepadagi yorliq uchun */
+  durationMs?: number | null;
+  size?: number | null;
   uri: string;
   timeLabel?: string;
   ticks?: string;
@@ -16,12 +35,13 @@ type Props = {
   onLongPress?: () => void;
 };
 
-export function TelegramVideoBubble({ uri, timeLabel, ticks, onOpen, onLongPress }: Props) {
+export function TelegramVideoBubble({ uri, timeLabel, ticks, onOpen, onLongPress, aspect = 3 / 4, thumb, durationMs, size }: Props) {
   const [localUri, setLocalUri] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [written, setWritten] = useState(0);
   const [total, setTotal] = useState(0);
-  const [durationLabel] = useState("");
+  const durationLabel = durationMs ? formatDur(durationMs) : "";
+  const sizeLabel = formatMb(size || total);
 
   const refreshPeek = useCallback(async () => {
     const p = await peekCachedMediaUri(uri, "video");
@@ -76,16 +96,37 @@ export function TelegramVideoBubble({ uri, timeLabel, ticks, onOpen, onLongPress
 
   return (
     <View style={styles.wrap}>
-      <Pressable onPress={onPress} onLongPress={onLongPress} delayLongPress={280} style={styles.media}>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={280}
+        style={[styles.media, { width: MEDIA_BUBBLE_WIDTH, height: MEDIA_BUBBLE_WIDTH / aspect }]}
+      >
         <View style={[styles.video, styles.placeholder]} />
+        {thumb ? (
+          // Video kadri (160 px) — deyarli tiniq; eski 24 px nusxalar xira.
+          <Image source={{ uri: thumb }} blurRadius={1} resizeMode="cover" style={StyleSheet.absoluteFill} />
+        ) : null}
+        {/* Telegram: ⬇ + davomiylik / hajm; yuklanayotganda "3,1 / 8,7 MB" */}
         <View style={styles.topLeft} pointerEvents="none">
-          <Text style={styles.dur}>{durationLabel || "VIDEO"}</Text>
-          <VolumeX color="#fff" size={12} />
+          {!localUri && !downloading ? <ArrowDown color="#fff" size={16} strokeWidth={2.6} /> : null}
+          <View>
+            {downloading ? (
+              <Text style={styles.dur}>
+                {formatMb(written)} / {sizeLabel || "…"}
+              </Text>
+            ) : (
+              <>
+                <Text style={styles.dur}>{durationLabel || "VIDEO"}</Text>
+                {!localUri && sizeLabel ? <Text style={styles.sub}>{sizeLabel}</Text> : null}
+              </>
+            )}
+          </View>
         </View>
         <View style={styles.center} pointerEvents="none">
           <View style={styles.circle}>
-            {localUri ? (
-              <Play color="#fff" size={28} fill="#fff" />
+            {!downloading ? (
+              <Play color="#fff" size={26} fill="#fff" style={{ marginLeft: 3 }} />
             ) : downloading ? (
               <>
                 <View style={styles.ringBg} />
@@ -144,6 +185,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   dur: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  sub: { color: "#fff", fontSize: 12, fontWeight: "600", marginTop: 1 },
   center: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",

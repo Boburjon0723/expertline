@@ -104,6 +104,17 @@ export default function App() {
 
   React.useEffect(() => {
     setupNotifications();
+    // Chat foni oldindan diskka keshlanadi — birinchi chat ham darhol fon bilan ochiladi.
+    void (async () => {
+      try {
+        const { useAppearanceStore } = await import("./src/lib/appearance-store");
+        const { getCachedMediaUri } = await import("./src/lib/media-cache");
+        const bg = useAppearanceStore.getState().backgroundUri;
+        if (bg && /^https?:\/\//i.test(bg)) await getCachedMediaUri(bg, "image", { force: true });
+      } catch {
+        /* ignore */
+      }
+    })();
 
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, unknown> | undefined;

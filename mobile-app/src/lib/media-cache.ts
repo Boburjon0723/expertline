@@ -105,6 +105,15 @@ async function downloadTo(url: string, dest: string): Promise<string> {
 }
 
 /** Diskda bor-yo‘qligini tekshiradi (yuklamaydi). */
+/** Bir marta topilgan lokal fayllar — keyingi renderlarda sinxron (spinner/qora kadr bo'lmasin). */
+const resolved = new Map<string, string>();
+
+export function peekCachedMediaUriSync(remoteUrl?: string | null): string | null {
+  if (!remoteUrl) return null;
+  if (remoteUrl.startsWith("file:") || remoteUrl.startsWith("data:")) return remoteUrl;
+  return resolved.get(remoteUrl) ?? null;
+}
+
 export async function peekCachedMediaUri(
   remoteUrl: string,
   kind?: MediaKind
@@ -115,7 +124,10 @@ export async function peekCachedMediaUri(
   await ensureDir(DIRS[k]);
   const dest = destPath(remoteUrl, k);
   const info = await FileSystem.getInfoAsync(dest);
-  if (info.exists && (info as { size?: number }).size !== 0) return dest;
+  if (info.exists && (info as { size?: number }).size !== 0) {
+    resolved.set(remoteUrl, dest);
+    return dest;
+  }
   return null;
 }
 
@@ -159,6 +171,9 @@ export async function getCachedMediaUri(
           /* Expo Go / ruxsat */
         }
       }
+      resolved.set(remoteUrl, uri);
+      // Shu URL ni ko'rsatayotgan pufakchalar (bulut belgisi) yangilansin.
+      notifyMediaCacheChanged();
       return uri;
     })
     .finally(() => inflight.delete(dest));
@@ -252,6 +267,7 @@ export async function putLocalInMediaCache(
       await FileSystem.deleteAsync(dest, { idempotent: true });
     }
     await FileSystem.copyAsync({ from: localUri, to: dest });
+    resolved.set(remoteUrl, dest);
     notifyMediaCacheChanged();
   } catch {
     /* ignore */

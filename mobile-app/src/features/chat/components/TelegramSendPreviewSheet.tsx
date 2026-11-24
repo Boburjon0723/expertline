@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -20,6 +22,10 @@ export type PendingSendFile = {
   name: string;
   mime: string;
   size?: number;
+  /** Rasm/video o'lchami — chatda joy oldindan to'g'ri nisbatda chiziladi. */
+  width?: number;
+  height?: number;
+  durationMs?: number;
 };
 
 function formatBytes(n?: number) {
@@ -58,6 +64,16 @@ export function TelegramSendPreviewSheet({
   const insets = useSafeAreaInsets();
   const [caption, setCaption] = useState("");
   const [asDocument, setAsDocument] = useState(false);
+  // Karta pastdan siljib chiqadi (Modal o'zi faqat xiralashtirardi).
+  const enter = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [enter]);
   if (!files.length) return null;
 
   const allMedia = files.every((f) => isImage(f.mime, f.name) || isVideo(f.mime, f.name));
@@ -74,7 +90,13 @@ export function TelegramSendPreviewSheet({
         behavior={Platform.OS === "ios" ? "padding" : "padding"}
       >
         <Pressable style={styles.backdrop} onPress={onCancel} />
-        <View style={[styles.card, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <Animated.View
+          style={[
+            styles.card,
+            { paddingBottom: Math.max(insets.bottom, 16) },
+            { transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [360, 0] }) }] },
+          ]}
+        >
           <Text style={styles.title}>{title}</Text>
           <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
             {files.map((f, i) => {
@@ -159,7 +181,7 @@ export function TelegramSendPreviewSheet({
               </Pressable>
             </View>
           </View>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );

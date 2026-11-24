@@ -37,6 +37,20 @@ import {
 import { Chat } from "../types";
 import { ChatBackground } from "../../../components/ChatBackground";
 import { useAuthStore } from "../../auth/store";
+import { normalizeUserId } from "../service";
+
+/** Ro'yxat vaqti: bugun — soat, shu hafta — hafta kuni, aks holda kun.oy */
+function chatListTimeLabel(iso?: string | null, fallback?: string): string {
+  if (!iso) return fallback || "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return fallback || "";
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const days = (now.getTime() - d.getTime()) / 86_400_000;
+  if (days < 6) return ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"][d.getDay()];
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 import { ServicesView, ContactsView } from "./DashboardViews";
 import { JobListScreen } from "../../jobs/screens/JobListScreen";
 import { ChatSongMiniBar } from "../components/ChatSongMiniBar";
@@ -146,6 +160,10 @@ const BOTTOM_TABS: {
 export function ChatListScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((s) => s.user);
+  const myUserId = normalizeUserId(
+    (currentUser as { id?: string; _id?: string } | null)?.id ??
+      (currentUser as { _id?: string } | null)?._id
+  );
   const [bottomTab, setBottomTab] = useState<"chats" | "contacts" | "jobs" | "services">("chats");
 
   const { chats, loadChats, isLoadingChats, updateChatLocally, removeChatLocally } = useChatStore();
@@ -751,27 +769,41 @@ export function ChatListScreen({ navigation }: any) {
                   <Text style={styles.chatTypeLabel}>{t("chatChannelLabel")}</Text>
                 )}
               </View>
+              {/* Telegram: o'ngda vaqt (bugun — soat, aks holda sana), o'z xabarim bo'lsa ✓ / ✓✓ */}
+              {!isBulkSelecting ? (
+                <View style={styles.chatMetaRight}>
+                  {item.lastSenderId && normalizeUserId(item.lastSenderId) === myUserId ? (
+                    <Text style={[styles.chatTicks, item.lastMessageIsRead && styles.chatTicksRead]}>
+                      {item.lastMessageIsRead ? "✓✓" : "✓"}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.chatTime}>{chatListTimeLabel(item.lastMessageAt, item.timestamp)}</Text>
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.chatMsgRow}>
+              <Text
+                style={[
+                  styles.chatMsg,
+                  { flex: 1 },
+                  (isTyping || !!draft) && styles.chatMsgTyping,
+                  item.muted && styles.chatMsgMuted,
+                ]}
+                numberOfLines={1}
+              >
+                {preview}
+              </Text>
               {!isBulkSelecting && item.unreadCount > 0 && (
-                <View style={styles.unreadBadge}>
+                <View style={[styles.unreadBadge, item.muted && styles.unreadBadgeMuted]}>
                   <Text style={styles.unreadText}>{item.unreadCount}</Text>
                 </View>
               )}
             </View>
-            <Text
-              style={[
-                styles.chatMsg,
-                (isTyping || !!draft) && styles.chatMsgTyping,
-                item.muted && styles.chatMsgMuted,
-              ]}
-              numberOfLines={1}
-            >
-              {preview}
-            </Text>
           </View>
         </Pressable>
       );
     },
-    [isBulkSelecting, onChatLongPress, openChat, selectedChatIds, t, typingByChat, draftsByChat]
+    [isBulkSelecting, onChatLongPress, openChat, selectedChatIds, t, typingByChat, draftsByChat, myUserId]
   );
 
   const searchListHeader =
@@ -1245,6 +1277,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   unreadText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
+  unreadBadgeMuted: { backgroundColor: "#5b6b7c" },
+  chatMsgRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  chatMetaRight: { flexDirection: "row", alignItems: "center", gap: 3 },
+  chatTime: { color: "rgba(255,255,255,0.45)", fontSize: 12 },
+  chatTicks: { color: "rgba(255,255,255,0.45)", fontSize: 12 },
+  chatTicksRead: { color: "#64b5ef" },
   chatMsg: { color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 2 },
   chatMsgMuted: { color: "rgba(255,255,255,0.35)" },
   chatMsgTyping: { color: "#38bdf8", fontStyle: "italic" },

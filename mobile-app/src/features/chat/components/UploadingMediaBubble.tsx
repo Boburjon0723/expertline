@@ -8,6 +8,8 @@ import {
   hasUploadJob,
   retryChatUpload,
   useUploadStore,
+  MEDIA_BUBBLE_WIDTH,
+  mediaAspect,
   type UploadInfo,
 } from "../../../lib/upload-queue";
 
@@ -24,7 +26,7 @@ function formatBytes(n?: number) {
 }
 
 /** Telegram: aylana jarayon, o'rtada X (bekor qilish) yoki xatoda qayta urinish. */
-function ProgressControl({ tempId, light }: { tempId: string; light?: boolean }) {
+export function ProgressControl({ tempId, light }: { tempId: string; light?: boolean }) {
   const progress = useUploadStore((s) => s.progress[tempId]);
   const failed = useUploadStore((s) => s.failed[tempId]);
   // Ilova qayta ochilgan — yuklash ishi yo'q, faqat o'chirish mumkin.
@@ -96,7 +98,7 @@ export function UploadingMediaBubble({
   }
 
   return (
-    <View style={styles.mediaWrapper}>
+    <View style={[styles.mediaWrapper, { width: MEDIA_BUBBLE_WIDTH, aspectRatio: mediaAspect(info) }]}>
       <View style={styles.mediaContainer}>
         {info.kind === "image" ? (
           <Image source={{ uri: info.localUri }} style={styles.media} resizeMode="cover" />

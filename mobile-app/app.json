@@ -53,6 +53,12 @@
     },
     "plugins": [
       [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Ilovani Face ID bilan ochish uchun ruxsat kerak."
+        }
+      ],
+      [
         "expo-screen-orientation",
         {
           "initialOrientation": "PORTRAIT_UP"

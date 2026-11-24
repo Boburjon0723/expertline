@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCachedMediaUri, subscribeMediaCache, type MediaKind } from "./media-cache";
+import { getCachedMediaUri, peekCachedMediaUriSync, subscribeMediaCache, type MediaKind } from "./media-cache";
 import { subscribeMediaPrefs } from "./media-prefs";
 
 export function useCachedMedia(
@@ -7,7 +7,7 @@ export function useCachedMedia(
   kind?: MediaKind,
   force = false
 ) {
-  const [localUri, setLocalUri] = useState<string | null>(null);
+  const [localUri, setLocalUri] = useState<string | null>(() => peekCachedMediaUriSync(uri));
   const [needsDownload, setNeedsDownload] = useState(false);
   const [prefTick, setPrefTick] = useState(0);
 

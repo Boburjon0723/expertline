@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, Pressable, Alert, Vibration, BackHandler } from "react-native";
-import { Lock, Delete } from "lucide-react-native";
+import { Lock, Delete, ScanFace } from "lucide-react-native";
+import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from 'expo-secure-store';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../store";
@@ -32,6 +33,46 @@ export function PasscodeScreen({ navigation, route }: PasscodeScreenProps) {
     }
   }, [passcode]);
 
+  /** Qulfdan muvaffaqiyatli chiqish (kod yoki Face ID). */
+  const unlockSuccess = () => {
+    if (route.params?.onSuccess) {
+      route.params.onSuccess();
+    } else if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.replace("Messages");
+    }
+  };
+
+  // Face ID / Touch ID: qurilmada sozlangan bo'lsa qulf ekrani ochilishi bilan so'raladi.
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const tryBiometric = async () => {
+    try {
+      const res = await LocalAuthentication.authenticateAsync({
+        promptMessage: "ExpertLine'ni ochish",
+        cancelLabel: "Kod bilan",
+        disableDeviceFallback: true,
+      });
+      if (res.success) unlockSuccess();
+    } catch {
+      /* kod bilan davom etadi */
+    }
+  };
+  useEffect(() => {
+    if (mode !== 'unlock') return;
+    void (async () => {
+      const [hw, enrolled] = await Promise.all([
+        LocalAuthentication.hasHardwareAsync(),
+        LocalAuthentication.isEnrolledAsync(),
+      ]);
+      if (hw && enrolled) {
+        setBioAvailable(true);
+        void tryBiometric();
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
   const handleComplete = async () => {
     if (mode === 'set') {
       if (!confirmMode) {
@@ -52,15 +93,8 @@ export function PasscodeScreen({ navigation, route }: PasscodeScreenProps) {
     } else {
       const savedPasscode = await SecureStore.getItemAsync(PASSCODE_KEY);
       if (passcode === savedPasscode) {
-        if (route.params?.onSuccess) {
-           route.params.onSuccess();
-        } else if (navigation.canGoBack()) {
-           // Ilovaga qaytilganda qulflangan — foydalanuvchi turgan joyiga (chat, sozlamalar...) qaytadi.
-           navigation.goBack();
-        } else {
-           // Ilova ochilishida qulf — asosiy sahifa.
-           navigation.replace("Messages");
-        }
+        // Qaytilganda — turgan joyiga; ilova ochilishida — asosiy sahifa.
+        unlockSuccess();
       } else {
         Vibration.vibrate(500);
         setPasscode("");
@@ -111,7 +145,11 @@ export function PasscodeScreen({ navigation, route }: PasscodeScreenProps) {
             ? (confirmMode ? "Parolni tasdiqlang" : "Yangi parol o'rnating") 
             : "Ekran parolini kiriting"}
         </Text>
-        <Text style={styles.subTitle}>Ilovani himoya qilish uchun 4 ta raqamdan foydalaning</Text>
+        <Text style={styles.subTitle}>
+          {mode === 'set'
+            ? "Ilovani himoya qilish uchun 4 ta raqamdan foydalaning"
+            : "Davom etish uchun kodni kiriting"}
+        </Text>
       </View>
 
       <View style={styles.dotsContainer}>
@@ -155,6 +193,12 @@ export function PasscodeScreen({ navigation, route }: PasscodeScreenProps) {
           </View>
         ))}
       </View>
+
+      {mode === 'unlock' && bioAvailable && (
+        <Pressable style={styles.cancelBtn} onPress={() => void tryBiometric()} hitSlop={10}>
+           <ScanFace color="rgba(255,255,255,0.7)" size={34} />
+        </Pressable>
+      )}
 
       {mode === 'unlock' && (
         <Pressable style={styles.cancelBtn} onPress={onForgot}>
