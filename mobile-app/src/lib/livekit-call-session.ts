@@ -125,7 +125,9 @@ export async function startLiveKitAudioSession(output: OutputPref = "speaker"): 
         audioTypeOptions: communication,
       },
       ios: {
-        defaultOutput: output,
+        // Har doim earpiece asosida — karnay selectAudioOutput("force_speaker") bilan yoqiladi,
+        // shunda karnay tugmasi ikkala tomonga ham ishlaydi.
+        defaultOutput: "earpiece",
       },
     });
     await AudioSession.startAudioSession();
@@ -149,8 +151,25 @@ export async function startLiveKitAudioSession(output: OutputPref = "speaker"): 
 }
 
 async function modsSelectSpeaker() {
-  const mods = getLiveKitModules();
-  await mods?.LiveKit?.AudioSession?.selectAudioOutput?.("speaker");
+  await setLiveKitSpeaker(true);
+}
+
+/**
+ * Qo'ng'iroq ovozini karnay yoki quloq dinamigiga (earpiece) yo'naltiradi.
+ * iOS da faqat "default" | "force_speaker", Android da "speaker" | "earpiece" (LiveKit API).
+ */
+export async function setLiveKitSpeaker(on: boolean): Promise<void> {
+  const AudioSession = getLiveKitModules()?.LiveKit?.AudioSession;
+  if (!AudioSession?.selectAudioOutput) return;
+  try {
+    if (Platform.OS === "ios") {
+      await AudioSession.selectAudioOutput(on ? "force_speaker" : "default");
+    } else {
+      await AudioSession.selectAudioOutput(on ? "speaker" : "earpiece");
+    }
+  } catch (e) {
+    console.warn("[LiveKit AudioSession] selectAudioOutput failed:", e);
+  }
 }
 
 export async function stopLiveKitAudioSession(): Promise<void> {

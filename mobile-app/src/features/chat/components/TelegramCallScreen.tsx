@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { Audio } from "expo-av";
+import { LinearGradient } from "expo-linear-gradient";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 
 const KEEP_AWAKE_TAG = "call-screen";
@@ -16,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AvatarImage } from "../../../components/AvatarImage";
 import { useAuthLocale } from "../../auth/locale";
 import { ensureSpeakerPlayback, restoreSongLoudness } from "../../../lib/mobile-song-player";
-import { getLiveKitModules } from "../../../lib/livekit-call-session";
+import { getLiveKitModules, setLiveKitSpeaker } from "../../../lib/livekit-call-session";
 import { LIVEKIT_AUDIO_CAPTURE, LIVEKIT_AUDIO_PUBLISH } from "../../../lib/livekit-media";
 
 export type CallUiStatus = "ringing" | "incoming" | "connected";
@@ -235,18 +236,34 @@ export function TelegramCallScreen({
     };
   }, [visible]);
 
+  // Faqat chiquvchi "tuuut" paytida expo-av rejimi. Kiruvchi jiringlashni call-sounds boshqaradi,
+  // ulangan qo'ng'iroqda esa audio sessiya LiveKit'niki — expo-av unga tegmasin (mikrofonni o'chirib qo'yardi).
   useEffect(() => {
-    // Kiruvchi jiringlash paytida audio rejimini call-sounds boshqaradi (karnay, jim rejimga bo'ysunadi).
-    if (!visible || status === "incoming") return;
+    if (!visible || status !== "ringing") return;
     void Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
       playThroughEarpieceAndroid: !spkOn,
     }).catch(() => {});
+  }, [visible, spkOn, status]);
+
+  // Qo'ng'iroq ekrani yopilganda oddiy ijro rejimi va qo'shiqni tiklash.
+  useEffect(() => {
+    if (!visible) return;
     return () => {
       void ensureSpeakerPlayback().then(() => restoreSongLoudness());
     };
-  }, [visible, spkOn, status === "incoming"]);
+  }, [visible]);
+
+  // Karnay tugmasi: LiveKit audio chiqishini almashtiradi. WebRTC ulanganda iOS yo'nalishni
+  // qayta o'rnatishi mumkin, shuning uchun ulanish tugagach yana bir marta qo'llaymiz.
+  useEffect(() => {
+    if (!visible || status !== "connected") return;
+    void setLiveKitSpeaker(spkOn);
+    if (connecting) return;
+    const id = setTimeout(() => void setLiveKitSpeaker(spkOn), 1500);
+    return () => clearTimeout(id);
+  }, [visible, status, spkOn, connecting]);
 
   useEffect(() => {
     if (status !== "incoming") return;
@@ -300,7 +317,14 @@ export function TelegramCallScreen({
             {videoContent}
           </View>
         ) : null}
-        {status === "connected" && isVideo ? <View style={styles.topShade} pointerEvents="none" /> : null}
+        {/* Ism/vaqt o'qilishi uchun yumshoq soya; tugmalar yashirilganda video toza ko'rinadi. */}
+        {status === "connected" && isVideo && showChrome ? (
+          <LinearGradient
+            colors={["rgba(0,0,0,0.45)", "rgba(0,0,0,0)"]}
+            style={[styles.topShade, { height: insets.top + 110 }]}
+            pointerEvents="none"
+          />
+        ) : null}
 
         {showChrome ? (
           <View style={styles.top} pointerEvents="none">
@@ -401,8 +425,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 140,
-    backgroundColor: "rgba(0,0,0,0.35)",
     zIndex: 1,
   },
   acceptWrap: { alignItems: "center", justifyContent: "center" },
