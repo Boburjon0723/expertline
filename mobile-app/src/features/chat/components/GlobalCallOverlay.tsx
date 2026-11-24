@@ -5,7 +5,7 @@ import { useAuthStore } from "../../auth/store";
 import { getSocket } from "../../../lib/socket";
 import { getLiveKitTokenRequest } from "../service";
 import { navigationRef } from "../../../lib/navigationRef";
-import { TelegramCallScreen, CallVideoStage, CallMediaSync } from "./TelegramCallScreen";
+import { TelegramCallScreen, CallVideoStage, CallMediaSync, CallPeerLeftWatch } from "./TelegramCallScreen";
 import { holdSongForVideo, releaseSongFromVideo } from "../../../lib/mobile-song-player";
 import { ensureCallMediaPermissions } from "../../../lib/call-media-permissions";
 import {
@@ -276,6 +276,7 @@ export function GlobalCallOverlay() {
         }}
       >
         <CallMediaSync micOn={!isMicMuted} camOn={callType === "video" && !isCamOff} />
+        <CallPeerLeftWatch onPeerLeft={endCall} />
         {callType === "video" ? <CallVideoStage name={peerName} isCamOff={isCamOff} /> : null}
       </LiveKit.LiveKitRoom>
     ) : null;

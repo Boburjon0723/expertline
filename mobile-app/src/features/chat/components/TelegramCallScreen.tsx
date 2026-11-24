@@ -92,6 +92,39 @@ function CallVideoStageInner({
   );
 }
 
+/** Qarshi tomon chiqsa va shu vaqt ichida qaytmasa — qo'ng'iroq tugaydi (tarmoq uzilishiga imkon). */
+const PEER_LEFT_GRACE_MS = 15_000;
+
+/** LiveKitRoom ichida (1:1 qo'ng'iroq): qarshi tomon chiqib ketib qaytmasa onPeerLeft chaqiriladi. */
+export function CallPeerLeftWatch({ onPeerLeft }: { onPeerLeft: () => void }) {
+  const mods = getLiveKitModules();
+  if (!mods) return null;
+  return <CallPeerLeftWatchInner onPeerLeft={onPeerLeft} useRemoteParticipants={mods.LiveKit.useRemoteParticipants} />;
+}
+
+function CallPeerLeftWatchInner({
+  onPeerLeft,
+  useRemoteParticipants,
+}: {
+  onPeerLeft: () => void;
+  useRemoteParticipants: () => unknown[];
+}) {
+  const remotes = useRemoteParticipants();
+  const seenPeer = useRef(false);
+  const cb = useRef(onPeerLeft);
+  cb.current = onPeerLeft;
+  useEffect(() => {
+    if (remotes.length > 0) {
+      seenPeer.current = true;
+      return;
+    }
+    if (!seenPeer.current) return;
+    const id = setTimeout(() => cb.current(), PEER_LEFT_GRACE_MS);
+    return () => clearTimeout(id);
+  }, [remotes.length]);
+  return null;
+}
+
 /** LiveKitRoom ichida: UI tugmalari haqiqiy mik/kameraga tushadi */
 export function CallMediaSync({ micOn, camOn }: { micOn: boolean; camOn: boolean }) {
   const mods = getLiveKitModules();

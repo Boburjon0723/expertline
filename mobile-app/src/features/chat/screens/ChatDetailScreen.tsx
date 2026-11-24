@@ -40,7 +40,7 @@ import {
   TelegramSendPreviewSheet,
   type PendingSendFile,
 } from "../components/TelegramSendPreviewSheet";
-import { TelegramCallScreen, CallVideoStage, CallMediaSync } from "../components/TelegramCallScreen";
+import { TelegramCallScreen, CallVideoStage, CallMediaSync, CallPeerLeftWatch } from "../components/TelegramCallScreen";
 import { StudentSessionScreen, type StudentSessionStyle } from "./StudentSessionScreen";
 import type { Sticker } from "../../../lib/sticker-packs";
 import { summarizeChat } from "../../../lib/summarize";
@@ -296,6 +296,7 @@ const CallModal = ({
         }}
       >
         <CallMediaSync micOn={!isMicMuted} camOn={callType === "video" && !isCamOff} />
+        <CallPeerLeftWatch onPeerLeft={onEnd} />
         {callType === "video" ? <CallVideoStage name={name} isCamOff={isCamOff} /> : null}
       </LiveKit.LiveKitRoom>
     ) : null;

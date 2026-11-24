@@ -67,6 +67,7 @@ export default function GlobalCallOverlay() {
                         <LiveKitRoomWrapper
                             sessionId={liveKitRoomId}
                             onDisconnected={handleEnd}
+                            onPeerLeft={handleEnd}
                             muted={call.isMuted}
                         />
                     </div>
@@ -74,6 +75,7 @@ export default function GlobalCallOverlay() {
                     <LiveKitRoomWrapper
                         sessionId={liveKitRoomId}
                         onDisconnected={handleEnd}
+                        onPeerLeft={handleEnd}
                         audioOnly
                         muted={call.isMuted}
                     />

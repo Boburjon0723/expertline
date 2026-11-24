@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     LiveKitRoom,
     VideoConference,
     RoomAudioRenderer,
     useLocalParticipant,
+    useRemoteParticipants,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { apiFetch } from '@/lib/api';
@@ -23,6 +24,28 @@ interface LiveKitRoomWrapperProps {
     audioOnly?: boolean;
     /** Global call overlay mute holati */
     muted?: boolean;
+    /** 1:1 qo'ng'iroq: qarshi tomon chiqib ketib qaytmasa chaqiriladi (qo'ng'iroqni yakunlash uchun) */
+    onPeerLeft?: () => void;
+}
+
+/** Qarshi tomon xonadan chiqsa va shu vaqt ichida qaytmasa — qo'ng'iroq tugaydi (tarmoq uzilishiga imkon). */
+const PEER_LEFT_GRACE_MS = 15_000;
+
+function PeerLeftWatch({ onPeerLeft }: { onPeerLeft: () => void }) {
+    const remotes = useRemoteParticipants();
+    const seenPeer = useRef(false);
+    const cb = useRef(onPeerLeft);
+    cb.current = onPeerLeft;
+    useEffect(() => {
+        if (remotes.length > 0) {
+            seenPeer.current = true;
+            return;
+        }
+        if (!seenPeer.current) return;
+        const id = setTimeout(() => cb.current(), PEER_LEFT_GRACE_MS);
+        return () => clearTimeout(id);
+    }, [remotes.length]);
+    return null;
 }
 
 function MicSync({ muted, speech }: { muted?: boolean; speech?: boolean }) {
@@ -35,7 +58,7 @@ function MicSync({ muted, speech }: { muted?: boolean; speech?: boolean }) {
     return null;
 }
 
-export default function LiveKitRoomWrapper({ sessionId, onDisconnected, audioOnly = false, muted }: LiveKitRoomWrapperProps) {
+export default function LiveKitRoomWrapper({ sessionId, onDisconnected, audioOnly = false, muted, onPeerLeft }: LiveKitRoomWrapperProps) {
     const [token, setToken] = useState("");
     const [wsUrl, setWsUrl] = useState("");
 
@@ -77,6 +100,7 @@ export default function LiveKitRoomWrapper({ sessionId, onDisconnected, audioOnl
             onDisconnected={onDisconnected}
         >
             <MicSync muted={muted} speech={audioOnly} />
+            {onPeerLeft ? <PeerLeftWatch onPeerLeft={onPeerLeft} /> : null}
             {audioOnly ?
                 <RoomAudioRenderer />
             :   <>
