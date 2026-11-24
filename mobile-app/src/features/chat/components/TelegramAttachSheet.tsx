@@ -8,6 +8,7 @@ import {
   Image,
   Keyboard,
   PanResponder,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -20,6 +21,7 @@ import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
 import { Camera, File, Image as ImageIcon, Send, X, type LucideIcon } from "lucide-react-native";
 import type { PendingSendFile } from "./TelegramSendPreviewSheet";
+import { configureKeyboardAnimation } from "../../../lib/motion";
 
 export type AttachAction = "gallery" | "file" | "camera";
 
@@ -105,6 +107,25 @@ export function TelegramAttachSheet({ visible, onClose, onPick, onSendMedia }: P
   const [caption, setCaption] = useState("");
   const [sending, setSending] = useState(false);
   const loadingRef = useRef(false);
+  /** Izoh yozilganda pastki panel klaviatura ustiga ko'tariladi (orqasida qolmasin). */
+  const [kbHeight, setKbHeight] = useState(0);
+  useEffect(() => {
+    if (!visible) return;
+    const showEv = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEv = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEv, (e) => {
+      configureKeyboardAnimation(e);
+      setKbHeight(e.endCoordinates?.height ?? 0);
+    });
+    const hide = Keyboard.addListener(hideEv, (e) => {
+      configureKeyboardAnimation(e);
+      setKbHeight(0);
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [visible]);
 
   const animateTo = useCallback(
     (y: number, after?: () => void) => {
@@ -308,7 +329,14 @@ export function TelegramAttachSheet({ visible, onClose, onPick, onSendMedia }: P
       </Animated.View>
 
       {/* Pastki suzuvchi panel: tanlov yo'q — bo'limlar; tanlov bor — izoh + yuborish */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View
+        style={[
+          styles.bottomBar,
+          kbHeight > 0
+            ? { bottom: kbHeight, paddingBottom: 10 }
+            : { paddingBottom: Math.max(insets.bottom, 12) },
+        ]}
+      >
         {selected.length ? (
           <View style={styles.captionRow}>
             <TextInput

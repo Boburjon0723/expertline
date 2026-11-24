@@ -343,6 +343,8 @@ export async function sendMessageRequest(
     peerUserId?: string | null;
     parentId?: string | null;
     metadata?: Record<string, unknown>;
+    /** Shuncha ms da javob bo'lmasa so'rov to'xtatiladi (osilib qolgan tarmoq). */
+    timeoutMs?: number;
   }
 ): Promise<Message> {
   let content = text;
@@ -365,10 +367,21 @@ export async function sendMessageRequest(
   }
   const body: Record<string, unknown> = { content, type: messageType, metadata };
   if (opts?.parentId) body.parentId = opts.parentId;
-  const response = await apiFetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+  const controller = opts?.timeoutMs ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), opts!.timeoutMs) : null;
+  let response: Response;
+  try {
+    response = await apiFetch(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+  } catch (e) {
+    if (controller?.signal.aborted) throw new Error("Aloqa sekin — xabar yuborilmadi");
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
   if (!response.ok) {
     const errText = await response.text().catch(() => "");
     let message = "Xabar yuborilmadi";

@@ -214,3 +214,44 @@ const styles = StyleSheet.create({
   fileName: { color: "#fff", fontSize: 15, fontWeight: "500" },
   fileMeta: { color: "rgba(255,255,255,0.6)", fontSize: 12, marginTop: 2 },
 });
+
+/**
+ * Yuklanayotgan ovozli xabar (Telegram): ▶ o'rnida halqa + ✕, tayyor to'lqin chizig'i va davomiylik.
+ * Yuborilgach oddiy ovozli pufakchaga almashadi (✕ → ▶).
+ */
+export function UploadingVoiceBubble({
+  tempId,
+  durationMs,
+  waveform,
+}: {
+  tempId: string;
+  durationMs?: number;
+  waveform?: number[] | null;
+}) {
+  const failed = useUploadStore((s) => s.failed[tempId]);
+  const bars = 28;
+  const sec = Math.max(1, Math.round((durationMs || 0) / 1000));
+  return (
+    <View style={voiceStyles.row}>
+      <ProgressControl tempId={tempId} light />
+      <View style={{ flex: 1 }}>
+        <View style={voiceStyles.wave}>
+          {Array.from({ length: bars }).map((_, i) => {
+            const v = waveform && waveform.length ? waveform[Math.floor((i * waveform.length) / bars)] ?? 0 : 6;
+            return <View key={i} style={[voiceStyles.bar, { height: 3 + (v / 31) * 15 }]} />;
+          })}
+        </View>
+        <Text style={[voiceStyles.meta, failed ? styles.failedText : null]}>
+          {failed ? "Xato — qayta urinish" : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const voiceStyles = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: 10, minWidth: 210, paddingVertical: 2 },
+  wave: { flexDirection: "row", alignItems: "center", gap: 2, height: 20 },
+  bar: { width: 3, borderRadius: 1.5, backgroundColor: "rgba(255,255,255,0.55)" },
+  meta: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 3, fontVariant: ["tabular-nums"] },
+});

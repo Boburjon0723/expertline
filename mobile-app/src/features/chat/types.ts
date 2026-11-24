@@ -34,6 +34,9 @@ export interface Message {
   /** To‘liq URL — fayl/rasmni yuklab ochish uchun */
   remoteFileUrl?: string | null;
   metadata?: any;
+  /** Yuklash navbatidagi vaqtinchalik id — server xabariga almashganda ro'yxat kaliti o'zgarmasin
+   * (aks holda qator qayta yaratilib, kirish animatsiyasi ikki marta o'ynaydi). */
+  localKey?: string;
   e2e?: boolean;
   /** Reply: ota xabar ID */
   parentId?: string | null;

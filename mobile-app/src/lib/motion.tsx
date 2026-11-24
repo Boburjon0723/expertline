@@ -58,11 +58,14 @@ export function PopIn({
   style,
   from = 0.6,
   enabled = true,
+  rise = 0,
 }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   from?: number;
   enabled?: boolean;
+  /** Pastdan shuncha px ko'tarilib chiqadi (yangi xabar "uchib chiqishi") */
+  rise?: number;
 }) {
   const v = useRef(new Animated.Value(enabled ? 0 : 1)).current;
   useEffect(() => {
@@ -75,7 +78,10 @@ export function PopIn({
         style,
         {
           opacity: v,
-          transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [from, 1] }) }],
+          transform: [
+            { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [rise, 0] }) },
+            { scale: v.interpolate({ inputRange: [0, 1], outputRange: [from, 1] }) },
+          ],
         },
       ]}
     >

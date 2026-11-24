@@ -20,7 +20,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Send, ArrowLeft, MoreVertical, Paperclip, Smile, Phone, Video as VideoIcon, Play, Download, X, CloudDownload, ArrowDown, Trash2, Forward, CheckCircle, Save, Mic, MicOff, VideoOff, CreditCard, Circle, Search, Pin, Copy } from "lucide-react-native";
+import { Send, ArrowLeft, MoreVertical, Paperclip, Smile, Phone, Video as VideoIcon, Play, Download, X, CloudDownload, ArrowDown, Trash2, Forward, CheckCircle, Save, Mic, MicOff, VideoOff, Circle, Search, Pin, Copy } from "lucide-react-native";
 import * as Clipboard from "expo-clipboard";
 import { useAuthLocale } from "../../auth/locale";
 import { Chat, Message } from "../types";
@@ -34,7 +34,6 @@ import * as Sharing from "expo-sharing";
 import { ChatHeaderMoreMenu } from "../components/ChatHeaderMoreMenu";
 import { MessageContextMenu } from "../components/MessageContextMenu";
 import { StickerPickerSheet } from "../components/StickerPickerSheet";
-import { ListingDealBar } from "../components/ListingDealBar";
 import { MentorInviteBar } from "../components/MentorInviteBar";
 import { TelegramAttachSheet, type AttachAction } from "../components/TelegramAttachSheet";
 import {
@@ -44,8 +43,6 @@ import {
 import { TelegramCallScreen, CallVideoStage, CallMediaSync, CallPeerLeftWatch } from "../components/TelegramCallScreen";
 import { StudentSessionScreen, type StudentSessionStyle } from "./StudentSessionScreen";
 import type { Sticker } from "../../../lib/sticker-packs";
-import { summarizeChat } from "../../../lib/summarize";
-import { transferTokens } from "../wallet-service";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -59,14 +56,11 @@ import {
   ChatDetailsResponse,
   getLiveKitTokenRequest,
   mapApiMessageToMessage,
-  initiateSessionRequest,
   deleteMessagesRequest,
   clearChatMessagesRequest,
   deleteChatRequest,
   updateChatPrefsRequest,
   sendGroupJoinInviteRequest,
-  subscribeToMentorRequest,
-  getMentorSubscriptionStatus,
   joinGroupWithSubscriptionRequest,
   ChatDetailsParticipant,
   pinMessageRequest,
@@ -104,9 +98,15 @@ import {
   type UploadInfo,
 } from "../../../lib/upload-queue";
 import { AlbumGrid } from "../components/AlbumGrid";
+import {
+  TelegramVoiceRecorder,
+  type VideoNoteResult,
+  type VoiceResult,
+} from "../components/TelegramVoiceRecorder";
+import { VideoNoteBubble } from "../components/VideoNoteBubble";
 import { animateLayout, animateRemoval, configureKeyboardAnimation, PopIn } from "../../../lib/motion";
 import { isBlockedAppPackage } from "../../../lib/blocked-files";
-import { UploadingMediaBubble } from "../components/UploadingMediaBubble";
+import { UploadingMediaBubble, UploadingVoiceBubble } from "../components/UploadingMediaBubble";
 
 const VideoPlayerModal = ({ visible, uri, onClose }: { visible: boolean; uri: string | null; onClose: () => void }) => {
   const local = useCachedMedia(uri, "video", true);
@@ -371,6 +371,7 @@ const AudioPlayer = ({
   isVoice,
   durationMs,
   onLongPress,
+  waveform,
 }: {
   uri: string;
   fileName: string;
@@ -379,6 +380,8 @@ const AudioPlayer = ({
   isVoice?: boolean;
   durationMs?: number | null;
   onLongPress?: () => void;
+  /** 0..31 qiymatlar — yozuv paytidagi haqiqiy ovoz shakli */
+  waveform?: number[] | null;
 }) => {
   const cached = useCachedMedia(uri, "audio");
   const playUri = cached.localUri || uri;
@@ -545,7 +548,12 @@ const AudioPlayer = ({
           <View style={styles.waveRow}>
             {Array.from({ length: bars }).map((_, i) => {
               const filled = i / bars <= progress;
-              const h = 5 + ((i * 5 + 3) % 13);
+              // Haqiqiy to'lqin bo'lsa — undan; eski xabarlarda — namunaviy shakl.
+              const wv =
+                waveform && waveform.length
+                  ? waveform[Math.floor((i * waveform.length) / bars)] ?? 0
+                  : null;
+              const h = wv != null ? 3 + (wv / 31) * 15 : 5 + ((i * 5 + 3) % 13);
               return (
                 <View
                   key={i}
@@ -806,23 +814,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     return list;
   }, [messages, chatId]);
 
-  const pendingPayment = useMemo(() => {
-    // Oxirgi kelgan to'lov so'rovini topish
-    const cid = String(chatId).toLowerCase();
-    const uid = String(currentUserId).toLowerCase();
-    
-    return [...messages].reverse().find(m => {
-      const isPeer = String(m.senderId).toLowerCase() !== uid;
-      const isPayment = (
-        m.metadata?.kind === 'payment_request' || 
-        m.metadata?.metadata?.kind === 'payment_request' ||
-        m.metadata?.serviceAmountMali ||
-        m.metadata?.metadata?.serviceAmountMali ||
-        m.messageType === 'consult_panel_invite'
-      );
-      return isPeer && isPayment;
-    });
-  }, [messages, currentUserId, chatId]);
 
 
   const [inputText, setInputText] = useState("");
@@ -838,7 +829,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [chatMuted, setChatMuted] = useState(false);
-  const [isSummarizing, setIsSummarizing] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"all" | "text" | "media" | "files">("all");
@@ -850,10 +840,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
   const [pendingSendFiles, setPendingSendFiles] = useState<PendingSendFile[]>([]);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [sendMaliVisible, setSendMaliVisible] = useState(false);
-  const [sendMaliAmount, setSendMaliAmount] = useState("");
-  const [sendMaliPin, setSendMaliPin] = useState("");
-  const [sendMaliBusy, setSendMaliBusy] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -954,9 +940,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     chatDetails,
     t,
   ]);
-  /** Mobilda dars/sessiya boshlash yo‘q — faqat to‘lov so‘rovini mijoz to‘laydi */
-  const showPayHeaderBtn =
-    !isGroupOrChannel && !isListingChat && !!pendingPayment;
   /** Faqat 1:1 shaxsiy chat — guruh/kanal/listingda call yo‘q */
   const canShowCalls = !isListingChat && !isGroupOrChannel;
   const composerLocked = isListingChat && !chatDetails?.messaging_unlocked;
@@ -1439,48 +1422,21 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     }
   };
 
-  const payAndJoinGroup = async (item: Message) => {
+  /** Ustoz taklifi bilan guruhga bepul qo'shilish (to'lovsiz MVP). */
+  const joinInvitedGroup = async (item: Message) => {
     const meta = item.metadata || {};
     const groupId = meta.groupId != null ? String(meta.groupId) : "";
-    const mentorId =
-      meta.mentorId != null
-        ? String(meta.mentorId)
-        : item.senderId
-          ? String(item.senderId)
-          : "";
-    const amount = Number(meta.monthlyAmount) || 100;
-    if (!groupId || !mentorId) {
+    if (!groupId) {
       Alert.alert(t("loginErrorGeneric"), "Taklif ma'lumotlari to'liq emas");
       return;
     }
     try {
-      const status = await getMentorSubscriptionStatus(mentorId);
-      if (!status.active) {
-        await new Promise<void>((resolve, reject) => {
-          Alert.alert(
-            "Obuna",
-            `${amount} MALI — 1 oylik obuna. To'lov qilasizmi?`,
-            [
-              { text: "Bekor", style: "cancel", onPress: () => reject(new Error("cancel")) },
-              {
-                text: "Obuna bo'lish va qo'shilish",
-                onPress: () => resolve(),
-              },
-            ]
-          );
-        }).catch(() => {
-          throw new Error("__cancel__");
-        });
-        await subscribeToMentorRequest(mentorId);
-      }
       await joinGroupWithSubscriptionRequest(groupId);
-      Alert.alert("Muvaffaqiyatli", "Guruhga qo'shildingiz!");
       navigation.navigate("ChatDetail", {
         chatId: groupId,
         name: String(meta.groupName || "Guruh"),
       });
     } catch (e) {
-      if (e instanceof Error && e.message === "__cancel__") return;
       Alert.alert(t("loginErrorGeneric"), e instanceof Error ? e.message : "Xatolik");
     }
   };
@@ -1556,36 +1512,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     }
   }, [chatId, chatMuted, t]);
 
-  const handleSummarize = useCallback(async () => {
-    const textMessages = messages
-      .filter((m) => !m.messageType || m.messageType === "text")
-      .slice(-50)
-      .map((m) => {
-        const who =
-          normalizeUserId(m.senderId) === currentUserId ? t("msgSenderMe") : title;
-        return `${who}: ${m.text || ""}`;
-      })
-      .join(". ");
-
-    if (!textMessages.trim()) {
-      Alert.alert(t("chatSummaryTitle"), t("chatNoMessages"));
-      return;
-    }
-
-    setIsSummarizing(true);
-    try {
-      const summary = await summarizeChat(textMessages);
-      if (summary === "XIZMAT_BAND") {
-        Alert.alert(t("chatSummaryTitle"), t("chatServiceBusy"));
-      } else if (summary) {
-        Alert.alert(t("chatSummaryTitle"), summary);
-      } else {
-        Alert.alert(t("chatSummaryTitle"), t("chatSummaryError"));
-      }
-    } finally {
-      setIsSummarizing(false);
-    }
-  }, [messages, currentUserId, title, t]);
 
   const handleExportHistory = useCallback(async () => {
     if (messages.length === 0) {
@@ -1674,42 +1600,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     });
   }, [navigation, chatId, title, peerAvatar]);
 
-  const handleSendMali = useCallback(async () => {
-    const receiverId = peerInfo?.id;
-    if (!receiverId) {
-      Alert.alert("MALI", "Suhbatdosh topilmadi");
-      return;
-    }
-    const amount = Number(sendMaliAmount);
-    const pin = sendMaliPin.trim();
-    if (!amount || amount <= 0) {
-      Alert.alert("MALI", "Summani kiriting");
-      return;
-    }
-    if (pin.length !== 4) {
-      Alert.alert("MALI", "PIN 4 raqam bo'lishi kerak");
-      return;
-    }
-    setSendMaliBusy(true);
-    try {
-      const res = await transferTokens({
-        receiverId: String(receiverId),
-        amount,
-        pin,
-        note: `Chat: ${title}`,
-      });
-      if (!res.ok) {
-        Alert.alert("MALI", res.message || "O'tkazma amalga oshmadi");
-        return;
-      }
-      setSendMaliVisible(false);
-      setSendMaliAmount("");
-      setSendMaliPin("");
-      Alert.alert("MALI", `${amount} MALI yuborildi`);
-    } finally {
-      setSendMaliBusy(false);
-    }
-  }, [peerInfo?.id, sendMaliAmount, sendMaliPin, title]);
 
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => {
@@ -1774,32 +1664,59 @@ export function ChatDetailScreen({ route, navigation }: Props) {
       return;
     }
 
+    // Telegram uslubi: xabar darhol chatda (🕓), maydon bo'shaydi, tugma bloklanmaydi; yuborish fonda.
     const parent = replyTo;
+    const now = new Date();
+    const tempId = `local_txt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const temp: Message = {
+      id: tempId,
+      chatId: String(chatId),
+      text,
+      senderId: currentUserId,
+      timestamp: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      createdAt: now.toISOString(),
+      status: "sent",
+      messageType: "text",
+      metadata: { pendingText: true },
+      parentId: parent?.id ?? null,
+      parentPreview: parent
+        ? {
+            text: messageReplyPreview(parent),
+            senderName: parent.senderId === currentUserId ? t("msgSenderMe") : title,
+          }
+        : null,
+    };
     try {
-      const socket = getSocket();
-      try {
-        socket?.emit("stop_typing", chatId);
-      } catch { /* ignore */ }
-      const saved = await sendMessageRequest(chatId, text, "text", {
+      getSocket()?.emit("stop_typing", chatId);
+    } catch { /* ignore */ }
+    addMessageLocally(chatId, temp);
+    setInputText("");
+    setReplyTo(null);
+    if (draftKey) AsyncStorage.removeItem(draftKey).catch(() => {});
+    setSending(false);
+    setTimeout(scrollToEnd, 120);
+    void deliverText(temp);
+  };
+
+  /** Matnli xabarni serverga yuboradi; javob kelgach vaqtinchalik xabar o'z joyida almashadi. Xatoda ⚠️. */
+  const deliverText = async (temp: Message) => {
+    if (!chatId) return;
+    updateMessageLocally(chatId, temp.id, { metadata: { pendingText: true } });
+    try {
+      const saved = await sendMessageRequest(chatId, temp.text, "text", {
         peerUserId: chatDetails?.type === "group" || chatDetails?.type === "channel" ? undefined : peerInfo?.id,
-        parentId: parent?.id || null,
+        parentId: temp.parentId || null,
+        timeoutMs: 20_000,
       });
-      if (parent && !saved.parentId) {
-        saved.parentId = parent.id;
-        saved.parentPreview = {
-          text: messageReplyPreview(parent),
-          senderName: parent.senderId === currentUserId ? t("msgSenderMe") : title,
-        };
+      if (temp.parentId && !saved.parentId) {
+        saved.parentId = temp.parentId;
+        saved.parentPreview = temp.parentPreview ?? null;
       }
-      setInputText("");
-      setReplyTo(null);
-      if (draftKey) AsyncStorage.removeItem(draftKey).catch(() => {});
-      addMessageLocally(chatId, saved);
-      setTimeout(scrollToEnd, 120);
+      useChatStore.getState().replaceMessageLocally(chatId, temp.id, { ...saved, localKey: temp.id });
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('loginErrorGeneric'));
-    } finally {
-      setSending(false);
+      updateMessageLocally(chatId, temp.id, {
+        metadata: { pendingText: false, sendFailed: true, sendError: e instanceof Error ? e.message : "Xato" },
+      });
     }
   };
 
@@ -1914,6 +1831,55 @@ export function ChatDetailScreen({ route, navigation }: Props) {
       setUploadingFile(false);
     }
   }, [chatId, clearRecordingTimer, scrollToEnd, recordingSeconds, addMessageLocally]);
+
+  /** Dumaloq video xabar: umumiy yuklash navbati orqali (chatdan chiqilsa ham yuklanadi). */
+  const sendVideoNote = useCallback(
+    (r: VideoNoteResult) => {
+      if (!chatId) return;
+      const ext = (r.uri.split(".").pop() || "mov").toLowerCase();
+      enqueueChatUpload({
+        chatId,
+        senderId: currentUserId,
+        uri: r.uri,
+        name: `video_note_${Date.now()}.${ext}`,
+        mime: ext === "mp4" ? "video/mp4" : "video/quicktime",
+        width: 1,
+        height: 1,
+        durationMs: r.durationMs,
+        extraMeta: { kind: "video_note" },
+      });
+      setTimeout(scrollToEnd, 120);
+    },
+    [chatId, currentUserId, scrollToEnd]
+  );
+
+  /**
+   * Ovozli xabar — Telegram kabi darhol chatda (to'lqin, davomiylik, ✕ + halqa, 🕓), keyin umumiy
+   * yuklash navbatida yuboriladi (chatdan chiqilsa ham).
+   */
+  const sendVoice = useCallback(
+    (r: VoiceResult) => {
+      if (!chatId) return;
+      const durationMs = Math.round(r.durationMs);
+      enqueueChatUpload({
+        chatId,
+        senderId: currentUserId,
+        uri: r.uri,
+        name: `voice_${Date.now()}.m4a`,
+        // AAC .m4a — to'g'ri MIME audio/mp4
+        mime: "audio/mp4",
+        durationMs,
+        forceType: "voice",
+        extraMeta: {
+          kind: "voice",
+          durationMs,
+          ...(r.waveform.length ? { waveform: r.waveform } : {}),
+        },
+      });
+      setTimeout(scrollToEnd, 120);
+    },
+    [chatId, currentUserId, scrollToEnd]
+  );
 
   const sendSticker = useCallback(
     async (sticker: Sticker) => {
@@ -2409,6 +2375,8 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     const hasAttachment = Boolean(item.remoteFileUrl);
     /** Yuklanayotgan media (lib/upload-queue) — chatda darhol, ustida jarayon. */
     const albumItems = (item.albumItems as Message[] | undefined) || null;
+    /** Dumaloq video xabar (yuklanayotgan yoki yuborilgan) */
+    const isVideoNote = item.metadata?.kind === "video_note";
     const groupIds: string[] = albumItems ? albumItems.map((a) => a.id) : [item.id];
     const groupSelected = groupIds.every((id) => selectedMessageIds.includes(id));
     const uploadInfo = albumItems ? null : (item.metadata?.upload as UploadInfo | undefined) || null;
@@ -2513,7 +2481,25 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             onLongPress={(m) => (isSelecting ? toggleGroupSelected(groupIds) : openMessageMenu(m))}
           />
         ) : null}
-        {uploadInfo ? (
+        {isVideoNote ? (
+          <VideoNoteBubble
+            uri={item.remoteFileUrl}
+            localUri={uploadInfo?.localUri ?? null}
+            tempId={uploadInfo ? item.id : undefined}
+            thumb={typeof item.metadata?.thumb === "string" ? item.metadata.thumb : null}
+            durationMs={Number(item.metadata?.durationMs || uploadInfo?.durationMs) || null}
+            timeLabel={`${String(item.timestamp || "")}${isMe ? (uploadInfo ? " 🕓" : item.status === "read" ? " ✓✓" : " ✓") : ""}`}
+            onLongPress={() => openMessageMenu(item)}
+          />
+        ) : null}
+        {uploadInfo && item.metadata?.kind === "voice" ? (
+          <UploadingVoiceBubble
+            tempId={item.id}
+            durationMs={Number(item.metadata?.durationMs) || uploadInfo.durationMs}
+            waveform={Array.isArray(item.metadata?.waveform) ? item.metadata.waveform : null}
+          />
+        ) : null}
+        {uploadInfo && !isVideoNote && item.metadata?.kind !== "voice" ? (
           <UploadingMediaBubble
             tempId={item.id}
             info={uploadInfo}
@@ -2531,7 +2517,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             />
           </View>
         ) : null}
-        {!albumItems && hasAttachment && isMedia && isVideo ? (
+        {!albumItems && !isVideoNote && hasAttachment && isMedia && isVideo ? (
           <TelegramVideoBubble
             uri={item.remoteFileUrl!}
             aspect={mediaAspect(item.metadata)}
@@ -2584,6 +2570,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
               durationMs={
                 Number(item.metadata?.durationMs || item.metadata?.duration || 0) || null
               }
+              waveform={Array.isArray(item.metadata?.waveform) ? item.metadata.waveform : null}
               onLongPress={() => openMessageMenu(item)}
            />
            ) : (
@@ -2623,56 +2610,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           </Pressable>
         ) : null}
 
-        {/* PAYMENT REQUEST CARD */}
-        {(item.metadata?.kind === 'payment_request' || 
-          item.metadata?.metadata?.kind === 'payment_request' || 
-          (item.messageType === 'consult_panel_invite' && item.metadata?.serviceAmountMali)) && (
-          <View style={styles.paymentCard}>
-            <View style={styles.paymentHeader}>
-              <View style={styles.paymentIconBox}>
-                <CreditCard color="#3b82f6" size={20} />
-              </View>
-              <Text style={styles.paymentTitle}>Xizmat uchun to'lov</Text>
-            </View>
-            
-            <View style={styles.paymentDivider} />
-            
-            <View style={styles.paymentAmountBox}>
-              <Text style={styles.paymentLabel}>Summa:</Text>
-              <Text style={styles.paymentValue}>{(item.metadata?.serviceAmountMali || item.metadata?.metadata?.serviceAmountMali || 0)} MALI</Text>
-            </View>
-
-
-            <Pressable 
-              style={styles.payNowBtn}
-              onPress={() => {
-                 const amount = item.metadata?.serviceAmountMali || 0;
-                 Alert.alert(
-                   "To'lovni tasdiqlang",
-                   `${amount} MALI to'lov qilinsinmi?`,
-                   [
-                     { text: "Yo'q", style: "cancel" },
-                     { 
-                       text: "Ha, to'lash", 
-                       onPress: async () => {
-                         try {
-                            await initiateSessionRequest(item.senderId, amount, chatId);
-                            Alert.alert("Muvaffaqiyatli", "To'lov qabul qilindi");
-                         } catch (e) {
-                            Alert.alert("Xatolik", e instanceof Error ? e.message : "To'lovda xato yuz berdi");
-                         }
-                       }
-                     }
-                   ]
-                 );
-              }}
-            >
-              <CreditCard color="#fff" size={18} />
-              <Text style={styles.payNowBtnText}>HOZIR TO'LASH</Text>
-            </Pressable>
-          </View>
-        )}
-
         {/* MENTOR GROUP JOIN INVITE — talaba shaxsiy chatida */}
         {(item.messageType === "group_join_invite" ||
           item.metadata?.kind === "group_join") && (
@@ -2680,27 +2617,19 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             <Text style={styles.paymentTitle}>
               {String(item.metadata?.groupName || "Guruh")}
             </Text>
-            <Text style={[styles.paymentValue, { marginVertical: 8 }]}>
-              {Number(item.metadata?.monthlyAmount) || 100} MALI / oy
-            </Text>
+            <Text style={[styles.paymentLabel, { marginTop: 4, marginBottom: 10 }]}>Guruhga taklif</Text>
             {String(item.metadata?.invite_status) === "paid" ? (
               <View style={styles.paidBadge}>
                 <CheckCircle color="#4ade80" size={18} />
-                <Text style={styles.paidBadgeText}>Tasdiqlandi</Text>
+                <Text style={styles.paidBadgeText}>Qo'shildi</Text>
               </View>
             ) : !isMe ? (
-              <>
-                <Text style={[styles.paymentLabel, { marginBottom: 8 }]}>
-                  To'lov kutilmoqda
-                </Text>
-                <Pressable
-                  style={[styles.payNowBtn, { backgroundColor: "#8774e1" }]}
-                  onPress={() => void payAndJoinGroup(item)}
-                >
-                  <CreditCard color="#fff" size={18} />
-                  <Text style={styles.payNowBtnText}>Obuna bo'lish va qo'shilish</Text>
-                </Pressable>
-              </>
+              <Pressable
+                style={[styles.payNowBtn, { backgroundColor: "#8774e1" }]}
+                onPress={() => void joinInvitedGroup(item)}
+              >
+                <Text style={styles.payNowBtnText}>Guruhga qo'shilish</Text>
+              </Pressable>
             ) : (
               <Text style={styles.paymentLabel}>Talabaga yuborildi</Text>
             )}
@@ -2710,12 +2639,8 @@ export function ChatDetailScreen({ route, navigation }: Props) {
         {/* PAID BADGE */}
         {item.metadata?.kind === 'panel_open' && (
           <View style={styles.paymentCard}>
-             <View style={styles.paidBadge}>
-                <CheckCircle color="#4ade80" size={18} />
-                <Text style={styles.paidBadgeText}>TO'LANGAN</Text>
-             </View>
              <Pressable 
-               style={[styles.payNowBtn, { marginTop: 12, backgroundColor: '#10b981' }]}
+               style={[styles.payNowBtn, { backgroundColor: '#10b981' }]}
                   onPress={() => {
                   const sid =
                     item.metadata?.sessionId != null
@@ -2784,7 +2709,13 @@ export function ChatDetailScreen({ route, navigation }: Props) {
                    item.status === 'read' ? { color: '#fff' } : { color: 'rgba(255,255,255,0.8)' }
                  ]}
                >
-                 {item.status === 'read' ? '✓✓' : '✓'}
+                 {item.metadata?.sendFailed
+                   ? '⚠️'
+                   : uploadInfo || item.metadata?.pendingText
+                     ? '🕓'
+                     : item.status === 'read'
+                       ? '✓✓'
+                       : '✓'}
                </Text>
              )}
            </View>
@@ -2818,7 +2749,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     const isFresh = Number.isFinite(createdMs) && Date.now() - createdMs < 4000;
 
     return (
-      <PopIn enabled={isFresh} from={0.92}>
+      <PopIn enabled={isFresh} from={0.9} rise={36}>
       <View style={[styles.messageRow, isMe ? styles.myMessageRow : styles.otherMessageRow, { marginBottom: isConsecutiveNext ? 2 : 12 }]}>
         {isSelecting && (
           <Pressable
@@ -2836,6 +2767,8 @@ export function ChatDetailScreen({ route, navigation }: Props) {
         <Pressable 
           onPress={() => {
             if (isSelecting) toggleGroupSelected(groupIds);
+            // Yuborilmagan matnli xabar — bosilsa qayta yuboriladi.
+            else if (item.metadata?.sendFailed && String(item.id).startsWith("local_txt_")) void deliverText(item);
           }}
           onLongPress={() => {
             if (isSelecting) {
@@ -2884,7 +2817,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
         <FlatList
           ref={listRef}
           data={messagesWithHeaders}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.localKey || item.id}
           renderItem={renderItem}
           extraData={selectedMessageIds.join(",")}
           onScrollToIndexFailed={(info) => {
@@ -3028,15 +2961,13 @@ export function ChatDetailScreen({ route, navigation }: Props) {
               </Pressable>
             </PopIn>
           ) : (
-            <PopIn key="mic">
-              <Pressable
-                style={[styles.sendButton, (busy || composerLocked) && styles.sendButtonDisabled]}
-                onPress={() => void startRecording()}
-                disabled={busy || composerLocked}
-              >
-                <Mic color="#fff" size={20} />
-              </Pressable>
-            </PopIn>
+            // Telegram: ushlab turib yozish, chapga — bekor, tepaga — qulf. PopIn'siz: paneli butun
+            // yozish maydoni (inputGlass) bo'ylab joylashishi kerak.
+            <TelegramVoiceRecorder
+              disabled={busy || composerLocked}
+              onSend={sendVoice}
+              onSendVideoNote={sendVideoNote}
+            />
           )}
         </View>
         )}
@@ -3158,105 +3089,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
               <VideoIcon color="#fff" size={20} />
             </Pressable>
             </>
-            )}
-            {showPayHeaderBtn && (
-            <Pressable 
-              style={styles.iconButton}
-              onPress={() => {
-                if (isGroupOrChannel) {
-                  if (groupInviteCandidates.length === 0) {
-                    Alert.alert("Ma'lumot", "Taklif yuborish uchun ishtirokchi yo'q.");
-                    return;
-                  }
-                  setInvitePickerVisible(true);
-                  return;
-                }
-                if (pendingPayment) {
-                   // MIJOZ HOLATI: TO'LOV QILISH
-                   const amount = (pendingPayment.metadata?.serviceAmountMali || 0);
-                   Alert.alert(
-                     "To'lov qilish",
-                     `${title} sizdan ${amount} MALI so'ramoqda. To'lov qilasizmi?`,
-                     [
-                       { text: "Bekor qilish", style: "cancel" },
-                       { 
-                         text: "Ha, to'lash", 
-                         onPress: async () => {
-                           try {
-                              await initiateSessionRequest(pendingPayment.senderId, amount, chatId);
-                              Alert.alert("Muvaffaqiyatli", "To'lov qabul qilindi");
-                           } catch (e) {
-                              Alert.alert("Xatolik", e instanceof Error ? e.message : "Xatolik");
-                           }
-                         }
-                       }
-                     ]
-                   );
-                } else if (isExpert) {
-                  // EKSPERT HOLATI: TO'LOV SO'RASH (shaxsiy chat)
-                  const promptTitle = "To'lov so'rash";
-                  const promptMsg = "Mijozdan qancha xizmat haqi so'ramoqchisiz (MALI)?";
-                  
-                  const sendRequest = (amount: number) => {
-                    const socket = getSocket();
-                    if (socket && chatId) {
-                      const expertName = useAuthStore.getState().user?.name || "Ekspert";
-                      socket.emit('consult_panel_invite', {
-                        chatId,
-                        expertName,
-                        sessionStyle: 'consult',
-                        isPaymentRequest: true
-                      });
-                      Alert.alert("Yuborildi", `Mijozga ${amount} MALI to'lov so'rovi yuborildi.`);
-                    }
-                  };
-
-                  if (Platform.OS === 'ios') {
-                    Alert.prompt(
-                      promptTitle,
-                      promptMsg,
-                      [
-                        { text: "Bekor qilish", style: "cancel" },
-                        {
-                          text: "So'rash",
-                          onPress: (val: string | undefined) => {
-                            const amount = parseInt(val || "0");
-                            if (amount > 0) sendRequest(amount);
-                          }
-                        }
-                      ],
-                      'plain-text',
-                      '50'
-                    );
-                  } else {
-                    Alert.alert(promptTitle, "Standart narx (50 MALI) yuborilsinmi?", [
-                      { text: "Bekor qilish", style: "cancel" },
-                      { text: "Yuborish (50 MALI)", onPress: () => sendRequest(50) }
-                    ]);
-                  }
-                } else {
-                  Alert.alert("Ma'lumot", "Hozircha sizga to'lov so'rovi kelmagan.");
-                }
-              }}
-            >
-
-              <View>
-                <CreditCard color="#fff" size={22} />
-                {!!pendingPayment && !isGroupOrChannel && (
-                  <View style={{
-                    position: 'absolute',
-                    top: -2,
-                    right: -2,
-                    width: 10,
-                    height: 10,
-                    backgroundColor: '#ef4444',
-                    borderRadius: 5,
-                    borderWidth: 1.5,
-                    borderColor: 'rgba(255,255,255,0.2)'
-                  }} />
-                )}
-              </View>
-            </Pressable>
             )}
 
 
@@ -3390,34 +3222,23 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           onClose={() => setShowMoreMenu(false)}
           topOffset={insets.top + 52}
           muted={chatMuted}
-          summarizing={isSummarizing}
-          showSendMali={!isGroupOrChannel && !isListingChat && !!peerInfo?.id}
           onSelect={() => {
             setIsSelecting(true);
             setSelectedMessageIds([]);
           }}
           onToggleMute={() => void handleToggleMute()}
-          onSummarize={() => void handleSummarize()}
           onShowProfile={openPeerProfile}
           onExport={() => void handleExportHistory()}
           onClearHistory={handleClearHistory}
           onDeleteChat={handleDeleteChat}
-          onSendMali={() => {
-            setSendMaliAmount("");
-            setSendMaliPin("");
-            setSendMaliVisible(true);
-          }}
           labels={{
             select: t("chatSelectMessages"),
             mute: t("chatMute"),
             unmute: t("chatUnmute"),
-            aiSummary: t("chatAiSummary"),
-            summarizing: t("chatSummarizing"),
             showProfile: t("chatShowProfile"),
             exportHistory: t("chatExportHistory"),
             clearHistory: t("chatClearHistory"),
             deleteChat: t("chatDeleteChat"),
-            sendMali: "MALI yuborish",
           }}
         />
 
@@ -3511,23 +3332,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           />
         ) : null}
 
-        {isListingChat &&
-        (chatDetails?.chat_type === "expert_listing" ||
-          chatDetails?.metadata?.source === "expert_listing") ? (
-          <ListingDealBar
-            chatId={chatId}
-            currentUserId={currentUserId}
-            isExpertListing
-            suggestedAmount={
-              Number(
-                chatDetails?.metadata?.snapshot?.hourly_rate ??
-                  chatDetails?.metadata?.snapshot?.service_price ??
-                  100
-              ) || 100
-            }
-          />
-        ) : null}
-
         <View style={styles.songLayer}>
           <View style={styles.flex1}>{renderChatBody()}</View>
           <View style={styles.songOverlay} pointerEvents="box-none">
@@ -3567,62 +3371,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           onClose={() => setShowStickers(false)}
           onSelect={(sticker) => void sendSticker(sticker)}
         />
-        <Modal
-          visible={sendMaliVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setSendMaliVisible(false)}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            style={styles.sendMaliOverlay}
-          >
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setSendMaliVisible(false)} />
-            <View style={styles.sendMaliCard}>
-              <Text style={styles.sendMaliTitle}>MALI yuborish</Text>
-              <Text style={styles.sendMaliSub} numberOfLines={1}>
-                {title}
-              </Text>
-              <TextInput
-                style={styles.sendMaliInput}
-                placeholder="Summa"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                keyboardType="decimal-pad"
-                value={sendMaliAmount}
-                onChangeText={setSendMaliAmount}
-              />
-              <TextInput
-                style={styles.sendMaliInput}
-                placeholder="PIN (4 raqam)"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                keyboardType="number-pad"
-                secureTextEntry
-                maxLength={4}
-                value={sendMaliPin}
-                onChangeText={setSendMaliPin}
-              />
-              <View style={styles.sendMaliActions}>
-                <Pressable
-                  style={styles.sendMaliCancel}
-                  onPress={() => setSendMaliVisible(false)}
-                >
-                  <Text style={styles.sendMaliCancelText}>{t("msgCancel")}</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.sendMaliOk, sendMaliBusy && { opacity: 0.6 }]}
-                  onPress={() => void handleSendMali()}
-                  disabled={sendMaliBusy}
-                >
-                  {sendMaliBusy ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.sendMaliOkText}>Yuborish</Text>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
         <Modal
           visible={forwardVisible}
           transparent
@@ -3706,7 +3454,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
                       {busy ? (
                         <ActivityIndicator color="#8774e1" size="small" />
                       ) : (
-                        <CreditCard color="#8774e1" size={20} />
+                        <Send color="#8774e1" size={18} />
                       )}
                     </Pressable>
                   );
@@ -4275,60 +4023,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
-  sendMaliOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  sendMaliCard: {
-    backgroundColor: "#1e1e2e",
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  sendMaliTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  sendMaliSub: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 13,
-    marginBottom: 14,
-  },
-  sendMaliInput: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: "#fff",
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  sendMaliActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 8,
-  },
-  sendMaliCancel: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    alignItems: "center",
-  },
-  sendMaliCancelText: { color: "rgba(255,255,255,0.7)", fontWeight: "600" },
-  sendMaliOk: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#8774e1",
-    alignItems: "center",
-  },
-  sendMaliOkText: { color: "#fff", fontWeight: "700" },
   replyBar: {
     flexDirection: "row",
     alignItems: "center",

@@ -50,6 +50,8 @@ interface UploadJob {
   caption?: string;
   forceType?: OutgoingMessageType;
   album?: AlbumRef;
+  /** Qo'shimcha metadata (masalan { kind: "video_note" }) */
+  extraMeta?: Record<string, unknown>;
 }
 
 function albumMeta(album?: AlbumRef) {
@@ -121,6 +123,7 @@ export function enqueueChatUpload(params: {
   width?: number;
   height?: number;
   durationMs?: number;
+  extraMeta?: Record<string, unknown>;
 }): string {
   const tempId = `${LOCAL_MESSAGE_PREFIX}${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const info: UploadInfo = {
@@ -145,6 +148,7 @@ export function enqueueChatUpload(params: {
     remoteFileUrl: null,
     metadata: {
       upload: info,
+      ...(params.extraMeta ?? {}),
       ...albumMeta(params.album),
       ...(params.caption ? { caption: params.caption } : {}),
     },
@@ -157,6 +161,7 @@ export function enqueueChatUpload(params: {
     caption: params.caption,
     forceType: params.forceType,
     album: params.album,
+    extraMeta: params.extraMeta,
   };
   jobs.set(tempId, job);
   setProgress(tempId, 0);
@@ -318,10 +323,11 @@ async function attemptJob(job: UploadJob): Promise<void> {
       ...(info.thumb ? { thumb: info.thumb } : {}),
       ...(job.caption ? { caption: job.caption } : {}),
       ...albumMeta(job.album),
+      ...(job.extraMeta ?? {}),
     },
   });
   if (cancelled.has(tempId)) return;
-  useChatStore.getState().replaceMessageLocally(chatId, tempId, saved);
+  useChatStore.getState().replaceMessageLocally(chatId, tempId, { ...saved, localKey: tempId });
   jobs.delete(tempId);
   setProgress(tempId, null);
 }

@@ -1,87 +1,98 @@
-import React from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { BlurView } from "expo-blur";
+import {
+  Bell,
+  BellOff,
+  CircleCheck,
+  Download,
+  Eraser,
+  Trash2,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react-native";
 
 export type ChatHeaderMoreMenuProps = {
   visible: boolean;
   onClose: () => void;
   topOffset?: number;
   muted: boolean;
-  summarizing: boolean;
-  showSendMali?: boolean;
   onSelect: () => void;
   onToggleMute: () => void;
-  onSummarize: () => void;
   onShowProfile: () => void;
   onExport: () => void;
   onClearHistory: () => void;
   onDeleteChat: () => void;
-  onSendMali?: () => void;
   labels: {
     select: string;
     mute: string;
     unmute: string;
-    aiSummary: string;
-    summarizing: string;
     showProfile: string;
     exportHistory: string;
     clearHistory: string;
     deleteChat: string;
-    sendMali?: string;
   };
 };
 
+/** Chat sarlavhasidagi ⋮ menyusi — Telegram uslubi: belgili bandlar, o'ng yuqoridan ochiladi (web bilan bir xil tartib). */
 export function ChatHeaderMoreMenu({
   visible,
   onClose,
   topOffset = 56,
   muted,
-  summarizing,
-  showSendMali,
   onSelect,
   onToggleMute,
-  onSummarize,
   onShowProfile,
   onExport,
   onClearHistory,
   onDeleteChat,
-  onSendMali,
   labels,
 }: ChatHeaderMoreMenuProps) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!visible) {
+      v.setValue(0);
+      return;
+    }
+    Animated.timing(v, { toValue: 1, duration: 170, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [visible, v]);
+
   const run = (fn: () => void) => {
     onClose();
     setTimeout(fn, 50);
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <View style={[styles.anchor, { top: topOffset }]} pointerEvents="box-none">
-          <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
-            <MenuItem label={labels.select} onPress={() => run(onSelect)} />
-            <MenuItem
-              label={muted ? labels.unmute : labels.mute}
-              onPress={() => run(onToggleMute)}
-            />
-            <MenuItem
-              label={summarizing ? labels.summarizing : labels.aiSummary}
-              onPress={() => run(onSummarize)}
-              disabled={summarizing}
-            />
-            <MenuItem label={labels.showProfile} onPress={() => run(onShowProfile)} />
-            {showSendMali && onSendMali ? (
+          <Animated.View
+            style={{
+              opacity: v,
+              transform: [
+                // O'ng yuqori burchakdan kattalashib chiqadi
+                { translateX: v.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
+                { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) },
+                { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
+              ],
+            }}
+          >
+            <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
+              {/* Shaffof xira fon (Telegram/iOS uslubi) */}
+              <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+              <MenuItem Icon={CircleCheck} label={labels.select} onPress={() => run(onSelect)} />
               <MenuItem
-                label={labels.sendMali || "MALI yuborish"}
-                onPress={() => run(onSendMali)}
+                Icon={muted ? Bell : BellOff}
+                label={muted ? labels.unmute : labels.mute}
+                onPress={() => run(onToggleMute)}
               />
-            ) : null}
-            <MenuItem label={labels.exportHistory} onPress={() => run(onExport)} />
-            <MenuItem label={labels.clearHistory} onPress={() => run(onClearHistory)} />
-            <MenuItem
-              label={labels.deleteChat}
-              onPress={() => run(onDeleteChat)}
-              destructive
-            />
-          </Pressable>
+              <MenuItem Icon={UserRound} label={labels.showProfile} onPress={() => run(onShowProfile)} />
+              <MenuItem Icon={Download} label={labels.exportHistory} onPress={() => run(onExport)} />
+              <MenuItem Icon={Eraser} label={labels.clearHistory} onPress={() => run(onClearHistory)} />
+              <View style={styles.separator} />
+              <MenuItem Icon={Trash2} label={labels.deleteChat} onPress={() => run(onDeleteChat)} destructive />
+            </Pressable>
+          </Animated.View>
         </View>
       </Pressable>
     </Modal>
@@ -89,65 +100,49 @@ export function ChatHeaderMoreMenu({
 }
 
 function MenuItem({
+  Icon,
   label,
   onPress,
   destructive,
   disabled,
 }: {
+  Icon: LucideIcon;
   label: string;
   onPress: () => void;
   destructive?: boolean;
   disabled?: boolean;
 }) {
+  const color = destructive ? "#ff6b6b" : "rgba(255,255,255,0.75)";
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [
-        styles.item,
-        pressed && styles.itemPressed,
-        disabled && { opacity: 0.5 },
-      ]}
+      style={({ pressed }) => [styles.item, pressed && styles.itemPressed, disabled && { opacity: 0.5 }]}
     >
+      <Icon color={color} size={20} strokeWidth={2} />
       <Text style={[styles.itemText, destructive && styles.itemDanger]}>{label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
-  anchor: {
-    position: "absolute",
-    right: 10,
-    left: 0,
-    alignItems: "flex-end",
-  },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.25)" },
+  anchor: { position: "absolute", right: 10, left: 0, alignItems: "flex-end" },
   menu: {
-    width: 240,
+    minWidth: 230,
     borderRadius: 14,
-    backgroundColor: "#212121",
+    backgroundColor: "rgba(30,30,30,0.55)",
+    overflow: "hidden",
     paddingVertical: 6,
     shadowColor: "#000",
     shadowOpacity: 0.4,
     shadowRadius: 16,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },
-  item: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  itemPressed: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  itemText: {
-    color: "#fff",
-    fontSize: 15,
-  },
-  itemDanger: {
-    color: "#f87171",
-  },
+  item: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 11 },
+  itemPressed: { backgroundColor: "rgba(255,255,255,0.08)" },
+  itemText: { color: "#fff", fontSize: 15 },
+  itemDanger: { color: "#ff6b6b" },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: "rgba(255,255,255,0.1)", marginVertical: 4 },
 });
