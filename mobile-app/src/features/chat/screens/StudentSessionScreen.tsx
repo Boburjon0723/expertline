@@ -47,6 +47,7 @@ import {
 } from "../../../lib/livekit-media";
 import { downloadAndOpenWithSystemSheet } from "../../../lib/files";
 import { StudentWhiteboard } from "./StudentWhiteboard";
+import { useKeepAwake } from "expo-keep-awake";
 
 function emitStudentMicOpen(sessionId: string, enabled: boolean) {
   const socket = getSocket();
@@ -344,6 +345,8 @@ export function StudentSessionScreen({
   sessionStyle?: StudentSessionStyle;
   onLeave: () => void;
 }) {
+  // Dars davomida ekran o'chmasin/qulflanmasin.
+  useKeepAwake("student-session");
   const { t } = useAuthLocale();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);

@@ -8,6 +8,9 @@ import {
   View,
 } from "react-native";
 import { Audio } from "expo-av";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+
+const KEEP_AWAKE_TAG = "call-screen";
 import { Mic, MicOff, Phone, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AvatarImage } from "../../../components/AvatarImage";
@@ -189,6 +192,15 @@ export function TelegramCallScreen({
   const [chromeOn, setChromeOn] = useState(true);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulse = useRef(new Animated.Value(0.35)).current;
+
+  // Qo'ng'iroq oynasi ochiq ekan — ekran o'chmasin/qulflanmasin.
+  useEffect(() => {
+    if (!visible) return;
+    void activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(() => {});
+    return () => {
+      void deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => {});
+    };
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;

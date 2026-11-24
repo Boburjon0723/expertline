@@ -19,9 +19,12 @@ export const LIVEKIT_AUDIO_PUBLISH = {
   red: true,
 };
 
-export function liveKitRoomOptionsMobile(_kind: "call" | "panel" = "call") {
+export function liveKitRoomOptionsMobile(kind: "call" | "panel" = "call") {
   return {
-    adaptiveStream: true,
+    // 1:1 qo'ng'iroq Modal ichida ochiladi: adaptiveStream video oynani "ko'rinmas/0 o'lcham"
+    // deb hisoblab, remote videoni to'xtatib qo'yardi (web ko'radi, telefon ko'rmaydi).
+    // Ko'p ishtirokchili panelda (guruh darsi) trafik tejash uchun yoqilgan qoladi.
+    adaptiveStream: kind === "panel",
     dynacast: true,
     audioCaptureDefaults: { ...LIVEKIT_AUDIO_CAPTURE },
     publishDefaults: { ...LIVEKIT_AUDIO_PUBLISH },
