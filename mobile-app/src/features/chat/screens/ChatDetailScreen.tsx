@@ -2057,11 +2057,10 @@ export function ChatDetailScreen({ route, navigation }: Props) {
 
   // Telegram uslubi: oyna darhol yopiladi, har bir fayl chatda xabar bo'lib paydo bo'ladi va
   // umumiy navbatda yuklanadi (chatdan chiqilsa ham davom etadi).
-  const confirmPendingSend = useCallback(
-    (caption: string, asDocument?: boolean) => {
-      if (!chatId) return;
-      const batch = [...pendingSendFiles];
-      setPendingSendFiles([]);
+  /** Fayllarni navbatga qo'yadi (2+ rasm/video — albom). Yuborish oynasi ham, ichki galereya ham ishlatadi. */
+  const sendFiles = useCallback(
+    (batch: PendingSendFile[], caption: string, asDocument?: boolean) => {
+      if (!chatId || !batch.length) return;
       // 2+ rasm/video (fayl sifatida emas) — albom bo'lib ketadi.
       const isMediaFile = (mime: string) => /^(image|video)\//i.test(mime);
       const mediaCount = asDocument ? 0 : batch.filter((f) => isMediaFile(f.mime)).length;
@@ -2087,7 +2086,16 @@ export function ChatDetailScreen({ route, navigation }: Props) {
       });
       setTimeout(scrollToEnd, 120);
     },
-    [chatId, pendingSendFiles, currentUserId, scrollToEnd]
+    [chatId, currentUserId, scrollToEnd]
+  );
+
+  const confirmPendingSend = useCallback(
+    (caption: string, asDocument?: boolean) => {
+      const batch = [...pendingSendFiles];
+      setPendingSendFiles([]);
+      sendFiles(batch, caption, asDocument);
+    },
+    [pendingSendFiles, sendFiles]
   );
 
   const openAttachMenu = useCallback(() => {
@@ -3714,10 +3722,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
         visible={showAttach}
         onClose={() => setShowAttach(false)}
         onPick={onAttachPick}
-        onPickRecent={(uri, name, mime) => {
-          setShowAttach(false);
-          void queuePendingFiles([{ uri, name, mime }]);
-        }}
+        onSendMedia={(files, caption) => sendFiles(files, caption)}
       />
       {pendingSendFiles.length ? (
         <TelegramSendPreviewSheet

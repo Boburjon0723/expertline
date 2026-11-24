@@ -1,10 +1,12 @@
 import { MEDIA_BUBBLE_WIDTH } from "../../../lib/upload-queue";
 import React, { useCallback, useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { ArrowDown, Play, X } from "lucide-react-native";
+import { ArrowDown, Play, VolumeX, X } from "lucide-react-native";
+import { ResizeMode, Video } from "expo-av";
 import {
   cancelMediaDownload,
   peekCachedMediaUri,
+  peekCachedMediaUriSync,
   startMediaDownload,
   subscribeMediaCache,
 } from "../../../lib/media-cache";
@@ -36,7 +38,8 @@ type Props = {
 };
 
 export function TelegramVideoBubble({ uri, timeLabel, ticks, onOpen, onLongPress, aspect = 3 / 4, thumb, durationMs, size }: Props) {
-  const [localUri, setLocalUri] = useState<string | null>(null);
+  // Keshda bo'lsa (o'zim yuborgan / yuklab olingan) — birinchi kadrdanoq.
+  const [localUri, setLocalUri] = useState<string | null>(() => peekCachedMediaUriSync(uri));
   const [downloading, setDownloading] = useState(false);
   const [written, setWritten] = useState(0);
   const [total, setTotal] = useState(0);
@@ -107,6 +110,17 @@ export function TelegramVideoBubble({ uri, timeLabel, ticks, onOpen, onLongPress
           // Video kadri (160 px) — deyarli tiniq; eski 24 px nusxalar xira.
           <Image source={{ uri: thumb }} blurRadius={1} resizeMode="cover" style={StyleSheet.absoluteFill} />
         ) : null}
+        {localUri ? (
+          // Lokal nusxa bor: yuklanish pufakchasi bilan aynan bir xil kadr — yuborilgach rasm o'zgarmaydi.
+          <Video
+            source={{ uri: localUri }}
+            style={StyleSheet.absoluteFill}
+            resizeMode={ResizeMode.COVER}
+            shouldPlay={false}
+            isMuted
+            pointerEvents="none"
+          />
+        ) : null}
         {/* Telegram: ⬇ + davomiylik / hajm; yuklanayotganda "3,1 / 8,7 MB" */}
         <View style={styles.topLeft} pointerEvents="none">
           {!localUri && !downloading ? <ArrowDown color="#fff" size={16} strokeWidth={2.6} /> : null}
@@ -117,7 +131,10 @@ export function TelegramVideoBubble({ uri, timeLabel, ticks, onOpen, onLongPress
               </Text>
             ) : (
               <>
-                <Text style={styles.dur}>{durationLabel || "VIDEO"}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  <Text style={styles.dur}>{durationLabel || "VIDEO"}</Text>
+                  {localUri ? <VolumeX color="#fff" size={13} /> : null}
+                </View>
                 {!localUri && sizeLabel ? <Text style={styles.sub}>{sizeLabel}</Text> : null}
               </>
             )}

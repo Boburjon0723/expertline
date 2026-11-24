@@ -1,5 +1,5 @@
-import React from "react";
-import { Dimensions, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Dimensions, Easing, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { ResizeMode, Video } from "expo-av";
 import Svg, { Circle } from "react-native-svg";
 import { FileText, RotateCw, X } from "lucide-react-native";
@@ -33,6 +33,17 @@ export function ProgressControl({ tempId, light }: { tempId: string; light?: boo
   const orphan = !hasUploadJob(tempId);
   const isFailed = !!failed || orphan;
   const p = Math.max(0.03, progress ?? 0);
+  // Telegram "Обработка...": bayt ketishidan oldin (nusxa yaratish, ulanish) — foizsiz aylanuvchi chiziq.
+  const preparing = !isFailed && !(progress && progress > 0);
+  const spin = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!preparing) return;
+    const loop = Animated.loop(
+      Animated.timing(spin, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [preparing, spin]);
 
   return (
     <Pressable
@@ -40,7 +51,27 @@ export function ProgressControl({ tempId, light }: { tempId: string; light?: boo
       onPress={() => (isFailed && !orphan ? retryChatUpload(tempId) : cancelChatUpload(tempId))}
       style={[styles.ring, light ? styles.ringLight : null]}
     >
-      {!isFailed ? (
+      {preparing ? (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] }) }] },
+          ]}
+        >
+          <Svg width={RING} height={RING}>
+            <Circle
+              cx={RING / 2}
+              cy={RING / 2}
+              r={R}
+              stroke="#fff"
+              strokeWidth={STROKE}
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={`${CIRC * 0.22} ${CIRC}`}
+            />
+          </Svg>
+        </Animated.View>
+      ) : !isFailed ? (
         <Svg width={RING} height={RING} style={StyleSheet.absoluteFill}>
           <Circle
             cx={RING / 2}
@@ -78,9 +109,11 @@ export function UploadingMediaBubble({
     ? "Yuborilmadi"
     : failed
       ? "Xato — qayta urinish"
-      : info.size && progress != null
-        ? `${formatBytes(info.size * Math.min(1, progress / 0.95))} / ${sizeLabel}`
-        : "Yuklanmoqda…";
+      : !progress
+        ? "Tayyorlanmoqda…"
+        : info.size
+          ? `${formatBytes(info.size * Math.min(1, progress / 0.95))} / ${sizeLabel}`
+          : "Yuklanmoqda…";
 
   if (info.kind === "file") {
     return (
