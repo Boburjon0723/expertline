@@ -1728,15 +1728,23 @@ export default function ChatWindow({
         setPendingFiles([]);
         setPendingCaption('');
         setReplyTo(null); // Clear reply state after starting upload
-        setIsUploadingMedia(true);
+        // Telegram uslubi: chat to'silmaydi — jarayon har bir xabar pufakchasida ko'rinadi.
         const { uploadFileWithRetry } = await import('@/lib/upload');
 
         /** Bir tanlovda bir nechta fayl: temp id `i` indeksi sortda ketma-katlikni mustahkamlaydi */
         const uploadBatchMs = Date.now();
+        // Telegram albomi: 2+ rasm/video bitta to'r bo'lib ko'rinadi (har biri alohida xabar, umumiy albumId).
+        const isAlbumMedia = (f: File) => {
+            const typ = inferMessageTypeFromFile(f.name, f.type);
+            return typ === 'image' || typ === 'video';
+        };
+        const albumId = files.filter(isAlbumMedia).length >= 2 ? `${uploadBatchMs.toString(36)}${Math.random().toString(36).slice(2, 8)}` : null;
+        let albumIndex = 0;
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const tempId = `temp_${uploadBatchMs}_${i}`;
+            const albumMeta = albumId && isAlbumMedia(file) ? { albumId, albumIndex: albumIndex++ } : {};
 
             // Optimistic UI for each file
             const initialType = inferMessageTypeFromFile(file.name, file.type);
@@ -1755,12 +1763,16 @@ export default function ChatWindow({
                     parentMessage: currentReplyTo ?? undefined,
                     isUploading: true,
                     locale: chatTimeLocale,
+                    ...(albumMeta.albumId ? { metadata: albumMeta } : {}),
                 });
                 return sortChatMessagesLocal([...prev, row]);
             });
 
             const formData = new FormData();
             formData.append('files', file);
+            // Telegram kabi: qabul qiluvchi rasm yuklanmaguncha xira kichik nusxani ko'radi.
+            const { createMediaThumb } = await import('@/lib/media-thumb');
+            const thumbMeta = await createMediaThumb(file);
 
             try {
                 const data = await uploadFileWithRetry('/api/media/upload', formData, (progress) => {
@@ -1786,7 +1798,9 @@ export default function ChatWindow({
                                 name: originalName,
                                 file_name: originalName,
                                 size: uploadedFile.size || file.size,
-                                mimetype
+                                mimetype,
+                                ...albumMeta,
+                                ...(thumbMeta ?? {}),
                             },
                             parentId: currentReplyTo?.id
                         };
@@ -1814,7 +1828,6 @@ export default function ChatWindow({
                 );
             }
         }
-        setIsUploadingMedia(false);
     };
 
     const handleDragOver = (e: React.DragEvent) => {

@@ -8,6 +8,11 @@ export interface UploadProgress {
     percent: number;
 }
 
+/** Yuborish paytida shuncha vaqt bir bayt ham ketmasa — ulanish osilgan, to'xtatamiz. */
+const STALL_MS = 60_000;
+/** Fayl to'liq yuborilgandan keyin server javobini kutish chegarasi (katta videoni saqlash vaqti bilan). */
+const RESPONSE_TIMEOUT_MS = 180_000;
+
 export const uploadFileWithProgress = (
     endpoint: string,
     formData: FormData,
@@ -27,7 +32,28 @@ export const uploadFileWithProgress = (
             xhr.setRequestHeader('X-CSRF-Token', csrf);
         }
 
+        // Osilib qolgan ulanish "Yuklanmoqda..." ni abadiy qoldirmasin.
+        let lastActivity = Date.now();
+        let bodySentAt: number | null = null;
+        const watchdog = setInterval(() => {
+            const now = Date.now();
+            const stalled = bodySentAt == null && now - lastActivity > STALL_MS;
+            const noResponse = bodySentAt != null && now - bodySentAt > RESPONSE_TIMEOUT_MS;
+            if (stalled || noResponse) {
+                clearInterval(watchdog);
+                xhr.abort();
+                const err = new Error('Aloqa uzildi — fayl yuborilmadi. Qayta urinib ko\'ring.') as Error & { status?: number };
+                err.status = 0;
+                reject(err);
+            }
+        }, 5_000);
+        xhr.addEventListener('loadend', () => clearInterval(watchdog));
+        xhr.upload.onload = () => {
+            bodySentAt = Date.now();
+        };
+
         xhr.upload.onprogress = (event) => {
+            lastActivity = Date.now();
             if (event.lengthComputable && onProgress) {
                 const percent = Math.round((event.loaded / event.total) * 100);
                 onProgress({

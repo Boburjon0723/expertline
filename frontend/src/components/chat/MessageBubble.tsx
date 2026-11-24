@@ -7,6 +7,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import type { ChatMessage, ChatMessageMetadata } from '@/types/chat-message';
 import { getDisplayTimeForMessage, normalizeMessageType } from '@/lib/chat-message-cache';
 import { downloadChatFile } from '@/lib/download-file';
+import { useClickToLoad } from '@/lib/click-to-load';
 import { classifyTelegramMessage, describeDocumentKind } from '@/lib/telegram-message-kind';
 import { formatPhoneCallLabel, parsePhoneCallMeta } from '@/lib/phone-call-message';
 import { songPlayer } from '@/lib/song-player-store';
@@ -257,6 +258,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         return `${base}${raw.startsWith('/') ? '' : '/'}${raw}`;
     }, [message.text, fileMeta]);
 
+    const [imageShown, loadImage] = useClickToLoad(mediaSrc, isOwn);
+    /** Placeholder rasmning haqiqiy nisbatida (yuklangach sakramasin). */
+    const thumbAspect = useMemo(() => {
+        const w = Number((fileMeta as { width?: unknown }).width) || 0;
+        const h = Number((fileMeta as { height?: unknown }).height) || 0;
+        return w > 0 && h > 0 ? Math.min(1.8, Math.max(0.56, w / h)) : 4 / 3;
+    }, [fileMeta]);
+    const videoDurationLabel = useMemo(() => {
+        const ms = Number((fileMeta as { durationMs?: unknown }).durationMs) || 0;
+        if (ms <= 0) return '';
+        const t = Math.round(ms / 1000);
+        return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+    }, [fileMeta]);
     const videoSizeLabel = useMemo(() => {
         const n = Number((fileMeta as { size?: unknown }).size) || 0;
         if (n <= 0) return '';
@@ -989,7 +1003,32 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                             </div>
                         )}
 
-                        {messageType === 'image' ? (
+                        {messageType === 'image' && !imageShown && mediaSrc ? (
+                            <div className="message-bubble-body">
+                                {/* Avtomatik yuklash o'chiq: bosilganda chatning o'zida yuklanadi (Downloads ga emas). */}
+                                {/* Telegram: xira kichik nusxa + o'rtada dumaloq ⬇, burchakda vaqt */}
+                                <button
+                                    type="button"
+                                    className="relative w-[min(320px,70vw)] overflow-hidden rounded-[inherit] bg-gradient-to-br from-[#1f2a3a] to-[#0e1621] flex items-center justify-center"
+                                    style={{ aspectRatio: thumbAspect }}
+                                    onClick={loadImage}
+                                >
+                                    {typeof fileMeta.thumb === 'string' && fileMeta.thumb ? (
+                                        <img src={String(fileMeta.thumb)} alt="" className="absolute inset-0 w-full h-full object-cover blur-xl scale-110" />
+                                    ) : null}
+                                    <span className="relative w-14 h-14 rounded-full bg-black/55 flex items-center justify-center text-white">
+                                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 5v13m0 0l-5-5m5 5l5-5" /></svg>
+                                    </span>
+                                    {videoSizeLabel ? (
+                                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[11px]">{videoSizeLabel}</span>
+                                    ) : null}
+                                    <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[11px]">{displayTime}</span>
+                                </button>
+                                {fileMeta.caption != null && String(fileMeta.caption) !== '' && (
+                                    <div className="px-4 py-2 text-sm text-white/90 border-t border-white/5">{String(fileMeta.caption)}</div>
+                                )}
+                            </div>
+                        ) : messageType === 'image' ? (
                             <div className="message-bubble-body">
                                 <div
                                     className="image-wrapper relative group/img cursor-pointer min-h-[80px]"
@@ -1027,13 +1066,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                 >
                                     {/* Telegram uslubi: video chatda yuklanmaydi (iPhone .MOV da preload="metadata"
                                         ham butun faylni tortardi) — faqat bosilganda ko'ruvchida ochiladi. */}
-                                    <div className="w-[min(320px,70vw)] aspect-video rounded-[inherit] bg-gradient-to-br from-[#1f2a3a] to-[#0e1621] flex items-center justify-center">
-                                        <div className="w-14 h-14 rounded-full bg-black/45 group-hover/video:bg-black/60 transition-colors flex items-center justify-center border border-white/20">
+                                    <div
+                                        className="relative w-[min(320px,70vw)] overflow-hidden rounded-[inherit] bg-gradient-to-br from-[#1f2a3a] to-[#0e1621] flex items-center justify-center"
+                                        style={{ aspectRatio: thumbAspect }}
+                                    >
+                                        {typeof fileMeta.thumb === 'string' && fileMeta.thumb ? (
+                                            <img src={String(fileMeta.thumb)} alt="" className="absolute inset-0 w-full h-full object-cover blur-[1px]" />
+                                        ) : null}
+                                        <div className="relative w-14 h-14 rounded-full bg-black/55 group-hover/video:bg-black/70 transition-colors flex items-center justify-center">
                                             <svg className="h-7 w-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                                         </div>
                                     </div>
                                     <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/50 text-white text-[11px] font-medium pointer-events-none">
-                                        {videoSizeLabel ? `VIDEO · ${videoSizeLabel}` : 'VIDEO'}
+                                        {[videoDurationLabel || 'VIDEO', videoSizeLabel].filter(Boolean).join(' · ')}
                                     </div>
                                 </div>
                                 {fileMeta.caption != null && String(fileMeta.caption) !== '' && (

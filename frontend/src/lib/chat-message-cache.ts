@@ -629,6 +629,7 @@ export function createOptimisticChatMessage(params: {
     isUploading?: boolean;
     error?: string;
     locale?: string;
+    metadata?: Record<string, unknown>;
 }): ChatMessage {
     const optimisticCreated = new Date(Math.max(Date.now(), maxCreatedAtMs(params.prevMessages) + 1)).toISOString();
     const loc = params.locale ?? 'uz-UZ';
@@ -646,6 +647,7 @@ export function createOptimisticChatMessage(params: {
         isPending: params.isPending,
         isUploading: params.isUploading,
         error: params.error,
+        ...(params.metadata ? { metadata: params.metadata } : {}),
     } as Record<string, unknown>);
     chatDebug("createOptimisticChatMessage", {
         tempId: params.id,

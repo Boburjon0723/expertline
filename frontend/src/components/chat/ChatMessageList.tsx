@@ -2,6 +2,7 @@
 
 import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { MessageBubble } from './MessageBubble';
+import { AlbumBubble, albumKeyOf, messageMeta } from './AlbumBubble';
 import { computeMessageContinuation } from '@/lib/chat-continuation';
 import { parseMessageDate } from './chatWindowHelpers';
 import type { ChatMessage } from '@/types/chat-message';
@@ -228,6 +229,23 @@ export function ChatMessageList({
         return () => window.removeEventListener('mouseup', handleMouseUp);
     }, [handleMouseUp]);
 
+    /** Albomlar: kalit -> { langar (ro'yxatdagi birinchi a'zo), a'zolar albumIndex bo'yicha }. */
+    const albumGroups = useMemo(() => {
+        const map = new Map<string, { anchorId: string; items: ChatMessage[] }>();
+        for (const m of filteredMessages) {
+            const k = albumKeyOf(m);
+            if (!k) continue;
+            const g = map.get(k);
+            if (g) g.items.push(m);
+            else map.set(k, { anchorId: m.id, items: [m] });
+        }
+        for (const [k, g] of map) {
+            if (g.items.length < 2) map.delete(k);
+            else g.items.sort((x, y) => Number(messageMeta(x).albumIndex ?? 0) - Number(messageMeta(y).albumIndex ?? 0));
+        }
+        return map;
+    }, [filteredMessages]);
+
     return (
             <div
                 ref={messagesScrollRef}
@@ -258,6 +276,11 @@ export function ChatMessageList({
                     </div>
                 )}
                 {renderedMessages.map((msg, i) => {
+                    // Albom: birinchi a'zosi o'rnida butun to'r; qolgan a'zolar alohida chizilmaydi.
+                    const aKey = albumKeyOf(msg);
+                    const albumGroup = aKey ? albumGroups.get(aKey) : undefined;
+                    if (albumGroup && albumGroup.anchorId !== msg.id) return null;
+                    const albumItems = albumGroup?.items;
                     /** To'liq ro'yxatdagi indeks — virtual oyna boshidagi xabar uchun ham oldingi xabar `filteredMessages` dan olinadi. */
                     const absoluteIdx = renderStartIndex + i;
                     const prevMsg = absoluteIdx > 0 ? filteredMessages[absoluteIdx - 1] : undefined;
@@ -287,6 +310,27 @@ export function ChatMessageList({
                                     </div>
                                 </div>
                             )}
+                            {albumItems && albumItems.length > 1 ? (
+                            <div ref={(node) => observeMessage(node, msg)} data-msg-id={msg.id}>
+                                <AlbumBubble
+                                    items={albumItems}
+                                    isOwn={msg.sender === 'me'}
+                                    timeLabel={String(albumItems[albumItems.length - 1].time || '')}
+                                    uploadProgresses={uploadProgresses}
+                                    onMediaClick={(url, type) => setViewerMedia({ url, type })}
+                                    isSelecting={isSelecting}
+                                    selectedIds={selectedMessageIds}
+                                    onToggleSelect={toggleSelection}
+                                    onSelectMany={(ids) => {
+                                        onStartSelecting?.();
+                                        setSelectedMessageIds?.(ids);
+                                    }}
+                                    onReply={setReplyTo}
+                                    onForward={handleForwardMessage}
+                                    onDelete={handleDeleteMessage}
+                                />
+                            </div>
+                            ) : (
                             <div ref={(node) => observeMessage(node, msg)}>
                                 <MessageBubble
                                     message={msg}
@@ -319,6 +363,7 @@ export function ChatMessageList({
                                     mentorSubStatus={mentorSubStatus}
                                 />
                             </div>
+                            )}
                         </React.Fragment>
                     );
                 })}
