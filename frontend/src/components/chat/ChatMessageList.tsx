@@ -37,6 +37,8 @@ export type ChatMessageListProps = {
     uploadProgresses: Record<string, number>;
     onCancelUpload?: (tempId: string) => void;
     onRetryUpload?: (tempId: string) => void;
+    /** O'chirilayotgan xabarlar — so'nib yig'iladi */
+    removingIds?: Set<string>;
     setViewerMedia: (v: { url: string; type: 'image' | 'video' | 'file' } | null) => void;
     handleForwardMessage: (msg: ChatMessage) => void;
     handleDeleteMessage: (msg: ChatMessage) => void;
@@ -81,6 +83,7 @@ export function ChatMessageList({
     uploadProgresses,
     onCancelUpload,
     onRetryUpload,
+    removingIds,
     setViewerMedia,
     handleForwardMessage,
     handleDeleteMessage,
@@ -305,8 +308,16 @@ export function ChatMessageList({
                         return d.toLocaleDateString(language === 'uz' ? 'uz-UZ' : (language === 'ru' ? 'ru-RU' : 'en-US'), { day: '2-digit', month: 'short', year: 'numeric' });
                     };
 
+                    const removing = !!removingIds?.has(String(msg.id));
                     return (
                         <React.Fragment key={msg.id || `msg-${absoluteIdx}`}>
+                            {/* O'chirish animatsiyasi: balandlik 1fr → 0fr, shaffoflik va masshtab */}
+                            <div
+                                className={`grid transition-all duration-200 ease-out ${
+                                    removing ? 'grid-rows-[0fr] opacity-0 scale-[0.96]' : 'grid-rows-[1fr]'
+                                }`}
+                            >
+                            <div className={removing ? 'min-h-0 overflow-hidden' : 'min-h-0'}>
                             {isNewDay && msgDate && (
                                 <div className="flex items-center justify-center my-3">
                                     <div className="rounded-full bg-black/35 px-2.5 py-1 text-[13px] text-white">
@@ -372,6 +383,8 @@ export function ChatMessageList({
                                 />
                             </div>
                             )}
+                            </div>
+                            </div>
                         </React.Fragment>
                     );
                 })}

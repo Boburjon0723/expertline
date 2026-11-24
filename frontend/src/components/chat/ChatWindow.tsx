@@ -106,6 +106,21 @@ export default function ChatWindow({
     const { confirm } = useConfirm();
     const { prefOf } = useChatListPrefs();
     const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+    /** O'chirilayotgan xabarlar: avval so'nib yig'iladi (animatsiya), keyin ro'yxatdan olinadi. */
+    const [removingIds, setRemovingIds] = useState<Set<string>>(() => new Set());
+    const removeMessagesAnimated = useCallback((ids: string[]) => {
+        const idSet = new Set(ids.map(String));
+        if (!idSet.size) return;
+        setRemovingIds((prev) => new Set([...prev, ...idSet]));
+        setTimeout(() => {
+            setMessages((prev) => prev.filter((m) => !idSet.has(String(m.id))));
+            setRemovingIds((prev) => {
+                const next = new Set(prev);
+                idSet.forEach((id) => next.delete(id));
+                return next;
+            });
+        }, 230);
+    }, []);
     const [inputValue, setInputValue] = useState("");
     const editingMessageRef = useRef<ChatMessage | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -250,7 +265,7 @@ export default function ChatWindow({
                 body: JSON.stringify({ messageIds: selectedMessageIds })
             });
             if (res.ok) {
-                setMessages(prev => prev.filter(m => !selectedMessageIds.includes(m.id)));
+                removeMessagesAnimated(selectedMessageIds);
                 setIsSelecting(false);
                 setSelectedMessageIds([]);
             }
@@ -360,7 +375,7 @@ export default function ChatWindow({
                 body: JSON.stringify({ messageIds: [msg.id] })
             });
             if (res.ok) {
-                setMessages(prev => prev.filter(m => m.id !== msg.id));
+                removeMessagesAnimated([msg.id]);
             }
         } catch (e) {
             console.error(e);
@@ -1338,9 +1353,7 @@ export default function ChatWindow({
         };
         const handleMessagesDeleted = (data: { chatId?: string; messageIds?: string[] }) => {
             if (String(data.chatId) !== String(chat.id)) return;
-            const idSet = new Set((data.messageIds || []).map(String));
-            if (!idSet.size) return;
-            setMessages((prev) => prev.filter((m) => !idSet.has(String(m.id))));
+            removeMessagesAnimated((data.messageIds || []).map(String));
         };
         socket.on('messages_read', handleMessagesRead);
         socket.on('message_edited', handleMessageEdited);
@@ -2399,6 +2412,7 @@ export default function ChatWindow({
                 setSelectedMessageIds={setSelectedMessageIds}
                 uploadProgresses={uploadProgresses}
                 onCancelUpload={cancelUpload}
+                removingIds={removingIds}
                 onRetryUpload={retryUpload}
                 setViewerMedia={setViewerMedia}
                 handleForwardMessage={handleForwardMessage}

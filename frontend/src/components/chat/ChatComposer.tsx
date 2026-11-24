@@ -162,11 +162,38 @@ export function ChatComposer({
                         onSelect={(sticker) => { onSendSticker?.(sticker); setShowStickerPicker(false); }}
                     />
                     <div className="flex items-end">
-                        <button type="button" className={iconBtn} title="Stickers" aria-label="Stickers" onClick={() => setShowStickerPicker(v => !v)}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </button>
+                        {/* Telegram Desktop / mobil ilova kabi: 📎 chapda, 😊 o'ngda */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setShowAttach((v) => !v)}
+                                className={iconBtn}
+                                title={t('send_file') as string}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                            </button>
+                            {showAttach && (
+                                <>
+                                    <div className="fixed inset-0 z-30" onClick={() => setShowAttach(false)} />
+                                    <div className="absolute bottom-full left-0 z-40 mb-2 w-44 overflow-hidden rounded-xl bg-[#212121] py-1 shadow-[0_2px_16px_rgba(0,0,0,0.4)]">
+                                        <button
+                                            type="button"
+                                            className="flex w-full items-center gap-3 px-3 py-2.5 text-[15px] text-white hover:bg-white/[0.08]"
+                                            onClick={() => { setShowAttach(false); fileInputRef.current?.click(); }}
+                                        >
+                                            {t('send_file')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="flex w-full items-center gap-3 px-3 py-2.5 text-[15px] text-white hover:bg-white/[0.08]"
+                                            onClick={() => { setShowAttach(false); folderInputRef.current?.click(); }}
+                                        >
+                                            {t('send_folder')}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
 
                         <div className="flex min-h-12 min-w-0 flex-1 items-center py-1">
                             {isRecording ? (
@@ -247,37 +274,11 @@ export function ChatComposer({
                             )}
                         </div>
 
-                        <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => setShowAttach((v) => !v)}
-                                className={iconBtn}
-                                title={t('send_file') as string}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                            </button>
-                            {showAttach && (
-                                <>
-                                    <div className="fixed inset-0 z-30" onClick={() => setShowAttach(false)} />
-                                    <div className="absolute bottom-full right-0 z-40 mb-2 w-44 overflow-hidden rounded-xl bg-[#212121] py-1 shadow-[0_2px_16px_rgba(0,0,0,0.4)]">
-                                        <button
-                                            type="button"
-                                            className="flex w-full items-center gap-3 px-3 py-2.5 text-[15px] text-white hover:bg-white/[0.08]"
-                                            onClick={() => { setShowAttach(false); fileInputRef.current?.click(); }}
-                                        >
-                                            {t('send_file')}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="flex w-full items-center gap-3 px-3 py-2.5 text-[15px] text-white hover:bg-white/[0.08]"
-                                            onClick={() => { setShowAttach(false); folderInputRef.current?.click(); }}
-                                        >
-                                            {t('send_folder')}
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                        <button type="button" className={iconBtn} title="Stickers" aria-label="Stickers" onClick={() => setShowStickerPicker(v => !v)}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
