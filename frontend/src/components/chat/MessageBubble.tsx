@@ -8,6 +8,7 @@ import type { ChatMessage, ChatMessageMetadata } from '@/types/chat-message';
 import { getDisplayTimeForMessage, normalizeMessageType } from '@/lib/chat-message-cache';
 import { downloadChatFile } from '@/lib/download-file';
 import { useClickToLoad } from '@/lib/click-to-load';
+import { UploadOverlay } from './UploadOverlay';
 import { classifyTelegramMessage, describeDocumentKind } from '@/lib/telegram-message-kind';
 import { formatPhoneCallLabel, parsePhoneCallMeta } from '@/lib/phone-call-message';
 import { songPlayer } from '@/lib/song-player-store';
@@ -43,6 +44,8 @@ interface MessageBubbleProps {
     isSelected?: boolean;
     onSelect?: () => void;
     uploadProgress?: number;
+    onCancelUpload?: (tempId: string) => void;
+    onRetryUpload?: (tempId: string) => void;
     onMediaClick?: (url: string, type: 'image' | 'video' | 'file') => void;
     onForward?: (message: ChatMessage) => void;
     onDelete?: (message: ChatMessage) => void;
@@ -63,7 +66,7 @@ interface MessageBubbleProps {
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
     message, chatId, chatType, groupCreatorId, currentUserId, mentorSubStatus,
     onReply, isSelecting, isSelected, onSelect,
-    uploadProgress, onMediaClick, onForward, onDelete, onEdit, onPin,
+    uploadProgress, onCancelUpload, onRetryUpload, onMediaClick, onForward, onDelete, onEdit, onPin,
     isContinuation, onReplyClick, activeAudioId, onAudioPlay, onImageLoad, showPeerAvatar = false, songPlaylist,
     inviteJoinExpired = false,
 }) => {
@@ -940,7 +943,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                 {isOwn && (
                                     <MessageDeliveryTicks
                                         status={
-                                            message.isPending ? 'pending' : message.is_read ? 'read' : 'sent'
+                                            message.isPending || message.isUploading ? 'pending' : message.is_read ? 'read' : 'sent'
                                         }
                                         tone="bubble"
                                     />
@@ -983,24 +986,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         )}
 
                         {message.isUploading && (
-                            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-4">
-                                {message.error ? (
-                                    <div className="text-red-400 text-center">
-                                        <svg className="h-8 w-8 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        <span className="text-[10px] font-bold uppercase">{message.error}</span>
-                                    </div>
-                                ) : (
-                                    <div className="w-full max-w-[120px]">
-                                        <div className="flex justify-between text-[10px] text-white font-bold mb-1">
-                                            <span>{t('loading')}</span>
-                                            <span>{uploadProgress || 0}%</span>
-                                        </div>
-                                        <div className="h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
-                                            <div className="h-full bg-blue-400 transition-all duration-300" style={{ width: `${uploadProgress || 0}%` }} />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                            // Telegram: lokal rasm ustida halqa + ✕ / ↻, "1,0 / 3,1 MB"
+                            <UploadOverlay
+                                progress={uploadProgress}
+                                size={Number((fileMeta as { size?: unknown }).size) || undefined}
+                                error={message.error}
+                                onCancel={() => onCancelUpload?.(message.id)}
+                                onRetry={() => onRetryUpload?.(message.id)}
+                            />
                         )}
 
                         {messageType === 'image' && !imageShown && mediaSrc ? (
@@ -1222,7 +1215,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         {isOwn && (
                             <MessageDeliveryTicks
                                 status={
-                                    message.isPending ? 'pending' : message.is_read ? 'read' : 'sent'
+                                    message.isPending || message.isUploading ? 'pending' : message.is_read ? 'read' : 'sent'
                                 }
                                 tone="bubble"
                             />

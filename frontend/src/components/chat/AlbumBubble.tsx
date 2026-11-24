@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import type { ChatMessage, ChatMessageMetadata } from '@/types/chat-message';
 import { resolveChatMediaUrl } from '@/lib/telegram-message-kind';
 import { useClickToLoad } from '@/lib/click-to-load';
+import { UploadOverlay } from './UploadOverlay';
 
 /** Xabar metadata'sini obyekt sifatida o'qiydi (ba'zan JSON satr bo'lib keladi). */
 export function messageMeta(m: ChatMessage): ChatMessageMetadata & Record<string, unknown> {
@@ -56,6 +57,8 @@ function Tile({
     onToggleSelect,
     onContextMenu,
     isOwn = false,
+    onCancelUpload,
+    onRetryUpload,
 }: {
     m: ChatMessage;
     progress?: number;
@@ -65,6 +68,8 @@ function Tile({
     onToggleSelect?: (id: string) => void;
     onContextMenu?: (e: React.MouseEvent, m: ChatMessage) => void;
     isOwn?: boolean;
+    onCancelUpload?: (id: string) => void;
+    onRetryUpload?: (id: string) => void;
 }) {
     const meta = messageMeta(m);
     const url = resolveChatMediaUrl(String(meta.url || m.text || ''));
@@ -92,7 +97,7 @@ function Tile({
             }}
             onContextMenu={(e) => onContextMenu?.(e, m)}
         >
-            {!isVideo && !m.isUploading && url && shown && !broken ? (
+            {!isVideo && url && (shown || m.isUploading) && !broken ? (
                 <img
                     src={url}
                     alt=""
@@ -133,14 +138,18 @@ function Tile({
                     ) : null}
                 </span>
             ) : null}
-            {isVideo || m.isUploading ? (
+            {m.isUploading ? (
+                <UploadOverlay
+                    compact
+                    progress={progress}
+                    error={m.error}
+                    onCancel={() => onCancelUpload?.(m.id)}
+                    onRetry={() => onRetryUpload?.(m.id)}
+                />
+            ) : isVideo ? (
                 <span className="absolute inset-0 flex items-center justify-center">
-                    <span className="w-11 h-11 rounded-full bg-black/45 flex items-center justify-center border border-white/20 text-white text-xs font-semibold">
-                        {m.isUploading ? (
-                            `${Math.round(progress ?? 0)}%`
-                        ) : (
-                            <svg className="h-5 w-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                        )}
+                    <span className="w-11 h-11 rounded-full bg-black/45 flex items-center justify-center border border-white/20 text-white">
+                        <svg className="h-5 w-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                     </span>
                 </span>
             ) : null}
@@ -162,7 +171,11 @@ export function AlbumBubble({
     onReply,
     onForward,
     onDelete,
+    onCancelUpload,
+    onRetryUpload,
 }: {
+    onCancelUpload?: (id: string) => void;
+    onRetryUpload?: (id: string) => void;
     items: ChatMessage[];
     isOwn: boolean;
     timeLabel?: string;
@@ -219,6 +232,8 @@ export function AlbumBubble({
                                         onToggleSelect={onToggleSelect}
                                         onContextMenu={openMenu}
                                         isOwn={isOwn}
+                                        onCancelUpload={onCancelUpload}
+                                        onRetryUpload={onRetryUpload}
                                     />
                                 ))}
                             </div>

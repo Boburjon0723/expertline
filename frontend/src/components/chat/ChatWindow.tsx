@@ -1721,6 +1721,103 @@ export default function ChatWindow({
         [chat, inputValue, setComposerValue]
     );
 
+    /**
+     * Telegram uslubidagi yuklash vazifalari: har fayl alohida — ✕ (bekor qilish) va ↻ (qayta urinish) uchun.
+     * Pufakcha darhol lokal nusxa (blob URL) va haqiqiy nisbat bilan chiqadi; server javobi kelgach almashadi.
+     */
+    type UploadJob = {
+        file: File;
+        roomId: string;
+        caption?: string;
+        parentId?: string;
+        albumMeta: Record<string, unknown>;
+        thumbMeta: Record<string, unknown> | null;
+        previewUrl: string;
+        controller?: AbortController;
+    };
+    const uploadJobsRef = useRef(new Map<string, UploadJob>());
+
+    const setTempError = (tempId: string, error: string | undefined) =>
+        setMessages((prev) =>
+            prev.map((m) =>
+                m.id === tempId ? normalizeChatMessage({ ...(m as unknown as Record<string, unknown>), error }) : m
+            )
+        );
+
+    const runUpload = async (tempId: string) => {
+        const job = uploadJobsRef.current.get(tempId);
+        if (!job) return;
+        const { uploadFileWithRetry } = await import('@/lib/upload');
+        const controller = new AbortController();
+        job.controller = controller;
+        setTempError(tempId, undefined);
+        setUploadProgresses((prev) => ({ ...prev, [tempId]: 0 }));
+        const formData = new FormData();
+        formData.append('files', job.file);
+        try {
+            const data = await uploadFileWithRetry(
+                '/api/media/upload',
+                formData,
+                (progress) => setUploadProgresses((prev) => ({ ...prev, [tempId]: progress.percent })),
+                controller.signal
+            );
+            if (!uploadJobsRef.current.has(tempId)) return; // bekor qilingan
+            const uploadedFile = data?.files?.[0];
+            if (!uploadedFile) throw new Error('Upload response missing file');
+            if (socket) {
+                const originalName = uploadedFile.originalname || uploadedFile.name || job.file.name;
+                const mimetype = mimeFromFilename(originalName, uploadedFile.mimetype || uploadedFile.type || job.file.type);
+                const mediaPayload = {
+                    roomId: job.roomId,
+                    content: uploadedFile.url,
+                    type: inferMessageTypeFromFile(originalName, mimetype),
+                    clientSideId: tempId,
+                    caption: job.caption,
+                    metadata: {
+                        name: originalName,
+                        file_name: originalName,
+                        size: uploadedFile.size || job.file.size,
+                        mimetype,
+                        ...job.albumMeta,
+                        ...(job.thumbMeta ?? {}),
+                    },
+                    parentId: job.parentId,
+                };
+                logChatEmitSend(mediaPayload);
+                socket.emit('send_message', mediaPayload);
+            }
+            uploadJobsRef.current.delete(tempId);
+            // Server xabari kelib rasm almashgunicha lokal nusxa kerak.
+            setTimeout(() => URL.revokeObjectURL(job.previewUrl), 60_000);
+            setUploadProgresses((prev) => {
+                const next = { ...prev };
+                delete next[tempId];
+                return next;
+            });
+        } catch (err: any) {
+            if (err?.aborted || !uploadJobsRef.current.has(tempId)) return;
+            const msg = err?.status === 429 ? err?.message || t('upload_error') : err?.message || t('upload_error');
+            setTempError(tempId, String(msg));
+        }
+    };
+
+    const cancelUpload = (tempId: string) => {
+        const job = uploadJobsRef.current.get(tempId);
+        uploadJobsRef.current.delete(tempId);
+        job?.controller?.abort();
+        if (job) URL.revokeObjectURL(job.previewUrl);
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setUploadProgresses((prev) => {
+            const next = { ...prev };
+            delete next[tempId];
+            return next;
+        });
+    };
+
+    const retryUpload = (tempId: string) => {
+        void runUpload(tempId);
+    };
+
     const handleConfirmUpload = async (files: File[], caption: string, compress: boolean) => {
         if (!chat) return;
         if (isListingChat(chat) && !isMessagingUnlocked(chat)) return;
@@ -1728,8 +1825,6 @@ export default function ChatWindow({
         setPendingFiles([]);
         setPendingCaption('');
         setReplyTo(null); // Clear reply state after starting upload
-        // Telegram uslubi: chat to'silmaydi — jarayon har bir xabar pufakchasida ko'rinadi.
-        const { uploadFileWithRetry } = await import('@/lib/upload');
 
         /** Bir tanlovda bir nechta fayl: temp id `i` indeksi sortda ketma-katlikni mustahkamlaydi */
         const uploadBatchMs = Date.now();
@@ -1740,15 +1835,27 @@ export default function ChatWindow({
         };
         const albumId = files.filter(isAlbumMedia).length >= 2 ? `${uploadBatchMs.toString(36)}${Math.random().toString(36).slice(2, 8)}` : null;
         let albumIndex = 0;
+        const { createMediaThumb } = await import('@/lib/media-thumb');
+        const tempIds: string[] = [];
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const tempId = `temp_${uploadBatchMs}_${i}`;
             const albumMeta = albumId && isAlbumMedia(file) ? { albumId, albumIndex: albumIndex++ } : {};
+            // Kichik nusxa + o'lcham + davomiylik (qabul qiluvchi uchun) va lokal ko'rinish (o'zim uchun) — darhol.
+            const thumbMeta = (await createMediaThumb(file)) as Record<string, unknown> | null;
+            const previewUrl = URL.createObjectURL(file);
+            uploadJobsRef.current.set(tempId, {
+                file,
+                roomId: String(chat.id),
+                caption: i === 0 && caption ? caption : undefined,
+                parentId: currentReplyTo?.id,
+                albumMeta,
+                thumbMeta,
+                previewUrl,
+            });
 
-            // Optimistic UI for each file
             const initialType = inferMessageTypeFromFile(file.name, file.type);
-
             const uid = (getUser() as { id?: string } | null)?.id;
             const chatTimeLocale = language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US';
             markScrollToBottomOnSend();
@@ -1763,71 +1870,21 @@ export default function ChatWindow({
                     parentMessage: currentReplyTo ?? undefined,
                     isUploading: true,
                     locale: chatTimeLocale,
-                    ...(albumMeta.albumId ? { metadata: albumMeta } : {}),
+                    metadata: {
+                        url: previewUrl,
+                        name: file.name,
+                        size: file.size,
+                        ...albumMeta,
+                        ...(thumbMeta ?? {}),
+                        ...(i === 0 && caption ? { caption } : {}),
+                    },
                 });
                 return sortChatMessagesLocal([...prev, row]);
             });
-
-            const formData = new FormData();
-            formData.append('files', file);
-            // Telegram kabi: qabul qiluvchi rasm yuklanmaguncha xira kichik nusxani ko'radi.
-            const { createMediaThumb } = await import('@/lib/media-thumb');
-            const thumbMeta = await createMediaThumb(file);
-
-            try {
-                const data = await uploadFileWithRetry('/api/media/upload', formData, (progress) => {
-                    setUploadProgresses(prev => ({ ...prev, [tempId]: progress.percent }));
-                });
-
-                if (data.files && data.files.length > 0) {
-                    const uploadedFile = data.files[0];
-                    if (socket) {
-                        const originalName = uploadedFile.originalname || uploadedFile.name || file.name;
-                        const mimetype = mimeFromFilename(
-                            originalName,
-                            uploadedFile.mimetype || uploadedFile.type || file.type
-                        );
-                        const detectedType = inferMessageTypeFromFile(originalName, mimetype);
-                        const mediaPayload = {
-                            roomId: chat.id,
-                            content: uploadedFile.url,
-                            type: detectedType,
-                            clientSideId: tempId,
-                            caption: i === 0 ? caption : undefined,
-                            metadata: {
-                                name: originalName,
-                                file_name: originalName,
-                                size: uploadedFile.size || file.size,
-                                mimetype,
-                                ...albumMeta,
-                                ...(thumbMeta ?? {}),
-                            },
-                            parentId: currentReplyTo?.id
-                        };
-                        logChatEmitSend(mediaPayload);
-                        socket.emit('send_message', mediaPayload);
-                    }
-                    // Update state to remove progress and mark as uploaded
-                    setUploadProgresses(prev => {
-                        const next = { ...prev };
-                        delete next[tempId];
-                        return next;
-                    });
-                }
-            } catch (err: any) {
-                const msg = err?.status === 429
-                    ? (err?.message || t('upload_error'))
-                    : t('upload_error');
-                showError(msg);
-                setMessages(prev =>
-                    prev.map((m) =>
-                        m.id === tempId
-                            ? normalizeChatMessage({ ...(m as unknown as Record<string, unknown>), error: msg })
-                            : m
-                    )
-                );
-            }
+            tempIds.push(tempId);
         }
+        // Ketma-ket yuklanadi (tartib saqlanadi); har biri o'z pufakchasida jarayonni ko'rsatadi.
+        for (const id of tempIds) await runUpload(id);
     };
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -2341,6 +2398,8 @@ export default function ChatWindow({
                 toggleSelection={toggleSelection}
                 setSelectedMessageIds={setSelectedMessageIds}
                 uploadProgresses={uploadProgresses}
+                onCancelUpload={cancelUpload}
+                onRetryUpload={retryUpload}
                 setViewerMedia={setViewerMedia}
                 handleForwardMessage={handleForwardMessage}
                 handleDeleteMessage={handleDeleteMessage}

@@ -16,10 +16,19 @@ const RESPONSE_TIMEOUT_MS = 180_000;
 export const uploadFileWithProgress = (
     endpoint: string,
     formData: FormData,
-    onProgress?: (progress: UploadProgress) => void
+    onProgress?: (progress: UploadProgress) => void,
+    signal?: AbortSignal
 ): Promise<any> => {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        // ✕ bosilganda yuklash to'xtatiladi.
+        if (signal) {
+            if (signal.aborted) {
+                reject(Object.assign(new Error('Upload aborted'), { aborted: true }));
+                return;
+            }
+            signal.addEventListener('abort', () => xhr.abort(), { once: true });
+        }
         const token = typeof window !== 'undefined' ? getToken() : null;
         const csrf = getCsrfToken();
 
@@ -84,7 +93,7 @@ export const uploadFileWithProgress = (
         };
 
         xhr.onerror = () => reject(new Error('Network error during upload'));
-        xhr.onabort = () => reject(new Error('Upload aborted'));
+        xhr.onabort = () => reject(Object.assign(new Error('Upload aborted'), { aborted: !!signal?.aborted }));
 
         xhr.send(formData);
     });
@@ -98,12 +107,13 @@ function sleep(ms: number) {
 export async function uploadFileWithRetry(
     endpoint: string,
     formData: FormData,
-    onProgress?: (progress: UploadProgress) => void
+    onProgress?: (progress: UploadProgress) => void,
+    signal?: AbortSignal
 ): Promise<any> {
     let lastErr: unknown;
     for (let attempt = 0; attempt < 3; attempt++) {
         try {
-            return await uploadFileWithProgress(endpoint, formData, onProgress);
+            return await uploadFileWithProgress(endpoint, formData, onProgress, signal);
         } catch (err: any) {
             lastErr = err;
             if (err?.status !== 429 || attempt === 2) throw err;

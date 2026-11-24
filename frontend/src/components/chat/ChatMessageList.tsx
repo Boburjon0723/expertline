@@ -35,6 +35,8 @@ export type ChatMessageListProps = {
     toggleSelection: (id: string) => void;
     setSelectedMessageIds?: (ids: string[]) => void;
     uploadProgresses: Record<string, number>;
+    onCancelUpload?: (tempId: string) => void;
+    onRetryUpload?: (tempId: string) => void;
     setViewerMedia: (v: { url: string; type: 'image' | 'video' | 'file' } | null) => void;
     handleForwardMessage: (msg: ChatMessage) => void;
     handleDeleteMessage: (msg: ChatMessage) => void;
@@ -77,6 +79,8 @@ export function ChatMessageList({
     toggleSelection,
     setSelectedMessageIds,
     uploadProgresses,
+    onCancelUpload,
+    onRetryUpload,
     setViewerMedia,
     handleForwardMessage,
     handleDeleteMessage,
@@ -328,6 +332,8 @@ export function ChatMessageList({
                                     onReply={setReplyTo}
                                     onForward={handleForwardMessage}
                                     onDelete={handleDeleteMessage}
+                                    onCancelUpload={onCancelUpload}
+                                    onRetryUpload={onRetryUpload}
                                 />
                             </div>
                             ) : (
@@ -345,6 +351,8 @@ export function ChatMessageList({
                                     isSelected={selectedMessageIds.includes(msg.id)}
                                     onSelect={() => toggleSelection(msg.id)}
                                     uploadProgress={uploadProgresses[msg.id]}
+                                    onCancelUpload={onCancelUpload}
+                                    onRetryUpload={onRetryUpload}
                                     onMediaClick={(url, type) => setViewerMedia({ url, type })}
                                     onForward={handleForwardMessage}
                                     onDelete={handleDeleteMessage}
