@@ -101,6 +101,7 @@ export function GlobalCallOverlay() {
         reset();
         return;
       }
+      await stopCallSounds();
       await startLiveKitAudioSession(media === "video" ? "speaker" : "earpiece");
       setStatus("connected");
       setVisible(true);
@@ -221,11 +222,11 @@ export function GlobalCallOverlay() {
   useEffect(() => {
     if (!visible || status !== "incoming") return;
     startIncomingRing();
-    return () => stopCallSounds();
+    return () => void stopCallSounds();
   }, [visible, status]);
 
   const acceptCall = async () => {
-    stopCallSounds();
+    void stopCallSounds();
     const socket = getSocket();
     const to = peerIdRef.current;
     const room = chatIdRef.current;

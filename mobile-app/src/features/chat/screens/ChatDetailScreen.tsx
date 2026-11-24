@@ -844,7 +844,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (!callVisible || callStatus !== "ringing") return;
     startOutgoingRingback();
-    return () => stopCallSounds();
+    return () => void stopCallSounds();
   }, [callVisible, callStatus]);
 
   const listRef = useRef<FlatList<Message>>(null);
@@ -1247,6 +1247,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
       outgoingCallRef.current = false;
       return;
     }
+    await stopCallSounds();
     await startLiveKitAudioSession(media === "video" ? "speaker" : "earpiece");
     setCallStatus("connected");
     setCallVisible(true);

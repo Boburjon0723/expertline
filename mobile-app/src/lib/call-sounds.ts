@@ -16,6 +16,8 @@ let current: Audio.Sound | null = null;
 /** Har start/stop uni oshiradi — kech yuklangan ovoz eskirgan bo'lsa darhol to'xtatiladi. */
 let generation = 0;
 let vibrating = false;
+/** Navbatdagi barcha unload'lar — stopCallSounds() shuni qaytaradi. */
+let pendingUnload: Promise<void> = Promise.resolve();
 
 async function unload(s: Audio.Sound | null) {
   if (!s) return;
@@ -39,7 +41,8 @@ async function play(source: number, volume: number, gen: number) {
       volume,
     });
     if (gen !== generation) {
-      await unload(sound);
+      pendingUnload = pendingUnload.then(() => unload(sound));
+      await pendingUnload;
       return;
     }
     current = sound;
@@ -49,7 +52,11 @@ async function play(source: number, volume: number, gen: number) {
   }
 }
 
-export function stopCallSounds(): void {
+/**
+ * Ovozni to'xtatadi. Natijani LiveKit audio sessiyasidan OLDIN kuting: expo-av ovoz tushirilganda
+ * iOS AVAudioSession'ni o'chiradi (setActive:NO) va bu WebRTC ulanishini buzadi.
+ */
+export function stopCallSounds(): Promise<void> {
   generation += 1;
   if (vibrating) {
     Vibration.cancel();
@@ -57,12 +64,13 @@ export function stopCallSounds(): void {
   }
   const s = current;
   current = null;
-  void unload(s);
+  if (s) pendingUnload = pendingUnload.then(() => unload(s));
+  return pendingUnload;
 }
 
 /** Kiruvchi qo'ng'iroq: ringtone (iOS da jim rejim tugmasiga bo'ysunadi) + takroriy vibratsiya. */
 export function startIncomingRing(): void {
-  stopCallSounds();
+  void stopCallSounds();
   const gen = generation;
   Vibration.vibrate(VIBRATION_PATTERN, true);
   vibrating = true;
@@ -87,6 +95,6 @@ export function startIncomingRing(): void {
 
 /** Chiquvchi qo'ng'iroq: javob kutilayotganda "tuuut". Audio rejimini qo'ng'iroq ekrani belgilaydi. */
 export function startOutgoingRingback(): void {
-  stopCallSounds();
+  void stopCallSounds();
   void play(RINGBACK, 0.6, generation);
 }
