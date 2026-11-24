@@ -41,6 +41,7 @@ import { useAuthStore } from "../../auth/store";
 import { AvatarImage } from "../../../components/AvatarImage";
 import { AuthUser } from "../../auth/types";
 import { useAuthLocale } from "../../auth/locale";
+import { AddContactModal, type AddedContact } from "../components/AddContactModal";
 import {
   MALI_UZS_APPROX,
   fetchRecentTransactions,
@@ -1057,54 +1058,15 @@ export function ContactsView({ navigation }: { navigation: MessagesNav }) {
   });
 
 
-  const onAddContact = () => {
-    const runSearch = async (q: string) => {
-      const query = q.trim();
-      if (query.length < 2) {
-        Alert.alert(t("menuNewContact"), "Kamida 2 ta belgi kiriting");
-        return;
-      }
-      try {
-        const list = await searchExperts(query);
-        if (!list.length) {
-          Alert.alert(t("menuNewContact"), "Foydalanuvchi topilmadi");
-          return;
-        }
-        const pick = list[0];
-        await addContactRequest(
-          pick.id,
-          pick.name || undefined,
-          pick.surname || undefined
-        );
-        Alert.alert("OK", `${pick.name || ""} kontaktlarga qo'shildi`);
-        const rows = await fetchContacts();
-        setContacts(rows);
-      } catch (e) {
-        Alert.alert(t("menuNewContact"), e instanceof Error ? e.message : "Xato");
-      }
-    };
-
-    if (Platform.OS === "ios") {
-      Alert.prompt(
-        t("menuNewContact"),
-        "Username yoki ism bo'yicha qidiring",
-        [
-          { text: t("msgCancel"), style: "cancel" },
-          { text: "Qo'shish", onPress: (val?: string) => void runSearch(val || "") },
-        ],
-        "plain-text"
-      );
-    } else {
-      Alert.alert(t("menuNewContact"), "Kontaktlar ro'yxatidan yoki qidiruv orqali tanlang, yoki ism yozing:", [
-        { text: t("msgCancel"), style: "cancel" },
-        {
-          text: "Qidirish",
-          onPress: () => {
-            // Android: search current field
-            void runSearch(search);
-          },
-        },
-      ]);
+  const [showAddContact, setShowAddContact] = useState(false);
+  const onAddContact = () => setShowAddContact(true);
+  const onContactAdded = async (c: AddedContact) => {
+    setContacts(await fetchContacts());
+    try {
+      const { chatId, name, avatarUrl } = await createOrOpenPrivateChat(c.id);
+      navigation.navigate("ChatDetail", { chatId, name: name || c.name, avatarUrl: avatarUrl ?? null });
+    } catch {
+      /* kontakt saqlandi; chat ochilmasa ro'yxatda qoladi */
     }
   };
 
@@ -1150,6 +1112,11 @@ export function ContactsView({ navigation }: { navigation: MessagesNav }) {
             <Plus color="#fff" size={24} />
          </Pressable>
       </View>
+      <AddContactModal
+        visible={showAddContact}
+        onClose={() => setShowAddContact(false)}
+        onAdded={onContactAdded}
+      />
 
       {loading ? (
         <ActivityIndicator color="#fff" style={{ marginTop: 24 }} />

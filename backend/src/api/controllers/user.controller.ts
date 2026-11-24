@@ -380,16 +380,14 @@ export const searchUsers = async (req: Request, res: Response) => {
         `;
         const params: any[] = [];
         let pIndex = 1;
-        let viewerParamIdx: number | null = null;
 
-        if (currentUserId) {
-            params.push(currentUserId);
-            viewerParamIdx = pIndex;
-            pIndex++;
-        }
-
+        // Viewer ID faqat shu filtrda ishlatiladi; oldindan qo'shilsa, ishlatilmagan $1 turi
+        // aniqlanmay 42P18 xatosi chiqadi (ism/username/mutaxassis qidiruvi 500 qaytarardi).
         const appendListingPeerExclude = () => {
-            if (viewerParamIdx == null) return;
+            if (!currentUserId) return;
+            params.push(currentUserId);
+            const viewerParamIdx = pIndex;
+            pIndex++;
             query += `
             AND NOT EXISTS (
                 SELECT 1 FROM chats lc
@@ -405,6 +403,13 @@ export const searchUsers = async (req: Request, res: Response) => {
 
         const isExpertSearch = expert === 'true';
         const usernameOnly = searchBy === 'username';
+
+        // O'zini qidiruv natijasida ko'rsatmaslik (mutaxassislar ro'yxatidan tashqari).
+        if (currentUserId && !isExpertSearch) {
+            query += ` AND u.id <> $${pIndex}::uuid`;
+            params.push(currentUserId);
+            pIndex++;
+        }
 
         // Strict phone search (priority) — faqat searchBy=username bo‘lmaganda
         if (!usernameOnly && phone && typeof phone === 'string') {
