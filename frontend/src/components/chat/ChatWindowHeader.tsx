@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import type { ChatRoom } from '@/types/chat-room';
 
 import { canShowChatCalls } from '@/lib/chat-calls';
+import { Bell, BellOff, CircleCheck, Download, Eraser, Trash2, UserRound } from 'lucide-react';
 
 export type ChatWindowHeaderProps = {
     chat: ChatRoom;
@@ -26,7 +27,6 @@ export type ChatWindowHeaderProps = {
     searchDateFrom: string;
     searchDateTo: string;
     showMoreMenu: boolean;
-    isSummarizing: boolean;
     onBack?: () => void;
     onToggleInfo?: () => void;
     onCancelSelecting: () => void;
@@ -43,7 +43,6 @@ export type ChatWindowHeaderProps = {
     onToggleMoreMenu: () => void;
     onCloseMoreMenu: () => void;
     onStartSelecting: () => void;
-    onSummarize: () => void;
     onExportHistory: () => void;
     onClearHistory: () => void;
     onDeleteChat: () => void;
@@ -72,7 +71,6 @@ export function ChatWindowHeader({
     searchDateFrom,
     searchDateTo,
     showMoreMenu,
-    isSummarizing,
     onBack,
     onToggleInfo,
     onCancelSelecting,
@@ -89,7 +87,6 @@ export function ChatWindowHeader({
     onToggleMoreMenu,
     onCloseMoreMenu,
     onStartSelecting,
-    onSummarize,
     onExportHistory,
     onClearHistory,
     onDeleteChat,
@@ -256,29 +253,27 @@ export function ChatWindowHeader({
                             {showMoreMenu && (
                                 <>
                                     <div className="fixed inset-0 z-30" onClick={() => onCloseMoreMenu()} />
-                                    <div className="absolute right-0 top-full z-40 mt-1 w-56 overflow-hidden rounded-xl bg-[#212121] py-1 shadow-[0_2px_16px_rgba(0,0,0,0.4)]">
+                                    <div className="absolute right-0 top-full z-40 mt-1 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1e1e1e]/55 backdrop-blur-xl py-1 shadow-[0_2px_16px_rgba(0,0,0,0.4)]">
                                         <button type="button" onClick={() => { onStartSelecting(); onCloseMoreMenu(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-[15px] text-white hover:bg-white/[0.08]">
-                                            <span>{t('select_messages')}</span>
+                                            <CircleCheck className="h-5 w-5 text-white/70" /><span>{t('select_messages')}</span>
                                         </button>
                                         {onToggleMute && (
                                             <button type="button" onClick={() => { onToggleMute(); onCloseMoreMenu(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-[15px] text-white hover:bg-white/[0.08]">
-                                                <span>{chatMuted ? t('unmute_chat') : t('mute_chat')}</span>
+                                                {chatMuted ? <Bell className="h-5 w-5 text-white/70" /> : <BellOff className="h-5 w-5 text-white/70" />}<span>{chatMuted ? t('unmute_chat') : t('mute_chat')}</span>
                                             </button>
                                         )}
-                                        <button type="button" onClick={() => { onSummarize(); onCloseMoreMenu(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-[15px] text-white hover:bg-white/[0.08]">
-                                            <span>{isSummarizing ? t('translating') : t('ai_summary')}</span>
-                                        </button>
                                         <button type="button" onClick={() => { onToggleInfo?.(); onCloseMoreMenu(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-[15px] text-white hover:bg-white/[0.08]">
-                                            <span>{t('show_profile')}</span>
+                                            <UserRound className="h-5 w-5 text-white/70" /><span>{t('show_profile')}</span>
                                         </button>
                                         <button type="button" onClick={() => { onExportHistory(); onCloseMoreMenu(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-[15px] text-white hover:bg-white/[0.08]">
-                                            <span>{t('export_history')}</span>
+                                            <Download className="h-5 w-5 text-white/70" /><span>{t('export_history')}</span>
                                         </button>
                                         <button type="button" onClick={() => { onClearHistory(); onCloseMoreMenu(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-[15px] text-white hover:bg-white/[0.08]">
-                                            <span>{t('clear_history')}</span>
+                                            <Eraser className="h-5 w-5 text-white/70" /><span>{t('clear_history')}</span>
                                         </button>
+                                        <div className="my-1 h-px bg-white/10" />
                                         <button type="button" onClick={() => { onDeleteChat(); onCloseMoreMenu(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-[15px] text-red-400 hover:bg-white/[0.08]">
-                                            <span>{t('delete_chat')}</span>
+                                            <Trash2 className="h-5 w-5" /><span>{t('delete_chat')}</span>
                                         </button>
                                     </div>
                                 </>

@@ -19,7 +19,6 @@ import { postListingConsent } from '@/lib/listing-consent-api';
 import { useNotification } from '@/context/NotificationContext';
 import { isPrivatePeerUnavailable } from '@/lib/private-chat-peer';
 import { getExpertPanelMode } from '@/lib/expert-roles';
-import ChatPaymentStatusCard from './ChatPaymentStatusCard';
 
 /** Faqat huquqshunos e'lonidan ochilgan chat — Expert service banner */
 function isLegalExpertListingChat(chat: any): boolean {
@@ -276,10 +275,6 @@ export function ChatWindowBanners({
                     </div>
                 )}
 
-                {chat && isListingChat(chat) && isMessagingUnlocked(chat) && (
-                    <ChatPaymentStatusCard chatId={chat.id} t={t} />
-                )}
-
                 {chatCompliance && !isTrade && !isComplianceDismissed && (
                     <div className="mt-1 rounded-[24px] bg-[#212121] p-3 text-[13px] text-white/90 leading-snug shadow-[0_1px_5px_-1px_rgba(0,0,0,0.21)]">
                         <p className="mb-1 font-medium text-[#8774e1]">{chatCompliance.title}</p>
@@ -348,20 +343,6 @@ export function ChatWindowBanners({
                     </div>
                 )}
 
-                {/* Service Escrow Banner */}
-                {activeSession && (
-                    <div className="bg-blue-600/10 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-4 flex justify-between items-center shadow-lg animate-fade-in">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                            </div>
-                            <div>
-                                <h4 className="text-white font-bold text-sm">{t('service_session')}</h4>
-                                <p className="text-blue-400/70 text-[10px] font-medium uppercase tracking-wider">{activeSession.status} • {activeSession.amount_mali} MALI {t('in_escrow')}</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
 
 

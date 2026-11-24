@@ -14,22 +14,7 @@ import { formatPhoneCallLabel, parsePhoneCallMeta } from '@/lib/phone-call-messa
 import { songPlayer } from '@/lib/song-player-store';
 import { resolveStickerMediaUrl } from '@/lib/sticker-packs';
 import { apiFetch } from '@/lib/api';
-import { useConfirm } from '@/context/ConfirmContext';
 import { MessageDeliveryTicks } from './MessageDeliveryTicks';
-
-const DEFAULT_MONTHLY_MALI = 100;
-
-function resolveInviteMonthlyAmount(meta: ChatMessageMetadata, text: string): number {
-    const raw = meta.monthlyAmount ?? meta.monthly_amount;
-    const fromMeta = typeof raw === 'number' ? raw : parseFloat(String(raw ?? ''));
-    if (Number.isFinite(fromMeta) && fromMeta > 0) return fromMeta;
-    const m = String(text || '').match(/(\d+(?:[.,]\d+)?)\s*MALI/i);
-    if (m) {
-        const n = parseFloat(m[1].replace(',', '.'));
-        if (Number.isFinite(n) && n > 0) return n;
-    }
-    return DEFAULT_MONTHLY_MALI;
-}
 
 interface MessageBubbleProps {
     message: ChatMessage;
@@ -72,8 +57,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
     const { t, language } = useLanguage();
     const { showError, showSuccess } = useNotification();
-    const { confirm } = useConfirm();
-    const [payLoading, setPayLoading] = useState(false);
     const [groupJoinLoading, setGroupJoinLoading] = useState(false);
     const [paidPanelOpen, setPaidPanelOpen] = useState(false);
     const isOwn = message.sender === 'me';
@@ -144,38 +127,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         }
         setGroupJoinLoading(true);
         try {
-            const statusRes = await apiFetch(
-                `/api/wallet/subscription-status?mentorId=${encodeURIComponent(mentorId)}`
-            );
-            const statusData = await statusRes.json().catch(() => ({}));
-            const hasActiveSub = statusRes.ok && !!statusData.active;
-
-            if (!hasActiveSub) {
-                let amount = resolveInviteMonthlyAmount(fileMeta, String(message.text || ''));
-                const fromStatus = Number(statusData?.monthlyAmount);
-                if (
-                    amount === DEFAULT_MONTHLY_MALI &&
-                    Number.isFinite(fromStatus) &&
-                    fromStatus > 0
-                ) {
-                    amount = fromStatus;
-                }
-                const ok = await confirm({
-                    title: t('top_up') as any,
-                    description: `${amount} MALI — 1 oylik obuna`,
-                    confirmLabel: t('group_join_pay_btn') as any,
-                });
-                if (!ok) return;
-                const subRes = await apiFetch('/api/wallet/subscribe-to-mentor', {
-                    method: 'POST',
-                    body: JSON.stringify({ mentorId }),
-                });
-                const subData = await subRes.json().catch(() => ({}));
-                if (!subRes.ok) {
-                    throw new Error(typeof subData?.message === 'string' ? subData.message : t('server_error'));
-                }
-            }
-
+            // To'lovsiz MVP: ustoz taklifi bilan bepul qo'shilish (obuna yo'q).
             const joinRes = await apiFetch(`/api/chats/${encodeURIComponent(groupId)}/join-with-subscription`, {
                 method: 'POST',
             });
@@ -211,10 +163,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         return false;
     }, [messageType, fileMeta.kind, fileMeta.groupId, fileMeta.mentorId, message.text]);
 
-    const inviteMonthlyAmount = useMemo(
-        () => resolveInviteMonthlyAmount(fileMeta, String(message.text || '')),
-        [fileMeta, message.text]
-    );
 
     const inviteStatus = String(fileMeta.invite_status ?? fileMeta.status ?? 'pending');
     const inviteIsPaid = inviteStatus === 'paid';
@@ -262,6 +210,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     }, [message.text, fileMeta]);
 
     const [imageShown, loadImage] = useClickToLoad(mediaSrc, isOwn);
+    /** O'lchami ma'lum media — blok doim shu nisbatda (yuklanish holatlari o'rtasida sakrash yo'q). */
+    const hasMediaDims =
+        (Number((fileMeta as { width?: unknown }).width) || 0) > 0 &&
+        (Number((fileMeta as { height?: unknown }).height) || 0) > 0;
     /** Placeholder rasmning haqiqiy nisbatida (yuklangach sakramasin). */
     const thumbAspect = useMemo(() => {
         const w = Number((fileMeta as { width?: unknown }).width) || 0;
@@ -547,9 +499,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         messageType === 'group_join_invite' ||
         isGroupJoinInvite;
 
-    const isListingPayRequest =
-        messageType === 'listing_payment_request' ||
-        inviteKind === 'listing_payment_request';
 
     if (isService) {
         const isConsult =
@@ -596,9 +545,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         <p className="text-[12px] font-semibold text-[#c4b5fd] mb-0.5">
                             {String(fileMeta.groupName || t('group_label'))}
                         </p>
-                        <p className="text-[15px] font-bold text-white tabular-nums mb-2">
-                            {inviteMonthlyAmount} MALI / oy
-                        </p>
                         {inviteIsPaid ? (
                             <div className="rounded-xl bg-emerald-500/15 border border-emerald-400/30 px-3 py-2.5">
                                 <p className="text-[13px] font-semibold text-emerald-300">
@@ -618,7 +564,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                     onClick={() => void handleGroupJoinInvite()}
                                     className="w-full py-2.5 rounded-xl bg-[#8774e1] hover:bg-[#7b68d9] text-white text-[13px] font-semibold disabled:opacity-50"
                                 >
-                                    {groupJoinLoading ? '...' : t('group_join_pay_btn')}
+                                    {groupJoinLoading ? '...' : "Guruhga qo'shilish"}
                                 </button>
                             </>
                         ) : (
@@ -638,14 +584,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     inviteKind === 'panel_open' &&
                     !isMentorStyle && (
                         <div className="mt-2 w-full max-w-[280px] rounded-2xl border border-emerald-500/30 bg-emerald-950/40 p-3 shadow-lg">
-                            <div className="flex items-center justify-center gap-2 mb-3">
-                                <svg className="h-4 w-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span className="text-[13px] font-bold text-emerald-300 uppercase tracking-wide">
-                                    {t('consult_paid_badge')}
-                                </span>
-                            </div>
                             <button
                                 type="button"
                                 onClick={openConsultSession}
@@ -658,155 +596,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                             </button>
                         </div>
                     )}
-                {messageType === 'consult_panel_invite' &&
-                    (inviteKind === 'payment_request' || !!fileMeta.serviceAmountMali) &&
-                    inviteKind !== 'panel_open' &&
-                    inviteKind !== 'listing_payment_request' &&
-                    !isOwn &&
-                    !isMentorStyle ? (
-                        <div className="mt-2 w-full max-w-[280px] rounded-2xl border border-blue-500/30 bg-blue-950/40 p-3 shadow-lg">
-                            <p className="text-[13px] font-semibold text-blue-200 mb-2">
-                                {t('consult_payment_title')}
-                            </p>
-                            <p className="text-[15px] font-bold text-white tabular-nums mb-3">
-                                {Number(fileMeta.serviceAmountMali) || 0} MALI
-                            </p>
-                            <button
-                                type="button"
-                                disabled={payLoading}
-                                onClick={async () => {
-                                    const amount = Number(fileMeta.serviceAmountMali) || 0;
-                                    const expertId =
-                                        message.sender_id ||
-                                        (message as any).senderId;
-                                    if (!expertId || !chatId || amount <= 0) {
-                                        showError(t('server_error') as string);
-                                        return;
-                                    }
-                                    const ok = await confirm({
-                                        title: t('consult_payment_title') as any,
-                                        description: `${amount} MALI`,
-                                        confirmLabel: t('consult_pay_now_btn') as any,
-                                    });
-                                    if (!ok) return;
-                                    setPayLoading(true);
-                                    try {
-                                        const res = await apiFetch('/api/service/initiate', {
-                                            method: 'POST',
-                                            body: JSON.stringify({
-                                                expert_id: String(expertId),
-                                                amount_mali: amount,
-                                                chat_id: String(chatId),
-                                            }),
-                                        });
-                                        const data = await res.json().catch(() => ({}));
-                                        if (!res.ok) {
-                                            throw new Error(
-                                                typeof data?.message === 'string'
-                                                    ? data.message
-                                                    : t('server_error')
-                                            );
-                                        }
-                                        showSuccess(t('success_update') as string);
-                                        setPaidPanelOpen(true);
-                                    } catch (e) {
-                                        showError(
-                                            e instanceof Error ? e.message : (t('server_error') as string)
-                                        );
-                                    } finally {
-                                        setPayLoading(false);
-                                    }
-                                }}
-                                className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[13px] font-semibold disabled:opacity-50"
-                            >
-                                {payLoading ? '...' : t('consult_pay_now_btn')}
-                            </button>
-                        </div>
-                    ) : null}
-                {isListingPayRequest && !isOwn && (
-                    <div className="mt-2 w-full max-w-[280px] rounded-2xl border border-blue-500/30 bg-blue-950/40 p-3 shadow-lg">
-                        <p className="text-[13px] font-semibold text-blue-200 mb-2">
-                            {t('consult_payment_title')}
-                        </p>
-                        <p className="text-[15px] font-bold text-white tabular-nums mb-3">
-                            {Number(fileMeta.serviceAmountMali) || 0} MALI
-                        </p>
-                        <button
-                            type="button"
-                            disabled={payLoading || fileMeta.invite_status === 'paid'}
-                            onClick={async () => {
-                                const dealId = fileMeta.dealId != null ? String(fileMeta.dealId) : '';
-                                const amount = Number(fileMeta.serviceAmountMali) || 0;
-                                if (!dealId || amount <= 0) {
-                                    showError(t('server_error') as string);
-                                    return;
-                                }
-                                const ok = await confirm({
-                                    title: t('consult_payment_title') as any,
-                                    description: `${amount} MALI`,
-                                    confirmLabel: t('consult_pay_now_btn') as any,
-                                });
-                                if (!ok) return;
-                                setPayLoading(true);
-                                try {
-                                    const res = await apiFetch('/api/listing-deals/pay', {
-                                        method: 'POST',
-                                        body: JSON.stringify({ dealId }),
-                                    });
-                                    const data = await res.json().catch(() => ({}));
-                                    if (!res.ok) {
-                                        throw new Error(
-                                            typeof data?.message === 'string'
-                                                ? data.message
-                                                : t('server_error')
-                                        );
-                                    }
-                                    showSuccess(t('payment_phase_completed') as string);
-                                } catch (e) {
-                                    showError(
-                                        e instanceof Error ? e.message : (t('server_error') as string)
-                                    );
-                                } finally {
-                                    setPayLoading(false);
-                                }
-                            }}
-                            className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[13px] font-semibold disabled:opacity-50"
-                        >
-                            {payLoading
-                                ? '...'
-                                : fileMeta.invite_status === 'paid'
-                                  ? (t('payment_phase_completed') as string)
-                                  : (t('consult_pay_now_btn') as string)}
-                        </button>
-                    </div>
-                )}
                 {(messageType === 'lesson_start' || messageType === 'consult_panel_invite') && (() => {
                     if (isMentorStyle && messageType === 'consult_panel_invite') return null;
                     const inviteExpired =
                         inviteJoinExpired ||
                         fileMeta.invite_status === 'expired' ||
                         fileMeta.status === 'expired';
+                    // panel_open o'z tugmasiga ega; to'lov endi yo'q — boshqa takliflarda kirish tugmasi ko'rinadi.
                     const hideJoinForPayment =
-                        messageType === 'consult_panel_invite' &&
-                        (inviteKind === 'panel_open' ||
-                            inviteKind === 'payment_request' ||
-                            (Boolean(fileMeta.serviceAmountMali) && inviteKind !== 'panel_open' && !isOwn));
+                        messageType === 'consult_panel_invite' && inviteKind === 'panel_open';
                     if (hideJoinForPayment && !inviteExpired) return null;
-                    const lessonSubBlocked =
-                        messageType === 'lesson_start' &&
-                        !isOwn &&
-                        chatType === 'group' &&
-                        !!groupCreatorId &&
-                        String(groupCreatorId) !== String(currentUserId ?? '') &&
-                        mentorSubStatus != null &&
-                        !mentorSubStatus.active;
-                    const lessonSubLoading =
-                        messageType === 'lesson_start' &&
-                        !isOwn &&
-                        chatType === 'group' &&
-                        !!groupCreatorId &&
-                        String(groupCreatorId) !== String(currentUserId ?? '') &&
-                        mentorSubStatus == null;
+                    // To'lovsiz MVP: guruh darsiga kirish obunaga bog'liq emas.
+                    const lessonSubBlocked = false as boolean;
+                    const lessonSubLoading = false as boolean;
                     if (inviteExpired || lessonSubBlocked) {
                         return (
                             <div className="mt-1.5 flex flex-col items-center gap-0.5">
@@ -996,23 +798,41 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                             />
                         )}
 
-                        {messageType === 'image' && !imageShown && mediaSrc ? (
+                        {messageType === 'image' && mediaSrc && (hasMediaDims || !imageShown) ? (
                             <div className="message-bubble-body">
-                                {/* Avtomatik yuklash o'chiq: bosilganda chatning o'zida yuklanadi (Downloads ga emas). */}
-                                {/* Telegram: xira kichik nusxa + o'rtada dumaloq ⬇, burchakda vaqt */}
+                                {/* Bitta, doim bir xil nisbatdagi blok: xira nusxa fonda, ustida ⬇ → spinner,
+                                    rasm yuklangach ustida silliq paydo bo'ladi — chat sakramaydi. */}
                                 <button
                                     type="button"
-                                    className="relative w-[min(320px,70vw)] overflow-hidden rounded-[inherit] bg-gradient-to-br from-[#1f2a3a] to-[#0e1621] flex items-center justify-center"
+                                    className="relative block w-[min(320px,70vw)] overflow-hidden rounded-[inherit] bg-gradient-to-br from-[#1f2a3a] to-[#0e1621]"
                                     style={{ aspectRatio: thumbAspect }}
-                                    onClick={loadImage}
+                                    onClick={() => (imageShown ? onMediaClick?.(mediaSrc, 'image') : loadImage())}
                                 >
                                     {typeof fileMeta.thumb === 'string' && fileMeta.thumb ? (
                                         <img src={String(fileMeta.thumb)} alt="" className="absolute inset-0 w-full h-full object-cover blur-xl scale-110" />
                                     ) : null}
-                                    <span className="relative w-14 h-14 rounded-full bg-black/55 flex items-center justify-center text-white">
-                                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 5v13m0 0l-5-5m5 5l5-5" /></svg>
-                                    </span>
-                                    {videoSizeLabel ? (
+                                    {imageShown ? (
+                                        <img
+                                            src={mediaSrc}
+                                            alt=""
+                                            decoding="async"
+                                            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mediaLoaded ? 'opacity-100' : 'opacity-0'}`}
+                                            onLoad={(e) => { setMediaLoaded(true); onImageLoad?.(e); }}
+                                            onError={() => setMediaLoaded(true)}
+                                        />
+                                    ) : null}
+                                    {!imageShown || !mediaLoaded ? (
+                                        <span className="absolute inset-0 flex items-center justify-center">
+                                            <span className="relative w-14 h-14 rounded-full bg-black/55 flex items-center justify-center text-white">
+                                                {imageShown ? (
+                                                    <span className="h-8 w-8 rounded-full border-2 border-white/25 border-t-white animate-spin" />
+                                                ) : (
+                                                    <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 5v13m0 0l-5-5m5 5l5-5" /></svg>
+                                                )}
+                                            </span>
+                                        </span>
+                                    ) : null}
+                                    {!imageShown && videoSizeLabel ? (
                                         <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[11px]">{videoSizeLabel}</span>
                                     ) : null}
                                     <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[11px]">{displayTime}</span>
@@ -1051,6 +871,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                     <div className="px-4 py-2 text-sm text-white/90 border-t border-white/5">{String(fileMeta.caption)}</div>
                                 )}
                             </div>
+                        ) : messageType === 'video' && fileMeta.kind === 'video_note' ? (
+                            // Dumaloq video xabar (mobil ilovadan): bosilsa doiraning o'zida o'ynaydi.
+                            <VideoNoteCircle
+                                src={mediaSrc}
+                                thumb={typeof fileMeta.thumb === 'string' ? fileMeta.thumb : undefined}
+                                durationLabel={videoDurationLabel}
+                                time={displayTime}
+                            />
                         ) : messageType === 'video' ? (
                             <div className="message-bubble-body">
                                 <div
@@ -1245,3 +1073,66 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 };
 
 
+
+
+/** Telegram uslubidagi dumaloq video xabar (web). Video faqat bosilganda yuklanadi. */
+function VideoNoteCircle({
+    src,
+    thumb,
+    durationLabel,
+    time,
+}: {
+    src: string;
+    thumb?: string;
+    durationLabel?: string;
+    time?: string;
+}) {
+    const ref = React.useRef<HTMLVideoElement | null>(null);
+    const [active, setActive] = React.useState(false);
+    const [playing, setPlaying] = React.useState(false);
+    const toggle = () => {
+        if (!src) return;
+        if (!active) {
+            setActive(true);
+            setPlaying(true);
+            return;
+        }
+        const v = ref.current;
+        if (!v) return;
+        if (v.paused) {
+            void v.play();
+            setPlaying(true);
+        } else {
+            v.pause();
+            setPlaying(false);
+        }
+    };
+    return (
+        <button type="button" onClick={toggle} className="relative block w-[220px] h-[220px] rounded-full overflow-hidden bg-[#0e1621] my-1">
+            {thumb ? <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover" /> : null}
+            {active ? (
+                <video
+                    ref={ref}
+                    src={src}
+                    autoPlay
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onEnded={() => setPlaying(false)}
+                />
+            ) : null}
+            {!playing ? (
+                <span className="absolute inset-0 flex items-center justify-center">
+                    <span className="w-12 h-12 rounded-full bg-black/45 flex items-center justify-center text-white">
+                        <svg className="h-6 w-6 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                    </span>
+                </span>
+            ) : null}
+            {durationLabel ? (
+                <span className="absolute left-4 bottom-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[11px]">{durationLabel}</span>
+            ) : null}
+            {time ? (
+                <span className="absolute right-4 bottom-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[11px]">{time}</span>
+            ) : null}
+        </button>
+    );
+}

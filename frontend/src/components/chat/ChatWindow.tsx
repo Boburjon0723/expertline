@@ -1,5 +1,4 @@
 ﻿import React, { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from 'react';
-import SendCoinModal from './SendCoinModal';
 import MediaUploadModal from './MediaUploadModal';
 import MediaViewerOverlay from './MediaViewerOverlay';
 import { isBlockedAppPackage } from '@/lib/blocked-files';
@@ -19,7 +18,6 @@ import {
     isListingMarketplacePrivateChat,
 } from '@/lib/listing-chat';
 import { isListingChat, isMessagingUnlocked } from '@/lib/chat-consent';
-import ListingDealBar from './ListingDealBar';
 import { MentorGroupInviteBar } from './MentorGroupInviteBar';
 import ChatForwardModal from './ChatForwardModal';
 import ChatWindowHeader from './ChatWindowHeader';
@@ -34,7 +32,6 @@ import { getChatDraft, setChatDraft, clearChatDraft, getChatDraftReply, setChatD
 import { setChatTyping } from '@/lib/chat-typing-store';
 import { toggleChatMuted, syncChatPrefToServer } from '@/lib/chat-list-prefs';
 import { useChatListPrefs } from '@/hooks/useChatListPrefs';
-import { summarizeChat } from '@/lib/summarize';
 import { maliDB, OfflineMessage } from '@/lib/indexeddb';
 import {
     readChatMessageCache,
@@ -127,7 +124,6 @@ export default function ChatWindow({
     const [debugError, setDebugError] = useState<string | null>(null);
     const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
     const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
-    const [showSendCoinModal, setShowSendCoinModal] = useState(false);
     const [activeSession, setActiveSession] = useState<ServiceSessionPayload | null>(null);
     const [tradeData, setTradeData] = useState<TradeDetails | null>(null);
     const [isContact, setIsContact] = useState<boolean>(false);
@@ -209,40 +205,8 @@ export default function ChatWindow({
     const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
 
     // AI Summarization
-    const [isSummarizing, setIsSummarizing] = useState(false);
     const [chatSummary, setChatSummary] = useState<string | null>(null);
     const [summaryError, setSummaryError] = useState<string | null>(null);
-
-    const handleSummarizeChat = async () => {
-        if (chatSummary) {
-            setChatSummary(null);
-            return;
-        }
-        setIsSummarizing(true);
-        setSummaryError(null);
-
-        const textMessages = messages
-            .filter(m => m.type === 'text')
-            .slice(-50)
-            .map(m => `${m.senderName || (m.sender === 'me' ? t('me') : t('interlocutor'))}: ${m.text}`)
-            .join('. ');
-
-        if (!textMessages.trim()) {
-            setSummaryError(t('no_messages'));
-            setIsSummarizing(false);
-            return;
-        }
-
-        const summary = await summarizeChat(textMessages);
-        if (summary === "XIZMAT_BAND") {
-            setSummaryError(t('loading'));
-        } else if (summary) {
-            setChatSummary(summary);
-        } else {
-            setSummaryError(t('translation_error'));
-        }
-        setIsSummarizing(false);
-    };
 
     const toggleSelection = (msgId: string) => {
         setSelectedMessageIds(prev =>
@@ -2256,13 +2220,6 @@ export default function ChatWindow({
     const mentorDisplayName =
         [currentUser?.name, currentUser?.surname].filter(Boolean).join(' ').trim() ||
         String(currentUser?.name || 'Ustoz');
-    // Mentor: to'lov = guruh taklifi + oylik obuna. Escrow (Job Payment) faqat
-    // maslahat/yurist/psixolog e'lon chatlarida.
-    const showListingDealBar =
-        chat?.type === 'private' &&
-        isExpertListingChat(chat) &&
-        isListingExpertSide(chat, myUserId) &&
-        !isMentorMode;
 
     return (
         <div
@@ -2304,7 +2261,6 @@ export default function ChatWindow({
                 searchDateFrom={searchDateFrom}
                 searchDateTo={searchDateTo}
                 showMoreMenu={showMoreMenu}
-                isSummarizing={isSummarizing}
                 onBack={onBack}
                 onToggleInfo={onToggleInfo}
                 onCancelSelecting={() => { setIsSelecting(false); setSelectedMessageIds([]); }}
@@ -2326,7 +2282,6 @@ export default function ChatWindow({
                 onToggleMoreMenu={() => setShowMoreMenu(!showMoreMenu)}
                 onCloseMoreMenu={() => setShowMoreMenu(false)}
                 onStartSelecting={() => { setIsSelecting(true); setShowMoreMenu(false); }}
-                onSummarize={() => { handleSummarizeChat(); setShowMoreMenu(false); }}
                 onExportHistory={() => { handleExportHistory(); setShowMoreMenu(false); }}
                 onClearHistory={() => { handleClearHistory(); setShowMoreMenu(false); }}
                 onDeleteChat={() => { handleDeleteChat(); setShowMoreMenu(false); }}
@@ -2437,12 +2392,6 @@ export default function ChatWindow({
                 <div className="tg-chat-column">
                 {chat?.type === 'private' && showMentorGroupInvite && chat?.id && (
                     <MentorGroupInviteBar chatId={String(chat.id)} expertName={mentorDisplayName} />
-                )}
-                {showListingDealBar && (
-                    <ListingDealBar
-                        chat={chat}
-                        currentUserId={currentUser?.id != null ? String(currentUser.id) : undefined}
-                    />
                 )}
                 {chat?.type === 'channel' && !isChannelCreator && (
                     <div className="mb-2 flex h-12 items-center justify-center rounded-[24px] bg-[#212121] text-[16px] font-medium text-[#8774e1] shadow-[0_1px_8px_rgba(0,0,0,0.12)]">
