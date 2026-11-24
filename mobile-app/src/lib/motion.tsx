@@ -28,6 +28,15 @@ export function animateLayout(duration = 200) {
   });
 }
 
+/** Xabar o'chirilganda: o'chayotgani so'nadi, qolganlari silliq siljib bo'sh joyni yopadi. */
+export function animateRemoval(duration = 260) {
+  LayoutAnimation.configureNext({
+    duration,
+    update: { type: LayoutAnimation.Types.easeInEaseOut },
+    delete: { type: LayoutAnimation.Types.easeOut, property: LayoutAnimation.Properties.scaleXY },
+  });
+}
+
 /**
  * Klaviatura bilan bir xil egri chiziq: iOS da "keyboard" turi aynan tizim animatsiyasiga mos keladi,
  * shuning uchun yozish maydoni klaviaturadan oldinga sakramaydi.

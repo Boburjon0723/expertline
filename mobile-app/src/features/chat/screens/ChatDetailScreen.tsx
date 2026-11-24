@@ -104,7 +104,7 @@ import {
   type UploadInfo,
 } from "../../../lib/upload-queue";
 import { AlbumGrid } from "../components/AlbumGrid";
-import { animateLayout, configureKeyboardAnimation, PopIn } from "../../../lib/motion";
+import { animateLayout, animateRemoval, configureKeyboardAnimation, PopIn } from "../../../lib/motion";
 import { isBlockedAppPackage } from "../../../lib/blocked-files";
 import { UploadingMediaBubble } from "../components/UploadingMediaBubble";
 
@@ -1105,6 +1105,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
 
       const handleMessagesDeleted = (data: { chatId?: string; messageIds?: string[] }) => {
         if (!sameChatId(data.chatId, chatId) || !Array.isArray(data.messageIds)) return;
+        animateRemoval();
         removeMessagesLocally(
           chatId,
           data.messageIds.map(String)
@@ -1508,6 +1509,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           void (async () => {
             try {
               await deleteMessagesRequest(chatId, selectedMessageIds);
+              animateRemoval();
               removeMessagesLocally(chatId, selectedMessageIds);
               exitSelecting();
             } catch (e) {
@@ -2856,7 +2858,8 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             songFocusId === item.id && styles.bubbleSongFocus,
           ]}
         >
-           {bubbleBody}
+           {/* Belgilash rejimida ichki media (video/rasm/audio) bosilmasin — bosish xabarni tanlaydi */}
+           <View pointerEvents={isSelecting ? "none" : "auto"}>{bubbleBody}</View>
            {opening && (
              <View style={[styles.mediaPlaceholder, { borderRadius: 14 }]}>
                <ActivityIndicator color="#fff" style={styles.attachmentLoading} />
@@ -3478,6 +3481,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
                   void (async () => {
                     try {
                       await deleteMessagesRequest(chatId, [m.id]);
+                      animateRemoval();
                       removeMessagesLocally(chatId, [m.id]);
                     } catch (e) {
                       Alert.alert(
