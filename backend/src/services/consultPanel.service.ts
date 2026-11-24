@@ -403,7 +403,9 @@ export async function sendGroupJoinInvite(params: {
         return Number(process.env.MENTOR_MONTHLY_MALI || 100);
     })();
 
-    const content = `📚 **${expertName}** sizni **${group.name || 'guruh'}** ga taklif qildi. Guruhga qo'shilish uchun 1 oylik obuna (**${monthlyAmount} MALI**) talab etiladi.`;
+    // To'lovsiz MVP: taklifda narx yo'q, talaba bepul qo'shiladi.
+    void monthlyAmount;
+    const content = `📚 **${expertName}** sizni **${group.name || 'guruh'}** ga taklif qildi.`;
     const meta = {
         kind: 'group_join',
         groupId,
@@ -411,7 +413,6 @@ export async function sendGroupJoinInvite(params: {
         mentorId: expertId,
         sessionStyle: 'mentor',
         invite_status: 'pending',
-        monthlyAmount: Number(monthlyAmount),
     };
 
     const mentor = await UserModel.findById(expertId);

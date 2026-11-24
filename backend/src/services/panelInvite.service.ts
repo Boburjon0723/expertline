@@ -32,6 +32,28 @@ async function emitInviteMetadataUpdates(
 }
 
 /**
+ * Talaba shu guruhga ustozdan taklif olganmi: guruh egasi yuborgan group_join_invite xabari
+ * talaba qatnashgan (shaxsiy) chatda bormi. To'lovsiz MVP da guruhga qo'shilish shu bilan cheklanadi.
+ */
+export async function hasGroupJoinInvite(groupId: string, studentId: string, mentorId: string): Promise<boolean> {
+    const r = await pool.query(
+        `
+        SELECT 1 FROM messages m
+        WHERE m.type = 'group_join_invite'
+          AND m.metadata->>'groupId' = $1
+          AND m.sender_id = $3::uuid
+          AND EXISTS (
+            SELECT 1 FROM chat_participants cp
+            WHERE cp.chat_id = m.chat_id AND cp.user_id = $2::uuid
+          )
+        LIMIT 1
+        `,
+        [String(groupId), String(studentId), String(mentorId)]
+    );
+    return (r.rowCount ?? 0) > 0;
+}
+
+/**
  * Talaba guruhga obuna bilan qo‘shilgach — shaxsiy chatdagi group_join_invite
  * xabarlarini «paid» qiladi (mentor + talaba UI).
  */

@@ -820,7 +820,7 @@ export const getChatDetails = async (req: Request, res: Response) => {
     }
 };
 
-/** Obunasi bo'lgan talaba o'zini ustoz guruhiga qo'shadi */
+/** Ustozdan taklif olgan talaba o'zini guruhga qo'shadi (to'lovsiz MVP — obuna talab qilinmaydi). */
 export const joinGroupWithSubscription = async (req: Request, res: Response) => {
     try {
         const chatId = Array.isArray(req.params.chatId) ? req.params.chatId[0] : req.params.chatId;
@@ -841,8 +841,11 @@ export const joinGroupWithSubscription = async (req: Request, res: Response) => 
             return res.status(200).json({ message: 'Guruhga qo\'shildingiz', chat });
         }
 
-        const active = await TokenService.getActiveSubscription(currentUserId, mentorId);
-        if (!active) return res.status(403).json({ message: 'Obuna talab qilinadi. Avval ustozga obuna bo\'ling.' });
+        const { hasGroupJoinInvite } = await import('../../services/panelInvite.service');
+        const invited =
+            String(mentorId) === String(currentUserId) ||
+            (await hasGroupJoinInvite(String(chatId), String(currentUserId), String(mentorId)));
+        if (!invited) return res.status(403).json({ message: 'Bu guruhga qo\'shilish uchun ustoz taklifi kerak.' });
 
         await ChatModel.addParticipant(chatId, currentUserId);
         await safeDelCache(`user_chats:${currentUserId}`);
@@ -1497,17 +1500,9 @@ export const checkChatInvite = async (req: Request, res: Response) => {
             [chat.id]
         );
 
-        const mentorId = chat.creator_id ? String(chat.creator_id) : null;
-        const requiresSubscription = chat.type === 'group' && !!mentorId;
-        let hasSubscription = false;
-        if (requiresSubscription && currentUserId && mentorId) {
-            if (String(currentUserId) === mentorId) {
-                hasSubscription = true;
-            } else {
-                const active = await TokenService.getActiveSubscription(currentUserId, mentorId);
-                hasSubscription = !!active;
-            }
-        }
+        // To'lovsiz MVP: havola o'zi taklif — obuna talab qilinmaydi.
+        const requiresSubscription = false;
+        const hasSubscription = true;
 
         const canJoin =
             !alreadyMember &&
@@ -1560,18 +1555,8 @@ export const joinChatInvite = async (req: Request, res: Response) => {
             });
         }
 
+        // To'lovsiz MVP: havola orqali qo'shilishda obuna talab qilinmaydi.
         const mentorId = chat.creator_id ? String(chat.creator_id) : null;
-        if (chat.type === 'group' && mentorId && String(currentUserId) !== mentorId) {
-            const active = await TokenService.getActiveSubscription(currentUserId, mentorId);
-            if (!active) {
-                return res.status(403).json({
-                    status: 'needs_subscription',
-                    message: 'Obuna talab qilinadi. Avval ustozga obuna bo\'ling.',
-                    chatId: chat.id,
-                    mentorId,
-                });
-            }
-        }
 
         await ChatModel.addParticipant(chat.id, currentUserId);
         await safeDelCache(`user_chats:${currentUserId}`);
