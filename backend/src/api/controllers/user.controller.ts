@@ -146,8 +146,9 @@ export const updateProfile = async (req: Request, res: Response) => {
 
             if (is_expert === true) {
                 // Basic validation for becoming an expert
-                if (!profession || !specialization || !experience_years || !hourly_rate) {
-                    throw new Error('Expert profiles require profession, specialization, experience, and hourly rate');
+                // Narx va tajriba endi so'ralmaydi: to'lov tizimi olib tashlangan, tajriba rezyumeda.
+                if (!profession || !specialization) {
+                    throw new Error('Expert profiles require profession and specialization');
                 }
             }
 
