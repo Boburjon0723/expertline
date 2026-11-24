@@ -4,6 +4,7 @@ import { Audio } from "expo-av";
 import { Camera, CameraView } from "expo-camera";
 import { Camera as CameraIcon, ChevronLeft, ChevronUp, Lock, Mic, Pause, Play, Send, Trash2 } from "lucide-react-native";
 import { ensureSpeakerPlayback, holdSongForVideo, releaseSongFromVideo } from "../../../lib/mobile-song-player";
+import { GlassBackground } from "../../../components/GlassBackground";
 
 /**
  * Telegram uslubidagi ovozli xabar tugmasi:
@@ -581,11 +582,14 @@ export function TelegramVoiceRecorder({
           {...pan.panHandlers}
           style={[
             styles.btn,
+            // Kutish holatida — shisha doira (iMe); yozishda — ko'k doira.
+            !recording && styles.btnGlass,
             disabled && { opacity: 0.5 },
             // Yozishda kattalashadi va barmoq bilan birga siljiydi (bitta transform ichida).
             recording ? { transform: [{ translateX: dx }, { translateY: dy }, { scale: 1.3 }] } : null,
           ]}
         >
+          {!recording ? <GlassBackground tint="rgba(255,255,255,0.07)" /> : null}
           {mode === "video" ? (
             <CameraIcon color="#fff" size={recording ? 26 : 20} />
           ) : (
@@ -679,6 +683,15 @@ const styles = StyleSheet.create({
     zIndex: 7,
   },
   btnBig: { transform: [{ scale: 1.25 }] },
+  btnGlass: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "transparent",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
+    overflow: "hidden",
+  },
   noteLayer: {
     position: "absolute",
     left: -40,

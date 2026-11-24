@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { BlurView } from "expo-blur";
+import { GlassBackground } from "../../../components/GlassBackground";
 import {
   Bell,
   BellOff,
@@ -78,8 +78,8 @@ export function ChatHeaderMoreMenu({
             }}
           >
             <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
-              {/* Shaffof xira fon (Telegram/iOS uslubi) */}
-              <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+              {/* Shaffof xira fon — Sozlamalardagi panel xiraligiga bog'liq */}
+              <GlassBackground tint="rgba(30,30,30,0.35)" />
               <MenuItem Icon={CircleCheck} label={labels.select} onPress={() => run(onSelect)} />
               <MenuItem
                 Icon={muted ? Bell : BellOff}
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   menu: {
     minWidth: 230,
     borderRadius: 14,
-    backgroundColor: "rgba(30,30,30,0.55)",
+    backgroundColor: "transparent",
     overflow: "hidden",
     paddingVertical: 6,
     shadowColor: "#000",

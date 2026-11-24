@@ -27,6 +27,7 @@ import { Chat, Message } from "../types";
 import { messageCopyText, messageReplyPreview, looksLikeMediaUrl } from "../message-preview";
 import { setActionMessage } from "../message-action-store";
 import { ChatBackground } from "../../../components/ChatBackground";
+import { GlassBackground } from "../../../components/GlassBackground";
 import { Video, ResizeMode, Audio } from 'expo-av';
 import { startOutgoingRingback, stopCallSounds } from '../../../lib/call-sounds';
 import * as FileSystem from "expo-file-system/legacy";
@@ -852,6 +853,9 @@ export function ChatDetailScreen({ route, navigation }: Props) {
   const [songFocusId, setSongFocusId] = useState("");
   const [openingFileId, setOpeningFileId] = useState<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  /** Suzuvchi tepa va pastki qatlamlar balandligi — ro'yxat ular ostidan o'tadi, shuning uchun bo'shliq. */
+  const [topBarH, setTopBarH] = useState(0);
+  const [bottomBarH, setBottomBarH] = useState(0);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [playerVisible, setPlayerVisible] = useState(false);
   const [imageVisible, setImageVisible] = useState(false);
@@ -2807,7 +2811,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
   const busy = sending || uploadingFile;
 
   const renderChatBody = () => (
-    <View style={[styles.chatBody, { paddingBottom: keyboardBottomInset }]}>
+    <View style={styles.chatBody}>
       {messages.length === 0 && isLoadingChats ? (
         <View style={styles.centerWrap}>
           <ActivityIndicator size="large" color="#3b82f6" />
@@ -2835,7 +2839,14 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           }}
           keyboardDismissMode="on-drag"
           style={styles.flex1}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            {
+              paddingTop: topBarH + 10,
+              paddingBottom: (isSelecting ? 0 : bottomBarH) + keyboardBottomInset + 12,
+            },
+          ]}
+          scrollIndicatorInsets={{ top: topBarH, bottom: bottomBarH + keyboardBottomInset }}
           showsVerticalScrollIndicator={false}
           onScroll={(e) => {
             const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
@@ -2852,7 +2863,11 @@ export function ChatDetailScreen({ route, navigation }: Props) {
         />
       )}
       {!isSelecting ? (
-      <View style={styles.inputArea}>
+      // Pastki qatlam: chat ustida suzadi (xira shisha), klaviatura bilan birga ko'tariladi.
+      <View
+        style={[styles.inputArea, styles.bottomOverlay, { bottom: 0, paddingBottom: keyboardBottomInset }]}
+        onLayout={(e) => setBottomBarH(e.nativeEvent.layout.height - keyboardBottomInset)}
+      >
         {editingMessage ? (
           <View style={styles.editBar}>
             <View style={styles.editBarAccent} />
@@ -2925,6 +2940,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             disabled={busy || composerLocked}
             hitSlop={8}
           >
+            <GlassBackground tint="rgba(255,255,255,0.07)" />
             {uploadingFile ? (
               <ActivityIndicator color="rgba(255,255,255,0.7)" size="small" />
             ) : (
@@ -2933,6 +2949,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           </Pressable>
 
           <View style={styles.inputContainer}>
+            <GlassBackground tint="rgba(255,255,255,0.07)" />
             <TextInput
               style={styles.input}
               placeholder={editingMessage ? "Xabarni tahrilang..." : "Xabar yozing..."}
@@ -2993,6 +3010,10 @@ export function ChatDetailScreen({ route, navigation }: Props) {
   return (
     <View style={styles.container}>
       <ChatBackground isChatWindow={true}>
+        {/* Tepa qatlam (sarlavha + qidiruv + qadalgan): chat ustida suzadi, ostida xira shisha fon —
+            xabarlar uning ostidan o'tib xira ko'rinadi (Telegram). */}
+        <View style={styles.topOverlay} onLayout={(e) => setTopBarH(e.nativeEvent.layout.height)}>
+        <GlassBackground />
         <View style={[styles.headerWrap, { paddingTop: insets.top + 10 }]}>
         <View style={styles.header}>
           {isSelecting ? (
@@ -3216,6 +3237,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             </Pressable>
           </View>
         ) : null}
+        </View>
 
         <ChatHeaderMoreMenu
           visible={showMoreMenu}
@@ -3334,7 +3356,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
 
         <View style={styles.songLayer}>
           <View style={styles.flex1}>{renderChatBody()}</View>
-          <View style={styles.songOverlay} pointerEvents="box-none">
+          <View style={[styles.songOverlay, { top: topBarH }]} pointerEvents="box-none">
             <ChatSongMiniBar />
           </View>
         </View>
@@ -3514,10 +3536,29 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
   },
+  topOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 30,
+    elevation: 12,
+    overflow: "hidden",
+  },
+  bottomOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    overflow: "visible",
+    // iMe/Telegram: umumiy panel yo'q — har bir element o'zi shisha pufakcha.
+    backgroundColor: "transparent",
+    borderTopWidth: 0,
+  },
   headerWrap: {
     zIndex: 30,
     elevation: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "transparent",
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(255,255,255,0.14)",
   },
@@ -4269,12 +4310,14 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#17212b",
-    borderRadius: 22,
+    backgroundColor: "transparent",
+    borderRadius: 24,
     paddingHorizontal: 10,
     minHeight: 48,
     maxHeight: 120,
-    borderWidth: 0,
+    // Shisha pufakcha: xira fon (GlassBackground) + nozik yorug' chegara
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
     overflow: "hidden",
   },
   input: {
@@ -4288,13 +4331,15 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   attachmentButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 2,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "transparent",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
   },
   sendButton: {
     width: 48,
