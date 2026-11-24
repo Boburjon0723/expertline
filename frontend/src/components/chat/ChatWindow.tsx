@@ -2,6 +2,7 @@
 import SendCoinModal from './SendCoinModal';
 import MediaUploadModal from './MediaUploadModal';
 import MediaViewerOverlay from './MediaViewerOverlay';
+import { isBlockedAppPackage } from '@/lib/blocked-files';
 import { useSocket } from '@/context/SocketContext';
 import { useNotification } from '@/context/NotificationContext';
 import { useConfirm } from '@/context/ConfirmContext';
@@ -1681,12 +1682,21 @@ export default function ChatWindow({
         return () => window.removeEventListener('panel_jump_message', handler);
     }, [chat?.id]);
 
+    /** APK va boshqa ilova paketlarini olib tashlaydi (ogohlantirish bilan). */
+    const withoutBlockedFiles = (files: File[]): File[] => {
+        const allowed = files.filter((f) => !isBlockedAppPackage(f));
+        if (allowed.length < files.length) {
+            showError("APK va boshqa ilova o'rnatish fayllarini yuborib bo'lmaydi.");
+        }
+        return allowed;
+    };
+
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, isFolder = false) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
         if (chat && isListingChat(chat) && !isMessagingUnlocked(chat)) return;
         setPendingCaption('');
-        setPendingFiles(Array.from(files));
+        setPendingFiles(withoutBlockedFiles(Array.from(files)));
         if (e.target) e.target.value = '';
     };
 
@@ -1704,8 +1714,10 @@ export default function ChatWindow({
                     chatInputRef.current.style.height = 'auto';
                 }
             }
-            setPendingFiles((prev) => [...prev, ...files]);
+            const allowed = withoutBlockedFiles(files);
+            if (allowed.length) setPendingFiles((prev) => [...prev, ...allowed]);
         },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         [chat, inputValue, setComposerValue]
     );
 
@@ -1825,8 +1837,26 @@ export default function ChatWindow({
                 setComposerValue('');
                 clearChatDraft(chat?.id);
             }
-            setPendingFiles(Array.from(e.dataTransfer.files));
+            setPendingFiles(withoutBlockedFiles(Array.from(e.dataTransfer.files)));
         }
+    };
+
+    /**
+     * Ovozli xabar formati: AAC (.m4a) birinchi — iPhone ilovasi (AVPlayer) webm/opus ni ijro eta olmaydi.
+     * Brauzer AAC yozolmasa (masalan Firefox) — webm.
+     */
+    const pickVoiceFormat = (): { mimeType?: string; ext: string; type: string } => {
+        const candidates: { mimeType: string; ext: string; type: string }[] = [
+            { mimeType: 'audio/mp4;codecs=mp4a.40.2', ext: 'm4a', type: 'audio/mp4' },
+            { mimeType: 'audio/mp4', ext: 'm4a', type: 'audio/mp4' },
+            { mimeType: 'audio/webm;codecs=opus', ext: 'webm', type: 'audio/webm' },
+            { mimeType: 'audio/webm', ext: 'webm', type: 'audio/webm' },
+        ];
+        if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
+            const hit = candidates.find((c) => MediaRecorder.isTypeSupported(c.mimeType));
+            if (hit) return hit;
+        }
+        return { ext: 'webm', type: 'audio/webm' };
     };
 
     const startRecording = async () => {
@@ -1835,7 +1865,8 @@ export default function ChatWindow({
         if (chat && isListingChat(chat) && !isMessagingUnlocked(chat)) return;
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream);
+            const fmt = pickVoiceFormat();
+            const mediaRecorder = new MediaRecorder(stream, fmt.mimeType ? { mimeType: fmt.mimeType } : undefined);
             mediaRecorderRef.current = mediaRecorder;
             audioChunksRef.current = [];
             recordingCancelledRef.current = false;
@@ -1852,9 +1883,14 @@ export default function ChatWindow({
                     recordingCancelledRef.current = false;
                     return;
                 }
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                // Haqiqiy yozilgan format (Safari o'zi mp4 tanlashi mumkin) bo'yicha nom va MIME.
+                const actual = (mediaRecorder.mimeType || fmt.mimeType || fmt.type).toLowerCase();
+                const isMp4 = actual.includes('mp4') || actual.includes('aac');
+                const voiceType = isMp4 ? 'audio/mp4' : 'audio/webm';
+                const voiceExt = isMp4 ? 'm4a' : 'webm';
+                const audioBlob = new Blob(audioChunksRef.current, { type: voiceType });
                 if (audioBlob.size < 64) return;
-                const file = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+                const file = new File([audioBlob], `voice_${Date.now()}.${voiceExt}`, { type: voiceType });
 
                 setIsUploadingMedia(true);
                 const { uploadFileWithProgress } = await import('@/lib/upload');
@@ -1886,7 +1922,10 @@ export default function ChatWindow({
                         });
                         return sortChatMessagesLocal([...prev, row]);
                     });
-                } catch (err) { console.error("Voice upload error:", err); }
+                } catch (err) {
+                    console.error("Voice upload error:", err);
+                    showError(t('upload_error'));
+                }
                 finally { setIsUploadingMedia(false); }
             };
 

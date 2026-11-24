@@ -96,6 +96,9 @@ import { CachedImage } from "../../../components/CachedImage";
 import { API_URL } from "../../../lib/config";
 import { setCurrentChatId, getSocket } from "../../../lib/socket";
 import { decryptMessage } from "../../../lib/e2e-chat";
+import { enqueueChatUpload, type UploadInfo } from "../../../lib/upload-queue";
+import { isBlockedAppPackage } from "../../../lib/blocked-files";
+import { UploadingMediaBubble } from "../components/UploadingMediaBubble";
 
 const VideoPlayerModal = ({ visible, uri, onClose }: { visible: boolean; uri: string | null; onClose: () => void }) => {
   const local = useCachedMedia(uri, "video", true);
@@ -1884,40 +1887,13 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     };
   }, []);
 
-  const uploadAndSendLocalFile = useCallback(
-    async (
-      uri: string,
-      filename: string,
-      mimeType: string,
-      extra?: { forceType?: OutgoingMessageType; caption?: string; size?: number }
-    ) => {
-      if (!chatId || sending || uploadingFile) return;
-      setUploadingFile(true);
-      setError(null);
-      try {
-        const url = await uploadChatFileRequest(uri, filename, mimeType);
-        const typ = extra?.forceType || messageTypeFromMime(mimeType);
-        await putLocalInMediaCache(url, uri, mimeType);
-        const saved = await sendMessageRequest(chatId, url, typ, {
-          metadata: {
-            fileName: filename,
-            originalname: filename,
-            ...(extra?.size ? { size: extra.size } : {}),
-            ...(extra?.caption ? { caption: extra.caption } : {}),
-          },
-        });
-        addMessageLocally(chatId, saved);
-        setTimeout(scrollToEnd, 120);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Fayl yuborilmadi");
-      } finally {
-        setUploadingFile(false);
-      }
-    },
-    [chatId, sending, uploadingFile, scrollToEnd, addMessageLocally]
-  );
-
-  const queuePendingFiles = useCallback(async (items: PendingSendFile[]) => {
+  const queuePendingFiles = useCallback(async (picked: PendingSendFile[]) => {
+    // Android ilova paketlari (APK va h.k.) yuborilmaydi — server ham rad etadi.
+    const items = picked.filter((it) => !isBlockedAppPackage(it.name, it.mime));
+    if (items.length < picked.length) {
+      Alert.alert("Ruxsat etilmagan fayl", "APK va boshqa ilova o'rnatish fayllarini yuborib bo'lmaydi.");
+    }
+    if (!items.length) return;
     const withSize: PendingSendFile[] = [];
     for (const it of items) {
       let size = it.size;
@@ -2005,20 +1981,28 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     }
   }, [chatId, queuePendingFiles]);
 
+  // Telegram uslubi: oyna darhol yopiladi, har bir fayl chatda xabar bo'lib paydo bo'ladi va
+  // umumiy navbatda yuklanadi (chatdan chiqilsa ham davom etadi).
   const confirmPendingSend = useCallback(
-    async (caption: string, asDocument?: boolean) => {
+    (caption: string, asDocument?: boolean) => {
+      if (!chatId) return;
       const batch = [...pendingSendFiles];
       setPendingSendFiles([]);
-      for (let i = 0; i < batch.length; i++) {
-        const f = batch[i];
-        await uploadAndSendLocalFile(f.uri, f.name, f.mime, {
-          caption: i === 0 ? caption : undefined,
+      batch.forEach((f, i) => {
+        enqueueChatUpload({
+          chatId,
+          senderId: currentUserId,
+          uri: f.uri,
+          name: f.name,
+          mime: f.mime,
           size: f.size,
+          caption: i === 0 && caption ? caption : undefined,
           ...(asDocument ? { forceType: "file" as const } : {}),
         });
-      }
+      });
+      setTimeout(scrollToEnd, 120);
     },
-    [pendingSendFiles, uploadAndSendLocalFile]
+    [chatId, pendingSendFiles, currentUserId, scrollToEnd]
   );
 
   const openAttachMenu = useCallback(() => {
@@ -2300,6 +2284,8 @@ export function ChatDetailScreen({ route, navigation }: Props) {
 
     const isMe = currentUserId.length > 0 && item.senderId === currentUserId;
     const hasAttachment = Boolean(item.remoteFileUrl);
+    /** Yuklanayotgan media (lib/upload-queue) — chatda darhol, ustida jarayon. */
+    const uploadInfo = (item.metadata?.upload as UploadInfo | undefined) || null;
     const opening = openingFileId === item.id;
     
     // Birlashish logikasi (Grouping)
@@ -2373,6 +2359,13 @@ export function ChatDetailScreen({ route, navigation }: Props) {
                 : item.parentPreview.text || "…"}
             </Text>
           </View>
+        ) : null}
+        {uploadInfo ? (
+          <UploadingMediaBubble
+            tempId={item.id}
+            info={uploadInfo}
+            timeLabel={!displayText ? String(item.timestamp || "") : undefined}
+          />
         ) : null}
         {isSticker && stickerUri ? (
           <View style={styles.stickerWrap}>
@@ -3561,7 +3554,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           onChangeFiles={setPendingSendFiles}
           onAdd={() => void pickAndSendFile()}
           onCancel={() => setPendingSendFiles([])}
-          onSend={(caption, asDocument) => void confirmPendingSend(caption, asDocument)}
+          onSend={(caption, asDocument) => confirmPendingSend(caption, asDocument)}
           sending={uploadingFile}
         />
       ) : null}

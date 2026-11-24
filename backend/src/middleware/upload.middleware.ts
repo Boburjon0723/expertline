@@ -46,6 +46,17 @@ const EXT_MIME: Record<string, string> = {
     mp4: 'video/mp4',
 };
 
+/** Android ilova paketlari — chatda yuborish taqiqlangan (zararli dastur tarqatish xavfi). */
+const BLOCKED_EXT = new Set(['apk', 'apks', 'xapk', 'apkm', 'aab']);
+const BLOCKED_MIME = new Set(['application/vnd.android.package-archive', 'application/vnd.apk']);
+export const BLOCKED_FILE_MESSAGE = "APK va boshqa ilova o'rnatish fayllarini yuborib bo'lmaydi.";
+
+export function isBlockedUpload(name?: string, mime?: string): boolean {
+    const ext = path.extname(String(name || '')).replace('.', '').toLowerCase();
+    if (BLOCKED_EXT.has(ext)) return true;
+    return BLOCKED_MIME.has(String(mime || '').trim().toLowerCase());
+}
+
 export function mimeFromFilename(name?: string, declaredMime?: string): string {
     let declared = String(declaredMime || '').trim().toLowerCase();
     // Noto‘g‘ri / eski mobile MIME
@@ -89,6 +100,10 @@ export const upload = multer({
             file.mimetype = mimeFromFilename(file.originalname);
         } else {
             file.mimetype = mimeFromFilename(file.originalname, file.mimetype);
+        }
+        if (isBlockedUpload(file.originalname, file.mimetype)) {
+            cb(new Error(BLOCKED_FILE_MESSAGE));
+            return;
         }
         cb(null, true);
     },

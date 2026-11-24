@@ -28,7 +28,11 @@ interface ChatState {
 const LEGACY_CHATS = "@expertline_chats";
 const legacyMessagesKey = (chatId: string) => `@expertline_messages_${chatId}`;
 
-async function persistMessages(chatId: string, messages: Message[]) {
+/** Yuklanayotgan media uchun vaqtinchalik xabar (lib/upload-queue). Keshga yozilmaydi. */
+const isLocalUpload = (m: Message) => String(m.id).startsWith("local_");
+
+async function persistMessages(chatId: string, all: Message[]) {
+  const messages = all.filter((m) => !isLocalUpload(m));
   await writeMessagesToCache(chatId, messages);
   try {
     await AsyncStorage.setItem(legacyMessagesKey(chatId), JSON.stringify(messages));
@@ -110,9 +114,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     try {
       const serverMessages = await getMessagesRequest(id);
-      set((state) => ({
-        messages: { ...state.messages, [id]: serverMessages },
-      }));
+      set((state) => {
+        // Hali yuklanayotgan media xabarlari server ro'yxatida yo'q — ularni saqlab qolamiz.
+        const pending = (state.messages[id] || []).filter(isLocalUpload);
+        return { messages: { ...state.messages, [id]: [...serverMessages, ...pending] } };
+      });
       await persistMessages(id, serverMessages);
     } catch (error) {
       console.warn(`Messages sync failed for ${id} (Offline mode active):`, error);

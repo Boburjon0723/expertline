@@ -257,6 +257,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         return `${base}${raw.startsWith('/') ? '' : '/'}${raw}`;
     }, [message.text, fileMeta]);
 
+    const videoSizeLabel = useMemo(() => {
+        const n = Number((fileMeta as { size?: unknown }).size) || 0;
+        if (n <= 0) return '';
+        return n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    }, [fileMeta]);
+
     const kind = useMemo(
         () =>
             classifyTelegramMessage({
@@ -1019,11 +1025,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                     className="video-wrapper relative cursor-pointer group/video"
                                     onClick={() => onMediaClick?.(mediaSrc, 'video')}
                                 >
-                                    <video preload="metadata" src={mediaSrc || undefined} className="pointer-events-none" />
-                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/video:opacity-100 transition-opacity bg-black/20 pointer-events-none rounded-[inherit]">
-                                        <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 pointer-events-auto">
-                                            <svg className="h-6 w-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                    {/* Telegram uslubi: video chatda yuklanmaydi (iPhone .MOV da preload="metadata"
+                                        ham butun faylni tortardi) — faqat bosilganda ko'ruvchida ochiladi. */}
+                                    <div className="w-[min(320px,70vw)] aspect-video rounded-[inherit] bg-gradient-to-br from-[#1f2a3a] to-[#0e1621] flex items-center justify-center">
+                                        <div className="w-14 h-14 rounded-full bg-black/45 group-hover/video:bg-black/60 transition-colors flex items-center justify-center border border-white/20">
+                                            <svg className="h-7 w-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                                         </div>
+                                    </div>
+                                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/50 text-white text-[11px] font-medium pointer-events-none">
+                                        {videoSizeLabel ? `VIDEO · ${videoSizeLabel}` : 'VIDEO'}
                                     </div>
                                 </div>
                                 {fileMeta.caption != null && String(fileMeta.caption) !== '' && (
