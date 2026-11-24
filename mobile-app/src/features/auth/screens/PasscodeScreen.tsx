@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, Pressable, Alert, Vibration } from "react-native";
+import { StyleSheet, View, Text, Pressable, Alert, Vibration, BackHandler } from "react-native";
 import { Lock, Delete } from "lucide-react-native";
 import * as SecureStore from 'expo-secure-store';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuthStore } from "../store";
 
 interface PasscodeScreenProps {
   navigation: any;
@@ -17,6 +18,13 @@ export function PasscodeScreen({ navigation, route }: PasscodeScreenProps) {
   const [newPasscode, setNewPasscode] = useState("");
   
   const PASSCODE_KEY = 'app_passcode_key';
+
+  // Qulf rejimida Android "orqaga" tugmasi kodni chetlab o'tmasin.
+  useEffect(() => {
+    if (mode !== 'unlock') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [mode]);
 
   useEffect(() => {
     if (passcode.length === 4) {
@@ -46,7 +54,11 @@ export function PasscodeScreen({ navigation, route }: PasscodeScreenProps) {
       if (passcode === savedPasscode) {
         if (route.params?.onSuccess) {
            route.params.onSuccess();
+        } else if (navigation.canGoBack()) {
+           // Ilovaga qaytilganda qulflangan — foydalanuvchi turgan joyiga (chat, sozlamalar...) qaytadi.
+           navigation.goBack();
         } else {
+           // Ilova ochilishida qulf — asosiy sahifa.
            navigation.replace("Messages");
         }
       } else {
@@ -54,6 +66,28 @@ export function PasscodeScreen({ navigation, route }: PasscodeScreenProps) {
         setPasscode("");
       }
     }
+  };
+
+  /** Kodni unutganda yagona chiqish yo'li: hisobdan chiqish va kodni o'chirish, keyin parol bilan qayta kirish. */
+  const onForgot = () => {
+    Alert.alert(
+      "Kodni unutdingizmi?",
+      "Hisobingizdan chiqasiz va ekran kodi o'chiriladi. Telefon raqam va parol bilan qayta kirishingiz kerak bo'ladi.",
+      [
+        { text: "Bekor qilish", style: "cancel" },
+        {
+          text: "Chiqish",
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              await SecureStore.deleteItemAsync(PASSCODE_KEY);
+              await useAuthStore.getState().logout();
+              navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+            })();
+          },
+        },
+      ]
+    );
   };
 
   const onPressNumber = (num: string) => {
@@ -121,6 +155,12 @@ export function PasscodeScreen({ navigation, route }: PasscodeScreenProps) {
           </View>
         ))}
       </View>
+
+      {mode === 'unlock' && (
+        <Pressable style={styles.cancelBtn} onPress={onForgot}>
+           <Text style={styles.cancelText}>Kodni unutdingizmi?</Text>
+        </Pressable>
+      )}
 
       {mode === 'set' && !confirmMode && (
         <Pressable style={styles.cancelBtn} onPress={() => navigation.goBack()}>

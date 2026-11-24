@@ -4,7 +4,7 @@ import { useAuthLocale } from "../../auth/locale";
 import { useAuthStore } from "../../auth/store";
 import { getSocket } from "../../../lib/socket";
 import { getLiveKitTokenRequest } from "../service";
-import { navigationRef } from "../../../lib/navigationRef";
+import { isAppLocked, navigationRef } from "../../../lib/navigationRef";
 import { TelegramCallScreen, CallVideoStage, CallMediaSync, CallPeerLeftWatch } from "./TelegramCallScreen";
 import { holdSongForVideo, releaseSongFromVideo } from "../../../lib/mobile-song-player";
 import { ensureCallMediaPermissions } from "../../../lib/call-media-permissions";
@@ -237,7 +237,8 @@ export function GlobalCallOverlay() {
         signal: { type: "livekit" },
       });
     }
-    if (room && navigationRef.isReady()) {
+    // Qulf ochiq bo'lsa chatga o'tmaymiz (qo'ng'iroq baribir ulanadi, ekrani qulf ustida turadi).
+    if (room && navigationRef.isReady() && !isAppLocked()) {
       try {
         navigationRef.navigate("ChatDetail", {
           chatId: String(room),

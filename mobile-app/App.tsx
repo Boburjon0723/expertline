@@ -69,9 +69,13 @@ import { AppState } from 'react-native';
 
 type BootRoute = "Login" | "Messages" | "Passcode";
 
+/** Fonda shuncha vaqt turgandan keyin qaytilganda kod so'raladi (Telegram'dagi "1 daqiqadan keyin"). */
+const LOCK_AFTER_MS = 60_000;
+const NO_LOCK_ROUTES = new Set(["Passcode", "Login", "Register"]);
+
 export default function App() {
-  const appState = React.useRef(AppState.currentState);
-  const lockTriggered = React.useRef(false);
+  /** Ilova fonga o'tgan vaqt (ms); faol bo'lsa null. */
+  const backgroundAt = React.useRef<number | null>(null);
   const [routeName, setRouteName] = React.useState("");
   const isBootstrapping = useAuthStore((s) => s.isBootstrapping);
   const token = useAuthStore((s) => s.token);
@@ -114,30 +118,27 @@ export default function App() {
       }
     });
 
+    // Ekran qulfi faqat ilova haqiqatan fonga o'tib, u yerda LOCK_AFTER_MS dan ko'p turganda.
+    // "inactive" hisobga olinmaydi: iOS da ruxsat oynalari, fayl/rasm tanlash, Control Center,
+    // bildirishnoma pardasi va qo'ng'iroq ham ilovani vaqtincha "inactive" qiladi.
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
+      if (nextAppState === 'background') {
+        if (backgroundAt.current == null) backgroundAt.current = Date.now();
+      } else if (nextAppState === 'active') {
+        const since = backgroundAt.current;
+        backgroundAt.current = null;
+        if (since == null || Date.now() - since < LOCK_AFTER_MS) return;
         const passcode = await SecureStore.getItemAsync('app_passcode_key');
         const hasToken = !!useAuthStore.getState().token;
-        if (
-          passcode &&
-          hasToken &&
-          !lockTriggered.current &&
-          navigationRef.isReady()
-        ) {
-          const current = navigationRef.getCurrentRoute()?.name;
-          if (current && current !== "Passcode" && current !== "Login" && current !== "Register") {
-            lockTriggered.current = true;
-            navigationRef.navigate("Passcode" as never, { mode: "unlock" } as never);
-          }
+        if (!passcode || !hasToken || !navigationRef.isReady()) return;
+        const current = navigationRef.getCurrentRoute()?.name;
+        if (current && !NO_LOCK_ROUTES.has(current)) {
+          (navigationRef as unknown as { navigate: (name: string, params?: object) => void }).navigate(
+            "Passcode",
+            { mode: "unlock" }
+          );
         }
       }
-      if (nextAppState === "background" || nextAppState === "inactive") {
-        lockTriggered.current = false;
-      }
-      appState.current = nextAppState;
     });
 
     return () => {
@@ -203,7 +204,7 @@ export default function App() {
           name="Passcode"
           component={PasscodeScreen}
           initialParams={{ mode: "unlock" }}
-          options={{ presentation: 'fullScreenModal', animation: 'fade' }}
+          options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }}
         />
 
 

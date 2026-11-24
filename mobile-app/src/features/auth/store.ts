@@ -1,3 +1,4 @@
+import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
 import { AuthUser } from "./types";
 import { clearChatCacheForUser } from "../../lib/app-cache";
@@ -55,6 +56,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       await clearChatCacheForUser(String(uid));
     }
     await clearAuth();
+    // Ekran kodi shu hisob uchun — keyingi kirgan odam eski kodga duch kelmasin.
+    try {
+      await SecureStore.deleteItemAsync("app_passcode_key");
+    } catch {
+      /* ignore */
+    }
     disconnectSocket();
     set({ user: null, token: null });
   }

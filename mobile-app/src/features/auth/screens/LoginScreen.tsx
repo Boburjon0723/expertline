@@ -52,10 +52,12 @@ export function LoginScreen({ navigation }: Props) {
   const token = useAuthStore((s) => s.token);
   const isBootstrapping = useAuthStore((s) => s.isBootstrapping);
   const passwordRef = useRef<TextInput>(null);
+  /** Parol bilan hozirgina kirildi — ilova ochilishidagi passcode tekshiruvi kerak emas. */
+  const justLoggedInRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    if (isBootstrapping || !token) return;
+    if (isBootstrapping || !token || justLoggedInRef.current) return;
     void (async () => {
       const savedPasscode = await SecureStore.getItemAsync("app_passcode_key");
       if (savedPasscode) {
@@ -97,6 +99,7 @@ export function LoginScreen({ navigation }: Props) {
     try {
       const user = await loginRequest({ countryCode, phone, password }, rememberMe);
       const token = (await getToken()) || "";
+      justLoggedInRef.current = true;
       setSession({ user, token });
       
       const savedPasscode = await SecureStore.getItemAsync('app_passcode_key');
@@ -111,7 +114,12 @@ export function LoginScreen({ navigation }: Props) {
             },
             { 
               text: "O'rnatish", 
-              onPress: () => navigation.navigate("Passcode", { mode: 'set' }) 
+              // Kod o'rnatilgach goBack Messages ga qaytsin (Login ga emas).
+              onPress: () =>
+                navigation.reset({
+                  index: 1,
+                  routes: [{ name: "Messages" }, { name: "Passcode", params: { mode: "set" } }],
+                }),
             }
           ]
         );
