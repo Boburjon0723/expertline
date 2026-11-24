@@ -2,10 +2,10 @@
 
 import React, { useCallback } from 'react';
 import { useCallState } from '@/lib/useCallState';
-import { callReset, toggleMute, toggleSpeaker, handleCallAccepted } from '@/lib/callStore';
+import { callReset, toggleMute, toggleSound, handleCallAccepted } from '@/lib/callStore';
 import { useSocket } from '@/context/SocketContext';
 import { CHAT_CALLS_ALLOWED } from '@/lib/chat-calls';
-import { Phone, PhoneOff, Mic, MicOff, Volume2 } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import LiveKitRoomWrapper from './LiveKitRoomWrapper';
 
 function formatTimer(s: number) {
@@ -54,6 +54,7 @@ export default function GlobalCallOverlay() {
     const isRinging = call.status === 'ringing_in' || call.status === 'ringing_out';
     const isActive = call.status === 'active';
     const liveKitRoomId = call.chatId ? String(call.chatId) : null;
+    const isVideoActive = isActive && call.callType === 'video' && !!liveKitRoomId;
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center"
@@ -69,6 +70,9 @@ export default function GlobalCallOverlay() {
                             onDisconnected={handleEnd}
                             onPeerLeft={handleEnd}
                             muted={call.isMuted}
+                            soundOff={call.isSoundOff}
+                            plainCall
+                            pipBottom={120}
                         />
                     </div>
                 ) : (
@@ -78,17 +82,26 @@ export default function GlobalCallOverlay() {
                         onPeerLeft={handleEnd}
                         audioOnly
                         muted={call.isMuted}
+                        soundOff={call.isSoundOff}
                     />
                 )
             )}
 
-            {/* Peer info */}
-            <div className="relative z-10 flex flex-col items-center gap-4">
-                <div className="w-28 h-28 rounded-full bg-white/20 flex items-center justify-center text-white text-3xl font-bold border-2 border-white/30 shadow-xl">
-                    {call.peerName?.[0]?.toUpperCase() || '?'}
-                </div>
-                <h2 className="text-white text-2xl font-semibold">{call.peerName || 'Unknown'}</h2>
-                <p className="text-white/60 text-sm">
+            {/* Peer info — video qo'ng'iroqda tepaga, videoni to'smasin */}
+            <div
+                className={
+                    isVideoActive
+                        ? 'absolute top-5 inset-x-0 z-10 flex flex-col items-center gap-1 pointer-events-none [text-shadow:0_1px_4px_rgba(0,0,0,0.6)]'
+                        : 'relative z-10 flex flex-col items-center gap-4'
+                }
+            >
+                {!isVideoActive && (
+                    <div className="w-28 h-28 rounded-full bg-white/20 flex items-center justify-center text-white text-3xl font-bold border-2 border-white/30 shadow-xl">
+                        {call.peerName?.[0]?.toUpperCase() || '?'}
+                    </div>
+                )}
+                <h2 className={`text-white font-semibold ${isVideoActive ? 'text-lg' : 'text-2xl'}`}>{call.peerName || 'Unknown'}</h2>
+                <p className="text-white/70 text-sm">
                     {call.status === 'ringing_in' && 'Kiruvchi qo\'ng\'iroq...'}
                     {call.status === 'ringing_out' && 'Qo\'ng\'iroq qilinmoqda...'}
                     {isActive && formatTimer(call.timer)}
@@ -101,13 +114,15 @@ export default function GlobalCallOverlay() {
                 {isActive && (
                     <>
                         <button
-                            onClick={toggleSpeaker}
+                            onClick={toggleSound}
+                            title={call.isSoundOff ? 'Ovozni yoqish' : "Ovozni o'chirish"}
                             className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
                         >
-                            <Volume2 className={`w-6 h-6 ${call.isSpeaker ? 'text-[#8774e1]' : ''}`} />
+                            {call.isSoundOff ? <VolumeX className="w-6 h-6 text-red-400" /> : <Volume2 className="w-6 h-6" />}
                         </button>
                         <button
                             onClick={() => toggleMute()}
+                            title={call.isMuted ? 'Mikrofonni yoqish' : "Mikrofonni o'chirish"}
                             className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
                         >
                             {call.isMuted ? <MicOff className="w-6 h-6 text-red-400" /> : <Mic className="w-6 h-6" />}

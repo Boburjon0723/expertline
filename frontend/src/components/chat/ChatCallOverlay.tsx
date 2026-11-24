@@ -134,6 +134,7 @@ export function ChatCallOverlay({
                             sessionId={liveKitRoomId}
                             onDisconnected={handleEndCall}
                             onPeerLeft={handleEndCall}
+                            plainCall
                         />
                     </div>
                 ) : (

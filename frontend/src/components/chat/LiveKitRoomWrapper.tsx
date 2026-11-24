@@ -5,10 +5,14 @@ import {
     LiveKitRoom,
     VideoConference,
     RoomAudioRenderer,
+    ParticipantTile,
+    TrackToggle,
+    useTracks,
     useLocalParticipant,
     useRemoteParticipants,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
+import { Track } from 'livekit-client';
 import { apiFetch } from '@/lib/api';
 import {
     LIVEKIT_AUDIO_CAPTURE,
@@ -26,6 +30,51 @@ interface LiveKitRoomWrapperProps {
     muted?: boolean;
     /** 1:1 qo'ng'iroq: qarshi tomon chiqib ketib qaytmasa chaqiriladi (qo'ng'iroqni yakunlash uchun) */
     onPeerLeft?: () => void;
+    /** Oddiy 1:1 chat qo'ng'irog'i: ekran ulashish/chat/chiqish tugmalarisiz (ular overlayda). */
+    plainCall?: boolean;
+    /** plainCall: kichik (o'zingiz) oynaning pastdan masofasi, px — overlay tugmalari ustida tursin. */
+    pipBottom?: number;
+    /** Suhbatdosh ovozini o'chirish (karnay tugmasi). */
+    soundOff?: boolean;
+}
+
+/**
+ * 1:1 video qo'ng'iroq (Telegram uslubi): suhbatdosh to'liq ekranda, o'zingiz pastki o'ng burchakda
+ * kichik oynada. Ekran ulashish/chat/chiqish yo'q — tugatish overlayda.
+ */
+function PlainCallVideo({ showMic, pipBottom }: { showMic: boolean; pipBottom: number }) {
+    const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], {
+        onlySubscribed: false,
+    });
+    const local = tracks.find((t) => t.participant.isLocal);
+    const remote = tracks.find((t) => !t.participant.isLocal);
+    return (
+        <div className="relative w-full h-full overflow-hidden">
+            {remote ? (
+                /* contain: telefonning tik videosi kompyuterda kesilmasdan, to'liq ko'rinsin. */
+                <ParticipantTile
+                    trackRef={remote}
+                    className="!absolute inset-0 !rounded-none [&_video]:!object-contain [&_video]:!bg-[#0b0b14]"
+                />
+            ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm">
+                    Suhbatdosh kutilmoqda...
+                </div>
+            )}
+            {local ? (
+                <div
+                    className="absolute right-4 z-[5] w-[28%] min-w-[120px] max-w-[240px] aspect-[3/4] sm:aspect-video rounded-xl overflow-hidden border border-white/20 shadow-2xl"
+                    style={{ bottom: pipBottom }}
+                >
+                    <ParticipantTile trackRef={local} className="!rounded-none h-full" />
+                </div>
+            ) : null}
+            <div className="absolute top-4 right-4 z-[6] flex gap-2">
+                {showMic ? <TrackToggle source={Track.Source.Microphone} /> : null}
+                <TrackToggle source={Track.Source.Camera} />
+            </div>
+        </div>
+    );
 }
 
 /** Qarshi tomon xonadan chiqsa va shu vaqt ichida qaytmasa — qo'ng'iroq tugaydi (tarmoq uzilishiga imkon). */
@@ -58,7 +107,7 @@ function MicSync({ muted, speech }: { muted?: boolean; speech?: boolean }) {
     return null;
 }
 
-export default function LiveKitRoomWrapper({ sessionId, onDisconnected, audioOnly = false, muted, onPeerLeft }: LiveKitRoomWrapperProps) {
+export default function LiveKitRoomWrapper({ sessionId, onDisconnected, audioOnly = false, muted, onPeerLeft, plainCall = false, pipBottom = 16, soundOff = false }: LiveKitRoomWrapperProps) {
     const [token, setToken] = useState("");
     const [wsUrl, setWsUrl] = useState("");
 
@@ -102,10 +151,10 @@ export default function LiveKitRoomWrapper({ sessionId, onDisconnected, audioOnl
             <MicSync muted={muted} speech={audioOnly} />
             {onPeerLeft ? <PeerLeftWatch onPeerLeft={onPeerLeft} /> : null}
             {audioOnly ?
-                <RoomAudioRenderer />
+                <RoomAudioRenderer muted={soundOff} />
             :   <>
-                    <VideoConference />
-                    <RoomAudioRenderer />
+                    {plainCall ? <PlainCallVideo showMic={muted == null} pipBottom={pipBottom} /> : <VideoConference />}
+                    <RoomAudioRenderer muted={soundOff} />
                 </>
             }
         </LiveKitRoom>

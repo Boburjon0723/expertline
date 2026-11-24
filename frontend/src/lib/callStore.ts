@@ -21,7 +21,8 @@ export type CallState = {
     signal: any;
     timer: number;
     isMuted: boolean;
-    isSpeaker: boolean;
+    /** Suhbatdosh ovozi o'chirilgan (karnay tugmasi). */
+    isSoundOff: boolean;
 };
 
 type Listener = () => void;
@@ -37,7 +38,7 @@ let state: CallState = {
     signal: null,
     timer: 0,
     isMuted: false,
-    isSpeaker: false,
+    isSoundOff: false,
 };
 
 let timerInterval: ReturnType<typeof setInterval> | null = null;
@@ -93,7 +94,7 @@ export function callReset(broadcast = true) {
         signal: null,
         timer: 0,
         isMuted: false,
-        isSpeaker: false,
+        isSoundOff: false,
     };
     notify();
     if (broadcast) bc?.postMessage({ type: 'reset' });
@@ -185,8 +186,8 @@ export function toggleMute() {
     notify();
 }
 
-export function toggleSpeaker() {
-    state = { ...state, isSpeaker: !state.isSpeaker };
+export function toggleSound() {
+    state = { ...state, isSoundOff: !state.isSoundOff };
     notify();
 }
 
