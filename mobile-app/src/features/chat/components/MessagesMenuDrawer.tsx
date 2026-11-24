@@ -10,7 +10,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   X,
-  Wallet,
   HelpCircle,
   Users,
   Megaphone,
@@ -18,7 +17,6 @@ import {
   Settings,
   Moon,
   Briefcase,
-  LineChart,
   Bookmark,
   ClipboardList,
 } from "lucide-react-native";
@@ -30,10 +28,8 @@ export type MessagesMenuDrawerProps = {
   visible: boolean;
   onClose: () => void;
   onOpenProfile: () => void;
-  onOpenWallet: () => void;
   onOpenExperts: () => void;
   onOpenJobs: () => void;
-  onOpenFinance: () => void;
   onOpenSavedMessages: () => void;
   onSupport: () => void;
   onCreateGroup: () => void;
@@ -51,10 +47,8 @@ export function MessagesMenuDrawer({
   visible,
   onClose,
   onOpenProfile,
-  onOpenWallet,
   onOpenExperts,
   onOpenJobs,
-  onOpenFinance,
   onOpenSavedMessages,
   onSupport,
   onCreateGroup,
@@ -123,10 +117,8 @@ export function MessagesMenuDrawer({
           </Pressable>
 
           <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-            {item(<Wallet color={iconColor} size={ICON} />, t("tabWallet"), onOpenWallet)}
-            {item(<Briefcase color={iconColor} size={ICON} />, t("tabServices"), onOpenExperts)}
             {item(<ClipboardList color={iconColor} size={ICON} />, t("menuJobs"), onOpenJobs)}
-            {item(<LineChart color={iconColor} size={ICON} />, t("menuFinance"), onOpenFinance)}
+            {item(<Briefcase color={iconColor} size={ICON} />, t("tabServices"), onOpenExperts)}
             {item(
               <Bookmark color={iconColor} size={ICON} fill={iconColor} />,
               t("savedMessages"),

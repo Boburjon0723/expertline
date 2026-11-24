@@ -19,7 +19,7 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  Wallet,
+  ClipboardList,
   Briefcase,
   MessageSquare,
   Search,
@@ -37,7 +37,8 @@ import {
 import { Chat } from "../types";
 import { ChatBackground } from "../../../components/ChatBackground";
 import { useAuthStore } from "../../auth/store";
-import { WalletView, ServicesView, ContactsView } from "./DashboardViews";
+import { ServicesView, ContactsView } from "./DashboardViews";
+import { JobListScreen } from "../../jobs/screens/JobListScreen";
 import { ChatSongMiniBar } from "../components/ChatSongMiniBar";
 import {
   CHAT_CATEGORY_ITEMS,
@@ -116,8 +117,8 @@ function ChatListAvatar({ item }: { item: Chat }) {
 }
 
 const BOTTOM_TABS: {
-  id: "chats" | "contacts" | "wallet" | "services";
-  labelKey: "tabChats" | "tabContacts" | "tabWallet" | "tabServices";
+  id: "chats" | "contacts" | "jobs" | "services";
+  labelKey: "tabChats" | "tabContacts" | "menuJobs" | "tabServices";
   icon: (active: boolean) => React.ReactNode;
 }[] = [
   {
@@ -131,9 +132,9 @@ const BOTTOM_TABS: {
     icon: (active) => <Users color={active ? "#fff" : "rgba(255,255,255,0.4)"} size={ICON_MD} />,
   },
   {
-    id: "wallet",
-    labelKey: "tabWallet",
-    icon: (active) => <Wallet color={active ? "#fff" : "rgba(255,255,255,0.4)"} size={ICON_MD} />,
+    id: "jobs",
+    labelKey: "menuJobs",
+    icon: (active) => <ClipboardList color={active ? "#fff" : "rgba(255,255,255,0.4)"} size={ICON_MD} />,
   },
   {
     id: "services",
@@ -145,7 +146,7 @@ const BOTTOM_TABS: {
 export function ChatListScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((s) => s.user);
-  const [bottomTab, setBottomTab] = useState<"chats" | "contacts" | "wallet" | "services">("chats");
+  const [bottomTab, setBottomTab] = useState<"chats" | "contacts" | "jobs" | "services">("chats");
 
   const { chats, loadChats, isLoadingChats, updateChatLocally, removeChatLocally } = useChatStore();
   const { t } = useAuthLocale();
@@ -1001,8 +1002,8 @@ export function ChatListScreen({ navigation }: any) {
             </View>
           ) : bottomTab === "contacts" ? (
             <ContactsView navigation={navigation} />
-          ) : bottomTab === "wallet" ? (
-            <WalletView />
+          ) : bottomTab === "jobs" ? (
+            <JobListScreen navigation={navigation} />
           ) : (
             <ServicesView navigation={navigation} />
           )}
@@ -1031,10 +1032,8 @@ export function ChatListScreen({ navigation }: any) {
           visible={showMenu}
           onClose={() => setShowMenu(false)}
           onOpenProfile={() => navigation.navigate("Profile")}
-          onOpenWallet={() => setBottomTab("wallet")}
           onOpenExperts={() => setBottomTab("services")}
-          onOpenJobs={() => navigation.navigate("Jobs")}
-          onOpenFinance={() => navigation.navigate("Finance")}
+          onOpenJobs={() => setBottomTab("jobs")}
           onOpenSavedMessages={() => void openSavedMessages()}
           onSupport={() => navigation.navigate("Support")}
           onCreateGroup={() => onComposeAction("new_group")}

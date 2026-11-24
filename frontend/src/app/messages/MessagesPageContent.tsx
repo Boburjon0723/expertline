@@ -1781,7 +1781,6 @@ export function MessagesPageContent() {
                         isMobile={isMobile}
                         onClose={() => setShowMenu(false)}
                         onOpenProfile={() => { setShowMenu(false); setActiveCategory('settings'); }}
-                        onOpenWallet={() => { setShowMenu(false); router.push('/wallet'); }}
                         onOpenExperts={() => {
                             setShowMenu(false);
                             setShowRightPanel(false);
@@ -1796,7 +1795,6 @@ export function MessagesPageContent() {
                             setJobsExpertId(null);
                             setActiveCategory('jobs');
                         }}
-                        onOpenFinance={() => { setShowMenu(false); setActiveCategory('finance'); }}
                         onOpenSavedMessages={() => { void handleOpenSavedMessages(); }}
                         onToggleExpertPanel={() => { setShowMenu(false); handleToggleExpertPanel(); }}
                         onSupport={() => { setShowMenu(false); handleSupport(); }}

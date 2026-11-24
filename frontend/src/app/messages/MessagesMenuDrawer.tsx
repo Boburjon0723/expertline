@@ -3,7 +3,6 @@
 import React from 'react';
 import {
     X,
-    Wallet,
     HelpCircle,
     Users,
     Megaphone,
@@ -11,7 +10,6 @@ import {
     Settings,
     Moon,
     Briefcase,
-    LineChart,
     Bookmark,
     ClipboardList,
     Layout,
@@ -25,10 +23,8 @@ export type MessagesMenuDrawerProps = {
     isMobile?: boolean;
     onClose: () => void;
     onOpenProfile: () => void;
-    onOpenWallet: () => void;
     onOpenExperts: () => void;
     onOpenJobs: () => void;
-    onOpenFinance: () => void;
     onOpenSavedMessages: () => void;
     onToggleExpertPanel?: () => void;
     onSupport: () => void;
@@ -49,10 +45,8 @@ export function MessagesMenuDrawer({
     isMobile = false,
     onClose,
     onOpenProfile,
-    onOpenWallet,
     onOpenExperts,
     onOpenJobs,
-    onOpenFinance,
     onOpenSavedMessages,
     onToggleExpertPanel,
     onSupport,
@@ -103,17 +97,11 @@ export function MessagesMenuDrawer({
                 </div>
 
                 <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
-                    <button type="button" onClick={onOpenWallet} className={itemCls}>
-                        <Wallet className={iconCls} /> {t('wallet')}
-                    </button>
-                    <button type="button" onClick={onOpenExperts} className={itemCls}>
-                        <Briefcase className={iconCls} /> {t('experts')}
-                    </button>
                     <button type="button" onClick={onOpenJobs} className={itemCls}>
                         <ClipboardList className={iconCls} /> {t('jobs')}
                     </button>
-                    <button type="button" onClick={onOpenFinance} className={itemCls}>
-                        <LineChart className={iconCls} /> {t('finance')}
+                    <button type="button" onClick={onOpenExperts} className={itemCls}>
+                        <Briefcase className={iconCls} /> {t('experts')}
                     </button>
                     <button type="button" onClick={onOpenSavedMessages} className={itemCls}>
                         <Bookmark className={iconCls} fill="currentColor" strokeWidth={0} /> {t('saved_messages')}

@@ -25,7 +25,8 @@ type RootStackParamList = {
 
 type Props = NativeStackScreenProps<RootStackParamList, "Jobs">;
 
-export function JobListScreen({ navigation }: Props) {
+// Stack ekran sifatida ham, ChatListScreen pastki tab'i ichida ham ishlatiladi (route kerak emas).
+export function JobListScreen({ navigation }: Pick<Props, "navigation">) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [loading, setLoading] = useState(true);

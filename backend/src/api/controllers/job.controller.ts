@@ -25,40 +25,18 @@ export class JobController {
 
             await client.query('BEGIN');
 
-            // 1. Get Category Price
-            const catRes = await client.query('SELECT publication_price_mali FROM job_categories WHERE id = $1', [jobData.category_id]);
+            const catRes = await client.query('SELECT 1 FROM job_categories WHERE id = $1', [jobData.category_id]);
             if (catRes.rows.length === 0) {
-                throw new Error('Category not found');
-            }
-            const price = parseFloat(catRes.rows[0].publication_price_mali);
-
-            if (price > 0) {
-                // 2. Check and Lock balance
-                const balRes = await client.query('SELECT balance FROM token_balances WHERE user_id = $1 FOR UPDATE', [userId]);
-                if (balRes.rows.length === 0) throw new Error('Wallet not initialized');
-
-                const balance = parseFloat(balRes.rows[0].balance);
-                if (balance < price) {
-                    await client.query('ROLLBACK');
-                    return res.status(400).json({ message: 'Mablag\' yetarli emas. Balansingizni to\'ldiring.' });
-                }
-
-                // 3. Deduct balance
-                await client.query('UPDATE token_balances SET balance = balance - $1, lifetime_spent = lifetime_spent + $1, updated_at = NOW() WHERE user_id = $2', [price, userId]);
-
-                // 4. Record Transaction
-                await client.query(`
-                    INSERT INTO transactions (sender_id, amount, net_amount, type, status, note)
-                    VALUES ($1, $2, $2, 'service_payment', 'completed', $3)
-                `, [userId, price, `Job posting fee for category ${jobData.category_id}`]);
+                await client.query('ROLLBACK');
+                return res.status(400).json({ message: 'Category not found' });
             }
 
-            // 5. Create Job
+            // MVP: e'lon joylash bepul (hamyon olib tashlangan). job_categories.publication_price_mali hisobga olinmaydi.
             const job = await this.jobModel.create({
                 ...jobData,
                 user_id: userId,
-                payment_status: price > 0 ? 'paid' : 'free',
-                publication_fee: price
+                payment_status: 'free',
+                publication_fee: 0
             }, client);
 
             await client.query('COMMIT');
