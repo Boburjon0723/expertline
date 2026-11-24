@@ -8,10 +8,8 @@ import {
     Megaphone,
     Contact,
     Settings,
-    Moon,
     Briefcase,
     Bookmark,
-    ClipboardList,
     Layout,
 } from 'lucide-react';
 import { getExpertPanelMode } from '@/lib/expert-roles';
@@ -23,7 +21,6 @@ export type MessagesMenuDrawerProps = {
     isMobile?: boolean;
     onClose: () => void;
     onOpenProfile: () => void;
-    onOpenExperts: () => void;
     onOpenJobs: () => void;
     onOpenSavedMessages: () => void;
     onToggleExpertPanel?: () => void;
@@ -45,7 +42,6 @@ export function MessagesMenuDrawer({
     isMobile = false,
     onClose,
     onOpenProfile,
-    onOpenExperts,
     onOpenJobs,
     onOpenSavedMessages,
     onToggleExpertPanel,
@@ -97,14 +93,15 @@ export function MessagesMenuDrawer({
                 </div>
 
                 <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
+                    {/* Asosiy bo'limlar */}
                     <button type="button" onClick={onOpenJobs} className={itemCls}>
-                        <ClipboardList className={iconCls} /> {t('jobs')}
-                    </button>
-                    <button type="button" onClick={onOpenExperts} className={itemCls}>
-                        <Briefcase className={iconCls} /> {t('experts')}
+                        <Briefcase className={iconCls} /> {t('menu_marketplace')}
                     </button>
                     <button type="button" onClick={onOpenSavedMessages} className={itemCls}>
-                        <Bookmark className={iconCls} fill="currentColor" strokeWidth={0} /> {t('saved_messages')}
+                        <Bookmark className={iconCls} /> {t('saved_messages')}
+                    </button>
+                    <button type="button" onClick={onOpenContacts} className={itemCls}>
+                        <Contact className={iconCls} /> {t('contacts')}
                     </button>
                     {currentUser?.is_expert && onToggleExpertPanel && !isMobile && (
                         <button type="button" onClick={onToggleExpertPanel} className={itemCls}>
@@ -116,10 +113,10 @@ export function MessagesMenuDrawer({
                                   : t('service_panel')}
                         </button>
                     )}
-                    <button type="button" onClick={onSupport} className={itemCls}>
-                        <HelpCircle className={iconCls} /> {t('support')}
-                    </button>
+
                     <div className="h-px bg-white/[0.06] my-2 mx-5"></div>
+
+                    {/* Yaratish */}
                     {(!currentUser?.is_expert || getExpertPanelMode(currentUser) === 'mentor') && (
                         <button type="button" onClick={onCreateGroup} className={itemCls}>
                             <Users className={iconCls} /> {t('create_group')}
@@ -128,19 +125,20 @@ export function MessagesMenuDrawer({
                     <button type="button" onClick={onCreateChannel} className={itemCls}>
                         <Megaphone className={iconCls} /> {t('create_channel')}
                     </button>
-                    <button type="button" onClick={onOpenContacts} className={itemCls}>
-                        <Contact className={iconCls} /> {t('contacts')}
-                    </button>
+
+                    <div className="h-px bg-white/[0.06] my-2 mx-5"></div>
+
+                    {/* Hisob */}
                     <button type="button" onClick={onOpenSettings} className={itemCls}>
                         <Settings className={iconCls} /> {t('settings')}
+                    </button>
+                    <button type="button" onClick={onSupport} className={itemCls}>
+                        <HelpCircle className={iconCls} /> {t('support')}
                     </button>
                 </div>
 
                 <div className="px-5 py-4 border-t border-white/[0.06]">
-                    <div className="flex items-center justify-between text-[#aaaaaa]">
-                        <span className="text-[13px]">v 1.2.0</span>
-                        <Moon className="h-4 w-4" />
-                    </div>
+                    <span className="text-[13px] text-[#6d7f8f]">ExpertLine</span>
                 </div>
             </div>
         </>

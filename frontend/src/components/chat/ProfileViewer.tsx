@@ -8,7 +8,6 @@ import {
     dedupeExpertGroups,
     getExpertFormPlaceholders,
     getExpertPanelMode,
-    isLegalProfession,
     isMentorProfession,
     normalizeExpertGroupName,
 } from '@/lib/expert-roles';
@@ -17,21 +16,19 @@ import {
     Camera,
     Award,
     Clock,
-    Pencil,
-    Wallet,
     MessageSquare,
-    User,
+    ArrowLeft,
+    ChevronRight,
     Shield,
     Languages,
 } from 'lucide-react';
 import { ProfileChatSettingsView } from './profile/ProfileChatSettingsView';
-import { ProfileWalletView } from './profile/ProfileWalletView';
 import { ProfileExpertModal } from './profile/ProfileExpertModal';
 import { ProfileEditModals } from './profile/ProfileEditModals';
+import { EXPERT_SUBSCRIPTION_MONTHLY_UZS, formatUzs } from '@/lib/subscription';
 
 interface ProfileViewerProps {
     onClose: () => void;
-    onEdit: () => void;
     onLogout: () => void;
     user?: any;
     mode?: 'profile' | 'settings';
@@ -39,13 +36,10 @@ interface ProfileViewerProps {
     onUpdateBgBlur?: (val: number) => void;
     onUpdateBgImageBlur?: (val: number) => void;
     onUpdateBgImage?: (url: string) => void;
-    onUpdateBgRGB?: (rgb: { r: number, g: number, b: number }) => void;
-    onUpdateTheme?: (dark: boolean) => void;
 }
 
 export default function ProfileViewer({
     onClose,
-    onEdit,
     onLogout,
     user: propUser,
     mode = 'settings',
@@ -53,16 +47,16 @@ export default function ProfileViewer({
     onUpdateBgBlur,
     onUpdateBgImageBlur,
     onUpdateBgImage,
-    onUpdateBgRGB,
-    onUpdateTheme
 }: ProfileViewerProps) {
     const { socket } = useSocket();
     const [localUser, setLocalUser] = useState<any>(null);
-    const [currentView, setCurrentView] = useState<'main' | 'chat_settings' | 'wallet'>('main');
+    const [currentView, setCurrentView] = useState<'profile' | 'settings' | 'chat_settings'>(mode);
+    // Menyudan boshqa bo'lim tanlansa (Profil ↔ Sozlamalar) ko'rinishni moslash
+    useEffect(() => {
+        setCurrentView(mode);
+    }, [mode]);
 
     // Wallet State
-    const [walletData, setWalletData] = useState({ available: 0, locked: 0, subscription_end_date: null as string | null });
-    const [isSubscribing, setIsSubscribing] = useState(false);
 
     const { language, setLanguage, t } = useLanguage();
     const [showLanguageModal, setShowLanguageModal] = useState(false);
@@ -89,20 +83,13 @@ export default function ProfileViewer({
     const [verifiedStatus, setVerifiedStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
     const [profession, setProfession] = useState("");
     const [specializationDetails, setSpecializationDetails] = useState("");
-    const [experience, setExperience] = useState(0);
-    const [hasDiploma, setHasDiploma] = useState(false);
     const [institution, setInstitution] = useState("");
     const [currentWorkplace, setCurrentWorkplace] = useState("");
     const [diplomaUrl, setDiplomaUrl] = useState("");
     const [certificateUrl, setCertificateUrl] = useState("");
     const [idUrl, setIdUrl] = useState("");
     const [selfieUrl, setSelfieUrl] = useState("");
-    const [price, setPrice] = useState(0);
-    const [currency, setCurrency] = useState("MALI");
     const [serviceLanguages, setServiceLanguages] = useState("");
-    const [serviceFormat, setServiceFormat] = useState("");
-    /** soatlik | seans | oylik (mentor) — backend `pricing_model` */
-    const [pricingModel, setPricingModel] = useState<'hourly' | 'session' | 'monthly'>('hourly');
     const [bioExpert, setBioExpert] = useState("");
     const [specialtyDesc, setSpecialtyDesc] = useState("");
     const [resumeUrl, setResumeUrl] = useState("");
@@ -111,15 +98,11 @@ export default function ProfileViewer({
     // Refs for focusing missing fields
     const professionRef = useRef<HTMLSelectElement | null>(null);
     const specializationRef = useRef<HTMLInputElement | null>(null);
-    const experienceRef = useRef<HTMLInputElement | null>(null);
-    const priceRef = useRef<HTMLInputElement | null>(null);
 
     // Field-level error states for visual validation
     const [expertErrors, setExpertErrors] = useState<{
         profession?: string;
         specialization?: string;
-        experience?: string;
-        price?: string;
         selfie?: string;
         resume?: string;
         anketa?: string;
@@ -173,31 +156,13 @@ export default function ProfileViewer({
                 userToProcess.specialization ||
                 ""
         );
-        const expRaw = userToProcess.experience_years;
-        setExperience(
-            typeof expRaw === 'number'
-                ? expRaw
-                : parseInt(String(expRaw ?? '0'), 10) || 0
-        );
-        setHasDiploma(userToProcess.has_diploma || false);
         setInstitution(userToProcess.institution || "");
         setCurrentWorkplace(userToProcess.current_workplace || "");
         setDiplomaUrl(userToProcess.diploma_url || "");
         setCertificateUrl(userToProcess.certificate_url || "");
         setIdUrl(userToProcess.id_url || "");
         setSelfieUrl(userToProcess.selfie_url || "");
-        const rawPrice = userToProcess.hourly_rate ?? userToProcess.service_price ?? 0;
-        setPrice(parseFloat(String(rawPrice)) || 0);
-        setCurrency(userToProcess.currency || "MALI");
         setServiceLanguages(userToProcess.service_languages || "");
-        setServiceFormat(userToProcess.service_format || "");
-        setPricingModel(
-            userToProcess.pricing_model === 'monthly'
-                ? 'monthly'
-                : userToProcess.pricing_model === 'session'
-                  ? 'session'
-                  : 'hourly'
-        );
         setBioExpert(userToProcess.bio_expert || "");
         {
             const spec = String(userToProcess.specialty_desc || "").trim();
@@ -324,40 +289,10 @@ export default function ProfileViewer({
     const hasExpertProfileData = Boolean(
         (profession && String(profession).trim()) ||
             (specializationDetails && String(specializationDetails).trim()) ||
-            experience > 0 ||
-            price > 0 ||
             verifiedStatus === 'pending' ||
             verifiedStatus === 'approved'
     );
     const showExpertSummary = isExpert || hasExpertProfileData;
-
-    const expertFormPricingHint = useMemo(() => {
-        const mode = getExpertPanelMode({
-            profession,
-            specialty: specializationDetails,
-            bio_expert: bioExpert,
-            specialty_desc: specialtyDesc
-        });
-        const blocks: Record<string, { title: string; body: string }> = {
-            mentor: {
-                title: 'Mentor / ustoz',
-                body: 'Guruh obunasi uchun «Oylik» narxni qo‘ying — talaba guruhga kirganda shu summa yechiladi. Soatlik dars bo‘lsa «Soatlik» tanlang.'
-            },
-            legal: {
-                title: 'Huquqshunos',
-                body: 'Ko‘pincha bir murojaat, qisqa maslahat yoki ish paketi (seans) narxi beriladi.'
-            },
-            psychology: {
-                title: 'Psixolog',
-                body: '50–60 daqiqalik seans narxi odatiy. Soatlik ham mumkin — mijozga seans vaqtini oldindan yozing.'
-            },
-            consult: {
-                title: 'Konsultant',
-                body: 'Xizmat soat bilan bo‘lsa «Soatlik», tayyor uchrashuv/paket bo‘lsa «Seans» tanlang.'
-            }
-        };
-        return blocks[mode] || blocks.consult;
-    }, [profession, specializationDetails, bioExpert, specialtyDesc]);
 
     const expertFormPh = useMemo(() => {
         const mode = getExpertPanelMode({
@@ -368,22 +303,6 @@ export default function ProfileViewer({
         });
         return getExpertFormPlaceholders(mode, t);
     }, [profession, specializationDetails, bioExpert, specialtyDesc, t]);
-    const isLegalMode = useMemo(
-        () => isLegalProfession(profession) || isLegalProfession(specializationDetails),
-        [profession, specializationDetails]
-    );
-
-    useEffect(() => {
-        // Huquqshunos uchun narx turi doim bir martalik seans/maslahat bo'ladi.
-        if (isLegalMode && pricingModel !== 'session') {
-            setPricingModel('session');
-            return;
-        }
-        // Mentor: eski «seans» → «oylik» (guruh obunasi)
-        if (!isLegalMode && isMentorProfession(profession) && pricingModel === 'session') {
-            setPricingModel('monthly');
-        }
-    }, [isLegalMode, pricingModel, profession]);
 
     // Load existing group chats for this expert to allow re-using them
     useEffect(() => {
@@ -539,30 +458,6 @@ export default function ProfileViewer({
             return;
         }
 
-        if (!experience || experience <= 0) {
-            setToast({ type: 'warning', message: "Tajriba (yil) maydonini to'g'ri kiriting." });
-            setExpertErrors(prev => ({ ...prev, experience: "Tajriba 0 dan katta bo'lishi kerak." }));
-            experienceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            experienceRef.current?.focus();
-            return;
-        }
-
-        if (!price || price <= 0) {
-            setToast({
-                type: 'warning',
-                message:
-                    pricingModel === 'monthly'
-                        ? "Oylik narx maydonini to'g'ri kiriting."
-                        : pricingModel === 'session'
-                          ? "Seans narxi maydonini to'g'ri kiriting."
-                          : "Soatlik narx maydonini to'g'ri kiriting."
-            });
-            setExpertErrors(prev => ({ ...prev, price: "Narx 0 dan katta bo'lishi kerak." }));
-            priceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            priceRef.current?.focus();
-            return;
-        }
-
         if (!resumeUrl) {
             setToast({ type: 'warning', message: "Rezyume (PDF) faylini yuklang." });
             setExpertErrors(prev => ({ ...prev, resume: "Rezyume (PDF) yuklash majburiy." }));
@@ -625,25 +520,21 @@ export default function ProfileViewer({
                 profession,
                 specialization_details: specializationDetails,
                 specialization: specializationDetails || profession,
-                experience_years: experience,
-                has_diploma: hasDiploma,
                 institution,
                 current_workplace: currentWorkplace,
                 diploma_url: diplomaUrl,
                 certificate_url: certificateUrl,
                 id_url: idUrl,
                 selfie_url: selfieUrl,
-                hourly_rate: parseFloat(price as any) || 0,
-                currency,
                 service_languages: serviceLanguages,
-                service_format: serviceFormat,
+                /** Xizmat har doim onlayn */
+                service_format: 'online',
                 specialty_desc: specialtyDesc,
                 /** DB ikkala ustunda bir xil — e'lon matni bitta maydondan */
                 expert_proposal: String(specialtyDesc || '').trim(),
                 bio_expert: bioExpert,
                 resume_url: resumeUrl,
                 anketa_url: anketaUrl,
-                pricing_model: pricingModel,
                 services_json: JSON.stringify(servicesJson),
                 expert_groups: JSON.stringify(finalGroups),
                 expert_fee_total: expertFee,
@@ -785,7 +676,7 @@ export default function ProfileViewer({
                 /* quota */
             }
             if (socket) socket.emit('update_profile', { avatar: url });
-            setToast({ type: 'success', message: t('save_record') + ' вњ“' });
+            setToast({ type: 'success', message: t('save_record') + ' ✓' });
         } catch (err: any) {
             console.error('Profile avatar upload:', err);
             setToast({
@@ -794,59 +685,6 @@ export default function ProfileViewer({
             });
         } finally {
             setUploadingAvatar(false);
-        }
-    };
-
-    const profileAvatarUploadLabel =
-        language === 'ru'
-            ? 'Р—Р°РіСЂСѓР·РёС‚СЊ С„РѕС‚Рѕ РїСЂРѕС„РёР»СЏ'
-            : language === 'en'
-              ? 'Upload profile photo'
-              : 'Profil rasmini yuklash';
-
-    const fetchWallet = async () => {
-        try {
-            const res = await apiFetch('/api/wallet/balance');
-            if (res.ok) {
-                const data = await res.json();
-                if (data.success) {
-                    setWalletData({
-                        available: data.data.available_balance || 0,
-                        locked: data.data.locked_balance || 0,
-                        subscription_end_date: user.subscription_end_date || null
-                    });
-                }
-            }
-        } catch (e) {
-            console.error('Failed to fetch wallet', e);
-        }
-    };
-
-    const handleSubscribe = async () => {
-        setIsSubscribing(true);
-        try {
-            const res = await apiFetch('/api/wallet/subscribe', {
-                method: 'POST',
-            });
-            const data = await res.json();
-            if (res.ok && data.success) {
-                setToast({ type: 'success', message: "Mutaxassis obunasi muvaffaqiyatli faollashtirildi." });
-                fetchWallet();
-                setVerifiedStatus('pending');
-                setIsExpert(true);
-            } else {
-                setToast({
-                    type: 'error',
-                    message: data.message || "Obuna bo'lishda xatolik yuz berdi. Balansingizni va internet aloqangizni tekshiring.",
-                });
-            }
-        } catch (e) {
-            setToast({
-                type: 'error',
-                message: "Tarmoq xatosi. Keyinroq yana urinib ko'ring.",
-            });
-        } finally {
-            setIsSubscribing(false);
         }
     };
 
@@ -904,16 +742,14 @@ export default function ProfileViewer({
                     profession: user.profession || profession,
                     specialization: user.specialization_details || user.specialization || specializationDetails,
                     specialization_details: user.specialization_details || specializationDetails,
-                    experience_years: user.experience_years ?? experience,
-                    service_price: user.service_price ?? price,
-                    hourly_rate: user.hourly_rate ?? price,
+                    experience_years: user.experience_years,
+                    service_price: user.service_price,
+                    hourly_rate: user.hourly_rate,
                     working_hours: user.working_hours,
                     languages: user.languages,
                     wiloyat: user.wiloyat,
                     tuman: user.tuman,
                     expert_groups: user.expert_groups,
-                    currency: user.currency || currency,
-                    pricing_model: user.pricing_model || pricingModel,
                 }),
             });
             if (res.ok) {
@@ -973,138 +809,104 @@ export default function ProfileViewer({
 
     // --- RENDERERS ---
 
+    const panelCls =
+        'w-full h-full lg:h-auto lg:max-w-[420px] flex flex-col lg:max-h-[85vh] overflow-hidden rounded-none lg:rounded-2xl bg-[#212121] text-white shadow-[0_2px_16px_rgba(0,0,0,0.45)] border border-white/[0.06]';
+    const iconBtnCls =
+        'p-2.5 min-h-[44px] min-w-[44px] rounded-full text-[#aaaaaa] hover:bg-white/[0.08] hover:text-white transition-colors flex items-center justify-center';
+    const rowCls = 'w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.04] transition-colors text-left';
+    const sectionGap = <div className="h-3 bg-[#0f0f0f] my-1" />;
+    const fullName = `${user.name || ''} ${user.surname || ''}`.trim() || 'User';
+    const languageName = language === 'ru' ? 'Русский' : language === 'en' ? 'English' : 'O‘zbekcha';
+
+    const renderHeader = (title: string, onBack?: () => void) => (
+        <div className="flex min-h-12 items-center gap-1 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 shrink-0">
+            {onBack && (
+                <button type="button" onClick={onBack} className={iconBtnCls} aria-label={t('back')}>
+                    <ArrowLeft className="h-5 w-5" />
+                </button>
+            )}
+            <h2 className={`min-w-0 flex-1 truncate font-medium text-[20px] ${onBack ? '' : 'pl-3'}`}>{title}</h2>
+            <button type="button" onClick={onClose} className={iconBtnCls} aria-label={t('cancel')}>
+                <X className="h-5 w-5" />
+            </button>
+        </div>
+    );
+
+    /** Profil: faqat shaxsiy ma'lumotlar; har bir maydon joyida tahrirlanadi. */
     const renderProfile = () => {
-        const fullName = `${user.name || ''} ${user.surname || ''}`.trim() || 'User';
         const birthdayLabel = birthday
             ? `${new Date(birthday).toLocaleDateString(
                   language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ',
                   { day: 'numeric', month: 'short', year: 'numeric' }
               )}${displayAge() ? ` (${displayAge()!.current} ${t('years_old')})` : ''}`
             : t('select');
-        const priceLabel =
-            pricingModel === 'monthly'
-                ? t('monthly')
-                : pricingModel === 'session'
-                  ? t('session')
-                  : t('hourly');
-        const expertStatusRight =
-            verifiedStatus === 'pending'
-                ? '…'
-                : isExpert && verifiedStatus === 'approved'
-                  ? '✓'
-                  : verifiedStatus === 'approved'
-                    ? '—'
-                    : '';
 
         return (
-            <div
-                className="w-full h-full lg:h-auto lg:max-w-[420px] flex flex-col lg:max-h-[85vh] overflow-hidden rounded-none lg:rounded-2xl bg-[#212121] text-white shadow-[0_2px_16px_rgba(0,0,0,0.45)] border border-white/[0.06]"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* Telegram: til + Edit + Close */}
-                <div className="flex items-center justify-end gap-0.5 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 shrink-0">
-                    <button
-                        type="button"
-                        onClick={() => setShowLanguageModal(true)}
-                        className="flex items-center gap-1 px-2.5 min-h-[44px] rounded-full text-[#6ab3f3] hover:bg-white/5 transition-colors"
-                        aria-label={language === 'uz' ? 'Til' : language === 'ru' ? 'Язык' : 'Language'}
-                    >
-                        <Languages className="h-[18px] w-[18px]" strokeWidth={2} />
-                        <span className="text-[12px] font-semibold uppercase">{language}</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onEdit();
-                        }}
-                        className="p-2.5 min-h-[44px] min-w-[44px] rounded-full text-[#6ab3f3] hover:bg-white/5 transition-colors flex items-center justify-center"
-                        aria-label={t('edit_profile')}
-                    >
-                        <Pencil className="h-[18px] w-[18px]" strokeWidth={2} />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="p-2.5 min-h-[44px] min-w-[44px] rounded-full text-[#6ab3f3] hover:bg-white/5 transition-colors flex items-center justify-center"
-                        aria-label={t('cancel')}
-                    >
-                        <X className="h-5 w-5" strokeWidth={2} />
-                    </button>
-                </div>
+            <div className={panelCls} onClick={(e) => e.stopPropagation()}>
+                {renderHeader(t('profile'), mode === 'settings' ? () => setCurrentView('settings') : undefined)}
 
-                {/* Centered avatar + name + online */}
-                <div className="flex flex-col items-center px-6 pb-5 shrink-0">
-                    <div className="relative">
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (getAvatarUrl(user.avatar || user.avatar_url)) openAvatarLightbox();
-                            }}
-                            className="block rounded-full overflow-hidden w-[120px] h-[120px] ring-0 focus:outline-none"
-                        >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                                src={profilePhotoDisplaySrc}
-                                alt=""
-                                className={`w-full h-full object-cover ${uploadingAvatar ? 'opacity-50' : ''}`}
-                                key={String(user.avatar_url || user.avatar || 'av')}
-                            />
-                        </button>
-                        {uploadingAvatar && (
-                            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
-                                <div className="h-8 w-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            </div>
-                        )}
-                        {!uploadingAvatar && (
+                <div className="overflow-y-auto custom-scrollbar flex-1 min-h-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                    <div className="flex flex-col items-center px-6 pt-2 pb-5">
+                        <div className="relative">
                             <button
                                 type="button"
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    handleAvatarClick();
+                                    if (getAvatarUrl(user.avatar || user.avatar_url)) openAvatarLightbox();
                                 }}
-                                className="absolute bottom-0.5 right-0.5 w-9 h-9 bg-[#6ab3f3] rounded-full flex items-center justify-center text-white shadow-lg hover:bg-[#5aa3e3] transition-all active:scale-95"
-                                aria-label="Camera"
+                                className="block rounded-full overflow-hidden w-[120px] h-[120px] ring-0 focus:outline-none"
                             >
-                                <Camera className="h-4 w-4" />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={profilePhotoDisplaySrc}
+                                    alt=""
+                                    className={`w-full h-full object-cover ${uploadingAvatar ? 'opacity-50' : ''}`}
+                                    key={String(user.avatar_url || user.avatar || 'av')}
+                                />
                             </button>
-                        )}
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            accept="image/*"
-                            onChange={handleProfileAvatarChange}
-                        />
+                            {uploadingAvatar ? (
+                                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
+                                    <div className="h-8 w-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAvatarClick();
+                                    }}
+                                    className="absolute bottom-0.5 right-0.5 w-9 h-9 bg-[#8774e1] rounded-full flex items-center justify-center text-white shadow-lg hover:bg-[#7a67d4] transition-all active:scale-95"
+                                    aria-label={t('upload_photo')}
+                                >
+                                    <Camera className="h-4 w-4" />
+                                </button>
+                            )}
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleProfileAvatarChange}
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            className="mt-3.5 text-[20px] font-medium leading-tight text-center text-white tracking-tight hover:opacity-90"
+                            onClick={() => {
+                                setEditFirstName(user.name || '');
+                                setEditLastName(user.surname || '');
+                                setShowNameModal(true);
+                            }}
+                        >
+                            {fullName}
+                        </button>
+                        <p className="text-[#8774e1] text-[14px] mt-0.5">{t('online')}</p>
                     </div>
-                    <h2
-                        className="mt-3.5 text-[20px] font-medium leading-tight text-center text-white tracking-tight cursor-pointer hover:opacity-90"
-                        onClick={() => {
-                            setEditFirstName(user.name || '');
-                            setEditLastName(user.surname || '');
-                            setShowNameModal(true);
-                        }}
-                    >
-                        {fullName}
-                    </h2>
-                    <p className="text-[#6ab3f3] text-[14px] mt-0.5 font-normal">{t('online')}</p>
-                </div>
 
-                {verifiedStatus === 'pending' && (
-                    <div className="mx-4 mb-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-amber-400 shrink-0" />
-                        <span className="text-amber-400 font-semibold text-[11px]">{t('expert_status_pending')}</span>
-                    </div>
-                )}
-
-                <div className="overflow-y-auto custom-scrollbar flex-1 min-h-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                    {/* Info rows — Telegram: value on top, muted label under */}
+                    {/* Telegram uslubi: qiymat tepada, kulrang yorliq pastda */}
                     <div className="px-5 py-1 space-y-4">
                         <div className="cursor-default">
-                            <p className="text-[16px] text-white leading-snug">
-                                {user.phone || '+998 ········'}
-                            </p>
+                            <p className="text-[16px] text-white leading-snug">{user.phone || '+998 ········'}</p>
                             <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('phone_label')}</p>
                         </div>
 
@@ -1116,12 +918,8 @@ export default function ProfileViewer({
                                 setShowBioModal(true);
                             }}
                         >
-                            <p
-                                className={`text-[16px] leading-snug ${
-                                    bio || user.bio ? 'text-white' : 'text-[#6ab3f3]'
-                                }`}
-                            >
-                                {bio || user.bio || (language === 'uz' ? 'Bio qo‘shish' : language === 'ru' ? 'Добавить био' : 'Add bio')}
+                            <p className={`text-[16px] leading-snug ${bio || user.bio ? 'text-white' : 'text-[#8774e1]'}`}>
+                                {bio || user.bio || t('add_bio')}
                             </p>
                             <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('bio')}</p>
                         </button>
@@ -1134,39 +932,86 @@ export default function ProfileViewer({
                                 setShowUsernameModal(true);
                             }}
                         >
-                            <p className="text-[16px] text-[#6ab3f3] leading-snug">
-                                @{user.username || 'username'}
-                            </p>
+                            <p className="text-[16px] text-[#8774e1] leading-snug">@{user.username || 'username'}</p>
                             <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('username')}</p>
                         </button>
 
-                        <button
-                            type="button"
-                            className="w-full text-left"
-                            onClick={() => setShowDatePicker(true)}
-                        >
+                        <button type="button" className="w-full text-left" onClick={() => setShowDatePicker(true)}>
                             <p className="text-[16px] text-white leading-snug">{birthdayLabel}</p>
                             <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('birthday')}</p>
                         </button>
                     </div>
 
-                    {/* Section gap like Telegram */}
-                    <div className="h-3 bg-[#0f0f0f] my-3" />
+                    <p className="px-5 pt-5 text-[13px] text-[#6d7f8f]">{t('profile_tap_to_edit')}</p>
+                </div>
+            </div>
+        );
+    };
 
-                    {/* Specialist — Story Archive analog */}
+    /** Sozlamalar: profil kartasi + barcha sozlamalar bitta ro'yxatda. */
+    const renderSettings = () => {
+        const expertStatusRight =
+            verifiedStatus === 'pending'
+                ? '…'
+                : isExpert && verifiedStatus === 'approved'
+                  ? '✓'
+                  : verifiedStatus === 'approved'
+                    ? '—'
+                    : '';
+
+        return (
+            <div className={panelCls} onClick={(e) => e.stopPropagation()}>
+                {renderHeader(t('settings'))}
+
+                <div className="overflow-y-auto custom-scrollbar flex-1 min-h-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                    {/* Profil kartasi → Profil ekrani */}
                     <button
                         type="button"
-                        className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.04] transition-colors text-left"
-                        onClick={() => setShowExpertModal(true)}
+                        className="w-full px-5 py-3 flex items-center gap-4 hover:bg-white/[0.04] transition-colors text-left"
+                        onClick={() => setCurrentView('profile')}
                     >
-                        <span className="flex h-7 w-7 items-center justify-center shrink-0">
-                            <Award className="h-5 w-5 text-[#6ab3f3]" />
-                        </span>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={profilePhotoDisplaySrc} alt="" className="w-16 h-16 rounded-full object-cover shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-white font-medium text-[17px] leading-tight truncate">{fullName}</p>
+                            <p className="text-[#aaaaaa] text-[14px] truncate mt-0.5">{user.phone || ''}</p>
+                            <p className="text-[#aaaaaa] text-[14px] truncate">@{user.username || 'username'}</p>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-[#6d7f8f] shrink-0" />
+                    </button>
+
+                    {sectionGap}
+
+                    <button type="button" className={rowCls} onClick={() => setShowLanguageModal(true)}>
+                        <Languages className="h-5 w-5 text-[#8774e1] shrink-0 ml-1" />
+                        <span className="flex-1 text-[16px] text-white">{t('language_setting')}</span>
+                        <span className="text-[15px] text-[#8774e1]">{languageName}</span>
+                    </button>
+                    <button type="button" className={rowCls} onClick={() => setCurrentView('chat_settings')}>
+                        <MessageSquare className="h-5 w-5 text-[#8774e1] shrink-0 ml-1" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[16px] text-white">{t('chat_settings')}</p>
+                            <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('chat_settings_sub')}</p>
+                        </div>
+                    </button>
+
+                    {sectionGap}
+
+                    {/* Mutaxassis — yagona joy */}
+                    <p className="px-5 pt-2 pb-1 text-[14px] font-medium text-[#8774e1]">{t('settings_section_specialist')}</p>
+                    {verifiedStatus === 'pending' && (
+                        <div className="mx-5 my-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-amber-400 shrink-0" />
+                            <span className="text-amber-400 font-semibold text-[12px]">{t('expert_status_pending')}</span>
+                        </div>
+                    )}
+                    <button type="button" className={rowCls} onClick={() => setShowExpertModal(true)}>
+                        <Award className="h-5 w-5 text-[#8774e1] shrink-0 ml-1" />
                         <span className="flex-1 text-[16px] text-white">{t('specialist_mode')}</span>
                         <span className="text-[15px] text-[#6d7f8f] tabular-nums mr-1">{expertStatusRight}</span>
                         <div
                             className={`w-[46px] h-[26px] rounded-full relative transition-all shrink-0 ${
-                                isExpert ? 'bg-[#6ab3f3]' : 'bg-white/20'
+                                isExpert ? 'bg-[#8774e1]' : 'bg-white/20'
                             }`}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -1194,21 +1039,7 @@ export default function ProfileViewer({
                     </button>
 
                     {showExpertSummary && (
-                        <div className="px-5 pb-2 pt-1 space-y-3.5 border-t border-white/[0.06]">
-                            <div>
-                                <p className="text-[16px] text-white tabular-nums">
-                                    {price} {currency}
-                                </p>
-                                <p className="text-[13px] text-[#6d7f8f] mt-0.5">
-                                    {priceLabel} · {t('price')}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-[16px] text-white">
-                                    {experience} {t('year')}
-                                </p>
-                                <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('experience')}</p>
-                            </div>
+                        <div className="px-5 pb-2 pt-1 ml-10 space-y-3.5">
                             <div>
                                 <p className="text-[16px] text-white leading-snug">
                                     {profession || t('select')}
@@ -1216,73 +1047,38 @@ export default function ProfileViewer({
                                 </p>
                                 <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('specialization')}</p>
                             </div>
+                            <div>
+                                <p className="text-[16px] text-white tabular-nums">
+                                    {formatUzs(EXPERT_SUBSCRIPTION_MONTHLY_UZS)} {t('expert_subscription_period')}
+                                </p>
+                                <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('expert_subscription_label')}</p>
+                            </div>
                             <button
                                 type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowExpertModal(true);
-                                }}
-                                className="w-full py-2.5 text-[#6ab3f3] text-[15px] font-medium hover:bg-white/[0.04] rounded-lg transition-colors"
+                                onClick={() => setShowExpertModal(true)}
+                                className="w-full py-2.5 text-[#8774e1] text-[15px] font-medium hover:bg-white/[0.04] rounded-lg transition-colors"
                             >
                                 {t('edit_specialist')}
                             </button>
                         </div>
                     )}
 
-                    <div className="h-3 bg-[#0f0f0f] my-1" />
-
-                    {/* Sozlamalar qatorlari — bitta yagona profil */}
-                    <button
-                        type="button"
-                        className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.04] transition-colors text-left"
-                        onClick={() => onEdit()}
-                    >
-                        <User className="h-5 w-5 text-[#6ab3f3] shrink-0 ml-1" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[16px] text-white">{t('edit_profile')}</p>
-                            <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('edit_account_sub')}</p>
-                        </div>
-                    </button>
-                    <button
-                        type="button"
-                        className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.04] transition-colors text-left"
-                        onClick={() => {
-                            setCurrentView('wallet');
-                            fetchWallet();
-                        }}
-                    >
-                        <Wallet className="h-5 w-5 text-[#6ab3f3] shrink-0 ml-1" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[16px] text-white">{t('wallet')}</p>
-                            <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('wallet_sub')}</p>
-                        </div>
-                    </button>
-                    <button
-                        type="button"
-                        className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.04] transition-colors text-left"
-                        onClick={() => setCurrentView('chat_settings')}
-                    >
-                        <MessageSquare className="h-5 w-5 text-[#6ab3f3] shrink-0 ml-1" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[16px] text-white">{t('chat_settings')}</p>
-                            <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('chat_settings_sub')}</p>
-                        </div>
-                    </button>
                     {user.role === 'admin' && (
-                        <button
-                            type="button"
-                            className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.04] transition-colors text-left"
-                            onClick={() => window.open('/AdminZero0723s', '_blank')}
-                        >
-                            <Shield className="h-5 w-5 text-[#6ab3f3] shrink-0 ml-1" />
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[16px] text-white">Admin Panel</p>
-                                <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('admin_panel_sub')}</p>
-                            </div>
-                        </button>
+                        <>
+                            {sectionGap}
+                            <button type="button" className={rowCls} onClick={() => window.open('/AdminZero0723s', '_blank')}>
+                                <Shield className="h-5 w-5 text-[#8774e1] shrink-0 ml-1" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[16px] text-white">Admin Panel</p>
+                                    <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('admin_panel_sub')}</p>
+                                </div>
+                            </button>
+                        </>
                     )}
 
-                    <div className="px-5 mt-5 mb-2">
+                    {sectionGap}
+
+                    <div className="px-5 mt-2 mb-2">
                         <button
                             type="button"
                             onClick={onLogout}
@@ -1299,22 +1095,10 @@ export default function ProfileViewer({
     const renderChatSettings = () => (
         <ProfileChatSettingsView
             bgSettings={bgSettings}
-            onBack={() => setCurrentView('main')}
+            onBack={() => setCurrentView('settings')}
             onUpdateBgBlur={onUpdateBgBlur}
             onUpdateBgImageBlur={onUpdateBgImageBlur}
             onUpdateBgImage={onUpdateBgImage}
-        />
-    );
-
-    const renderWallet = () => (
-        <ProfileWalletView
-            bgSettings={bgSettings}
-            onBack={() => setCurrentView('main')}
-            walletData={walletData}
-            isSubscribing={isSubscribing}
-            isExpert={isExpert}
-            verifiedStatus={verifiedStatus}
-            onSubscribe={handleSubscribe}
         />
     );
 
@@ -1323,9 +1107,9 @@ export default function ProfileViewer({
             {!showExpertModal &&
                 (currentView === 'chat_settings'
                     ? renderChatSettings()
-                    : currentView === 'wallet'
-                      ? renderWallet()
-                      : renderProfile())}
+                    : currentView === 'profile'
+                      ? renderProfile()
+                      : renderSettings())}
 
             <ProfileEditModals
                 t={t}
@@ -1364,39 +1148,21 @@ export default function ProfileViewer({
             {showExpertModal && (
                 <ProfileExpertModal
                     t={t}
-                    language={language}
-                    isLegalMode={isLegalMode}
                     verifiedStatus={verifiedStatus}
                     onClose={() => setShowExpertModal(false)}
-                    bgSettings={bgSettings}
                     profession={profession}
                     setProfession={setProfession}
                     professionRef={professionRef}
                     specializationDetails={specializationDetails}
                     setSpecializationDetails={setSpecializationDetails}
                     specializationRef={specializationRef}
-                    experience={experience}
-                    setExperience={setExperience}
-                    experienceRef={experienceRef}
-                    hasDiploma={hasDiploma}
-                    setHasDiploma={setHasDiploma}
                     expertErrors={expertErrors}
                     expertFormPh={expertFormPh}
-                    expertFormPricingHint={expertFormPricingHint}
                     resumeRef={resumeRef}
                     resumeUrl={resumeUrl}
                     handleDocumentUpload={handleDocumentUpload}
-                    price={price}
-                    setPrice={setPrice}
-                    priceRef={priceRef}
-                    pricingModel={pricingModel}
-                    setPricingModel={setPricingModel}
-                    currency={currency}
-                    setCurrency={setCurrency}
                     serviceLanguages={serviceLanguages}
                     setServiceLanguages={setServiceLanguages}
-                    serviceFormat={serviceFormat}
-                    setServiceFormat={setServiceFormat}
                     availableGroupsLoading={availableGroupsLoading}
                     newGroupName={newGroupName}
                     setNewGroupName={setNewGroupName}

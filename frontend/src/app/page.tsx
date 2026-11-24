@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { GlassButton } from "@/components/ui/GlassButton";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Sparkles, Wallet } from "lucide-react";
+import { ShieldCheck, Sparkles } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { TranslationKeys } from "@/lib/translations";
 import { DEFAULT_PLATFORM_BACKGROUND } from "@/lib/default-background";
@@ -132,18 +132,6 @@ export default function Home() {
               <p className="font-semibold">{t('feature_safety_title')}</p>
               <p className="text-[11px] text-slate-300/80">
                 {t('feature_safety_desc')}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3 rounded-2xl bg-black/40 px-4 py-3 backdrop-blur-md border border-white/5">
-            <div className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-violet-500/20 text-violet-300">
-              <Wallet className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="font-semibold">{t('feature_wallet_title')}</p>
-              <p className="text-[11px] text-slate-300/80">
-                {t('feature_wallet_desc')}
               </p>
             </div>
           </div>

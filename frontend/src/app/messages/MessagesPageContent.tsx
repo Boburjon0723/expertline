@@ -6,8 +6,6 @@ import ChatCarouselPanel from "@/components/chat/ChatCarouselPanel";
 import GlobalCallOverlay from "@/components/chat/GlobalCallOverlay";
 import ServicesList from "@/components/chat/ServicesList";
 import ProfileViewer from "@/components/chat/ProfileViewer";
-import ProfileEditor from "@/components/chat/ProfileEditor";
-import WalletPanel from "@/components/chat/WalletPanel";
 import ExpenseTracker from "@/components/chat/ExpenseTracker";
 import CommunitiesList from "@/components/chat/CommunitiesList";
 import JobsPanel from "@/components/jobs/JobsPanel";
@@ -36,7 +34,6 @@ import RoomAccessGate from "@/components/dashboard/RoomAccessGate";
 import {
     X,
     UserCircle,
-    Wallet,
     HelpCircle,
     Bell,
     Users,
@@ -346,7 +343,6 @@ export function MessagesPageContent() {
         if (!CHAT_FOLDER_IDS.has(catId)) {
             setSelectedChat(null);
         }
-        if (catId === 'wallet') setIsExpertMode(false);
     }, []);
 
     // FETCH CHATS (refresh = true: backend cache dan o'tkazmaydi)
@@ -1649,7 +1645,7 @@ export function MessagesPageContent() {
         };
     }, [expertParam, currentUser?.id, router, searchParams]);
 
-    const isPanelCategory = ['jobs', 'services', 'finance', 'communities', 'wallet', 'profile', 'settings', 'profile_edit', 'bots'].includes(activeCategory);
+    const isPanelCategory = ['jobs', 'services', 'finance', 'communities', 'profile', 'settings', 'bots'].includes(activeCategory);
     /** Konsultant/ustoz paneli chat tanlamasdan: main oynasi mobilda ham ko'rinsin */
     const showDetail =
         !!selectedChat ||
@@ -1780,14 +1776,7 @@ export function MessagesPageContent() {
                         isExpertMode={isExpertMode}
                         isMobile={isMobile}
                         onClose={() => setShowMenu(false)}
-                        onOpenProfile={() => { setShowMenu(false); setActiveCategory('settings'); }}
-                        onOpenExperts={() => {
-                            setShowMenu(false);
-                            setShowRightPanel(false);
-                            setJobsMarketTab('experts');
-                            setJobsExpertId(null);
-                            setActiveCategory('jobs');
-                        }}
+                        onOpenProfile={() => { setShowMenu(false); setActiveCategory('profile'); }}
                         onOpenJobs={() => {
                             setShowMenu(false);
                             setShowRightPanel(false);
@@ -1924,7 +1913,7 @@ export function MessagesPageContent() {
                                 setShowRightPanel(false);
                                 setIsExpertMode(false);
                             }}
-                            onOpenProfile={() => setActiveCategory('settings')}
+                            onOpenProfile={() => setActiveCategory('profile')}
                         />
                     )
                         : activeCategory === 'services' ? (
@@ -2012,32 +2001,10 @@ export function MessagesPageContent() {
                                         </div>
                                     </div>
                                 )
-                                    : activeCategory === 'wallet' ? (
-                                        <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
-                                            <header className="lg:hidden shrink-0 p-4 border-b border-white/5 flex items-center gap-3 bg-[#1a1c20]/80 backdrop-blur-xl pt-[max(2rem,env(safe-area-inset-top))]">
-                                                <button onClick={() => setActiveCategory('all')} className="p-2 -ml-2 hover:bg-white/10 rounded-full text-white/70 shadow-lg">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
-                                                </button>
-                                                <h2 className="text-white font-bold">Hamyon</h2>
-                                            </header>
-                                            <div className="flex-1 min-h-0 w-full flex flex-col overflow-hidden min-w-0">
-                                                <WalletPanel
-                                                    onChatSelect={(chat) => {
-                                                        if (chat?.id != null) void prefetchChatMessagesCache(chat.id);
-                                                        setSelectedChat(chat);
-                                                        setActiveCategory('all');
-                                                        setIsExpertMode(false);
-                                                        setShowRightPanel(false);
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )
                                         : (activeCategory === 'profile' || activeCategory === 'settings') ? (
                                             <ProfileViewer
                                                 mode={activeCategory as any}
                                                 onClose={() => setActiveCategory('all')}
-                                                onEdit={() => setActiveCategory('profile_edit')}
                                                 onLogout={() => {
                                                     void logoutSession().then(() => {
                                                         window.location.href = '/login';
@@ -2048,13 +2015,11 @@ export function MessagesPageContent() {
                                                 onUpdateBgBlur={updateBgBlur}
                                                 onUpdateBgImageBlur={updateBgImageBlur}
                                                 onUpdateBgImage={updateBgImage}
-                                                onUpdateTheme={updateTheme}
                                             />
                                         )
                                             : activeCategory === 'bots' ? (
                                                 <BotsPanel onClose={() => setActiveCategory('all')} />
                                             )
-                                            : activeCategory === 'profile_edit' ? <ProfileEditor onClose={() => setActiveCategory('settings')} onSave={() => setActiveCategory('settings')} />
                                                 : showSpecialistDashboard ? (
                                                     <div className="w-full h-full animate-in fade-in zoom-in-95 duration-500">
                                                         <SpecialistDashboard
