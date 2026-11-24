@@ -55,6 +55,8 @@ export function GlobalCallOverlay() {
   const [elapsed, setElapsed] = useState(0);
 
   const activeRef = useRef(false);
+  /** joinLive bir vaqtda faqat bir marta (aks holda ikki token/ikki ulanish bo'lib, video uziladi). */
+  const joiningRef = useRef(false);
   const statusRef = useRef(status);
   const chatIdRef = useRef(chatId);
   const peerIdRef = useRef(peerId);
@@ -64,6 +66,7 @@ export function GlobalCallOverlay() {
 
   const reset = useCallback(() => {
     activeRef.current = false;
+    joiningRef.current = false;
     setVisible(false);
     setStatus("incoming");
     setPeerId(null);
@@ -79,8 +82,11 @@ export function GlobalCallOverlay() {
   const joinLive = useCallback(
     async (roomId: string | null | undefined, media: "audio" | "video" = callType) => {
       const sessionId = String(roomId || "").trim();
+      if (joiningRef.current) return;
+      joiningRef.current = true;
       if (!sessionId) {
         Alert.alert(t("loginErrorGeneric"), "Sessiya ID topilmadi");
+        joiningRef.current = false;
         return;
       }
       const lk = getLiveKitModules()?.LiveKit;
@@ -147,8 +153,11 @@ export function GlobalCallOverlay() {
       setVisible(true);
     };
 
-    const onAccepted = () => {
+    const onAccepted = (data?: { from?: string }) => {
       if (!activeRef.current || statusRef.current !== "incoming") return;
+      // Server qabul qilgan tomonga ham call_accepted qaytaradi — bu o'z javobimiz, acceptCall allaqachon ulanmoqda.
+      const me = useAuthStore.getState().user?.id;
+      if (data?.from && me && String(data.from) === String(me)) return;
       void joinLiveRef.current(chatIdRef.current);
     };
 

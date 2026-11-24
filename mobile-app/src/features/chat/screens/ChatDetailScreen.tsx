@@ -841,6 +841,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
   const listRef = useRef<FlatList<Message>>(null);
   const stickToBottomRef = useRef(true);
   const joinLiveSessionRef = useRef<(roomId?: string | null) => Promise<void>>(async () => {});
+  const liveJoinRef = useRef(false);
 
   const [chatDetails, setChatDetails] = useState<ChatDetailsResponse | null>(null);
   const peerInfo = useMemo(() => {
@@ -1216,6 +1217,9 @@ export function ChatDetailScreen({ route, navigation }: Props) {
 
   /** Dars / konsultatsiya xonasiga ulanish — 1:1 qo‘ng‘iroq talab qilmaydi */
   const joinLiveSession = async (roomId?: string | null) => {
+    // Bir qo'ng'iroqda faqat bitta LiveKit ulanishi (takroriy call_accepted ikki ulanish ochardi).
+    if (liveJoinRef.current) return;
+    liveJoinRef.current = true;
     const sessionId = String(roomId || chatId || "").trim();
     if (!sessionId) {
       Alert.alert("Xatolik", "Sessiya ID topilmadi");
@@ -1262,6 +1266,9 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     }
   };
   joinLiveSessionRef.current = joinLiveSession;
+  useEffect(() => {
+    if (!callVisible) liveJoinRef.current = false;
+  }, [callVisible]);
 
   const rejectCall = () => {
     const socket = getSocket();
