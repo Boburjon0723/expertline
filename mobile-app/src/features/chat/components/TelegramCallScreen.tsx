@@ -236,7 +236,8 @@ export function TelegramCallScreen({
   }, [visible]);
 
   useEffect(() => {
-    if (!visible) return;
+    // Kiruvchi jiringlash paytida audio rejimini call-sounds boshqaradi (karnay, jim rejimga bo'ysunadi).
+    if (!visible || status === "incoming") return;
     void Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
@@ -245,7 +246,7 @@ export function TelegramCallScreen({
     return () => {
       void ensureSpeakerPlayback().then(() => restoreSongLoudness());
     };
-  }, [visible, spkOn]);
+  }, [visible, spkOn, status === "incoming"]);
 
   useEffect(() => {
     if (status !== "incoming") return;

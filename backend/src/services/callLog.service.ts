@@ -145,6 +145,21 @@ export function markCallAccepted(callerId: string, calleeId: string): void {
     call.acceptedAt = Date.now();
 }
 
+/** Javob berilmagan (hali jiringlayotgan) qo'ng'iroq. */
+export function getRingingCall(callId: string): ActivePhoneCall | null {
+    const call = activeCallsById.get(callId);
+    if (!call || call.logged || call.acceptedAt != null) return null;
+    return call;
+}
+
+/** Foydalanuvchi qatnashayotgan, hali javob berilmagan qo'ng'iroqlar. */
+export function listRingingCallsFor(userId: string): ActivePhoneCall[] {
+    const uid = String(userId);
+    return [...activeCallsById.values()].filter(
+        (c) => !c.logged && c.acceptedAt == null && (c.callerId === uid || c.calleeId === uid)
+    );
+}
+
 function findActiveCall(callerId: string, calleeId: string): ActivePhoneCall | null {
     const callId = activeCallIdByPair.get(pairKey(callerId, calleeId));
     if (!callId) return null;

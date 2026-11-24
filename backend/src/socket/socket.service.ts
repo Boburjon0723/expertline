@@ -10,6 +10,10 @@ import { NotificationService } from '../services/notification.service';
 import { safeDelCache, addUserToOnline, removeUserFromOnline } from '../config/redis';
 import { authCookieName, getCookieFromHeader } from '../config/authCookies';
 import { MEDIA_URL_RE } from '../config/storage';
+import { finalizePhoneCallLog, getRingingCall, listRingingCallsFor } from '../services/callLog.service';
+
+/** Javob berilmagan qo'ng'iroq shuncha vaqtdan keyin avtomatik tugaydi. */
+const RING_TIMEOUT_MS = 45_000;
 
 
 async function getJoinerProfileForSession(userId: string | undefined) {
@@ -100,6 +104,30 @@ export class SocketService {
     constructor(io: Server) {
         this.io = io;
         this.initialize();
+    }
+
+    /**
+     * Hali jiringlayotgan qo'ng'iroqni tugatadi: log yozadi va ikkala tomonga call_ended yuboradi.
+     * timeout yoki qabul qiluvchi uzilsa — "o'tkazib yuborilgan", qo'ng'iroq qiluvchi uzilsa — "bekor qilingan".
+     */
+    private async endRingingCall(callId: string, reason: 'timeout' | 'disconnect', disconnectedUserId?: string) {
+        const call = getRingingCall(callId);
+        if (!call) return;
+        const { callerId, calleeId, chatId } = call;
+        const callerLeft = reason === 'disconnect' && disconnectedUserId === callerId;
+        try {
+            await finalizePhoneCallLog({
+                io: this.io,
+                actorId: callerLeft ? callerId : calleeId,
+                peerId: callerLeft ? calleeId : callerId,
+                chatId,
+                reason: callerLeft ? 'end' : 'reject',
+            });
+        } catch (e) {
+            console.error(`[Call] ${reason} log:`, e);
+        }
+        this.io.to(callerId).emit('call_ended');
+        this.io.to(calleeId).emit('call_ended');
     }
 
     private initialize() {
@@ -536,6 +564,10 @@ export class SocketService {
                         chatId: data.chatId,
                         callId,
                     });
+                    // Javob bo'lmasa qo'ng'iroq "o'tkazib yuborilgan" bo'lib ikkala tomonda tugaydi.
+                    setTimeout(() => {
+                        void this.endRingingCall(callId, 'timeout');
+                    }, RING_TIMEOUT_MS);
                 }
             );
 
@@ -550,6 +582,8 @@ export class SocketService {
                 this.io.to(targetRoom).emit('call_accepted', payload);
                 // Mirror to accepter's own room so both sides stay in sync.
                 this.io.to(String(authSocket.user.id)).emit('call_accepted', payload);
+                // Accepter's other devices stop ringing.
+                authSocket.to(String(authSocket.user.id)).emit('call_handled_elsewhere');
             });
 
             authSocket.on('reject_call', async (data: { to: string; chatId?: string }) => {
@@ -566,6 +600,7 @@ export class SocketService {
                     console.error('[Socket] reject_call log:', e);
                 }
                 this.io.to(String(data.to)).emit('call_rejected');
+                authSocket.to(String(authSocket.user.id)).emit('call_handled_elsewhere');
             });
 
             authSocket.on(
@@ -1192,6 +1227,10 @@ export class SocketService {
                 if (userId) {
                     removeUserFromOnline(userId).then((remainingSockets) => {
                         if (remainingSockets <= 0) {
+                            // Jiringlayotgan qo'ng'iroqlar endi javobsiz qoladi — tugatamiz.
+                            for (const call of listRingingCallsFor(String(userId))) {
+                                void this.endRingingCall(call.callId, 'disconnect', String(userId));
+                            }
                             // Truly offline: Broadcast change
                             this.io.emit('user_status_change', { 
                                 userId, 

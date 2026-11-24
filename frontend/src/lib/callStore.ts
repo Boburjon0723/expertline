@@ -5,6 +5,8 @@
  * Multi-tab: BroadcastChannel syncs call state across tabs.
  */
 
+import { playIncomingRing, playOutgoingTone } from '@/lib/call-tones';
+
 const bc = typeof BroadcastChannel !== 'undefined'
     ? new BroadcastChannel('expertline_call')
     : null;
@@ -122,10 +124,9 @@ export async function handleIncomingCall(data: {
     if (!fromBroadcast) {
         bc?.postMessage({ type: 'incoming', data });
     }
-    try {
-        const { playIncomingRing } = await import('@/lib/call-tones');
-        stopIncomingTone = playIncomingRing();
-    } catch (_) {}
+    // Sinxron: dinamik import kutilsa, qo'ng'iroq shu orada tugab, ringtone to'xtamay qolardi.
+    stopTones();
+    stopIncomingTone = playIncomingRing();
 }
 
 /** Called when we receive `call_accepted` from socket */
@@ -149,6 +150,12 @@ export function handleCallRejected(fromBroadcast = false) {
     if (!fromBroadcast) bc?.postMessage({ type: 'rejected' });
 }
 
+/** Shu akkauntning boshqa qurilmasida javob berildi yoki rad etildi — bu yerda jiringlashni to'xtatamiz. */
+export function handleCallHandledElsewhere() {
+    if (state.status !== 'ringing_in') return;
+    callReset(false);
+}
+
 /** Called when we receive `call_ended` from socket */
 export function handleCallEnded(fromBroadcast = false) {
     stopTones();
@@ -169,10 +176,8 @@ export async function startOutgoingCall(peerId: string, peerName: string, chatId
     };
     notify();
     bc?.postMessage({ type: 'outgoing', data: { peerId, peerName, chatId, callType } });
-    try {
-        const { playOutgoingTone } = await import('@/lib/call-tones');
-        stopOutgoingTone = playOutgoingTone();
-    } catch (_) {}
+    stopTones();
+    stopOutgoingTone = playOutgoingTone();
 }
 
 export function toggleMute() {

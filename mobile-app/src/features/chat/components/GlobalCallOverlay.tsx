@@ -16,6 +16,7 @@ import {
   stopLiveKitAudioSession,
 } from "../../../lib/livekit-call-session";
 import { liveKitRoomOptionsMobile } from "../../../lib/livekit-media";
+import { startIncomingRing, stopCallSounds } from "../../../lib/call-sounds";
 
 type IncomingPayload = {
   from: string;
@@ -166,6 +167,12 @@ export function GlobalCallOverlay() {
       resetRef.current();
     };
 
+    // Shu akkauntning boshqa qurilmasida javob berildi yoki rad etildi — bu yerda jiringlashni to'xtatamiz.
+    const onHandledElsewhere = () => {
+      if (!activeRef.current || statusRef.current !== "incoming") return;
+      resetRef.current();
+    };
+
     const attach = () => {
       const socket = getSocket();
       if (!socket || cancelled) return;
@@ -175,11 +182,13 @@ export function GlobalCallOverlay() {
         sock.off("call_accepted", onAccepted);
         sock.off("call_rejected", onRejectedOrEnded);
         sock.off("call_ended", onRejectedOrEnded);
+        sock.off("call_handled_elsewhere", onHandledElsewhere);
       }
       socket.on("incoming_call", onIncoming);
       socket.on("call_accepted", onAccepted);
       socket.on("call_rejected", onRejectedOrEnded);
       socket.on("call_ended", onRejectedOrEnded);
+      socket.on("call_handled_elsewhere", onHandledElsewhere);
       sock = socket;
     };
 
@@ -194,6 +203,7 @@ export function GlobalCallOverlay() {
         sock.off("call_accepted", onAccepted);
         sock.off("call_rejected", onRejectedOrEnded);
         sock.off("call_ended", onRejectedOrEnded);
+        sock.off("call_handled_elsewhere", onHandledElsewhere);
       }
     };
   }, [user]);
@@ -208,7 +218,14 @@ export function GlobalCallOverlay() {
     return () => clearInterval(id);
   }, [visible, status]);
 
+  useEffect(() => {
+    if (!visible || status !== "incoming") return;
+    startIncomingRing();
+    return () => stopCallSounds();
+  }, [visible, status]);
+
   const acceptCall = async () => {
+    stopCallSounds();
     const socket = getSocket();
     const to = peerIdRef.current;
     const room = chatIdRef.current;

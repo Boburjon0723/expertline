@@ -11,6 +11,7 @@ import {
     handleCallRejected,
     handleCallEnded,
     callReset,
+    handleCallHandledElsewhere,
 } from '@/lib/callStore';
 
 interface SocketContextType {
@@ -105,6 +106,9 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         });
         socketInstance.on('call_ended', () => {
             handleCallEnded();
+        });
+        socketInstance.on('call_handled_elsewhere', () => {
+            handleCallHandledElsewhere();
         });
 
         socketInstance.on('connect_error', async (err) => {

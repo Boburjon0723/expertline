@@ -28,6 +28,7 @@ import { messageCopyText, messageReplyPreview, looksLikeMediaUrl } from "../mess
 import { setActionMessage } from "../message-action-store";
 import { ChatBackground } from "../../../components/ChatBackground";
 import { Video, ResizeMode, Audio } from 'expo-av';
+import { startOutgoingRingback, stopCallSounds } from '../../../lib/call-sounds';
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { ChatHeaderMoreMenu } from "../components/ChatHeaderMoreMenu";
@@ -838,6 +839,13 @@ export function ChatDetailScreen({ route, navigation }: Props) {
   const outgoingCallRef = useRef(false);
   callStatusRef.current = callStatus;
   callVisibleRef.current = callVisible;
+
+  // Javob kutilayotganda "tuuut" (qabul qilish, rad etish, tugatish yoki ekrandan chiqishda to'xtaydi).
+  useEffect(() => {
+    if (!callVisible || callStatus !== "ringing") return;
+    startOutgoingRingback();
+    return () => stopCallSounds();
+  }, [callVisible, callStatus]);
 
   const listRef = useRef<FlatList<Message>>(null);
   const stickToBottomRef = useRef(true);
