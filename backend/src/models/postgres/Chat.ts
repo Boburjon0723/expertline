@@ -1,5 +1,6 @@
 import { pool } from '../../config/database';
 import { E2E_LIST_PLACEHOLDER, isE2eEnvelope } from '../../services/e2eEnvelope';
+import { MEDIA_URL_RE } from '../../config/storage';
 
 export interface Chat {
     id: string;
@@ -244,9 +245,7 @@ export const ChatModel: IChatModel = {
                 }
             })();
             const isStorage =
-                /storage\.googleapis\.com|firebasestorage\.googleapis\.com|\.firebasestorage\.app/i.test(
-                    snip
-                );
+                MEDIA_URL_RE.test(snip);
             const asAudio =
                 /\.(mp3|flac|wav|m4a|aac|wma|opus)(\?|#|$)/i.test(decodedSnip) ||
                 /\.(mp3|flac|wav|m4a|aac)$/i.test(fileName) ||

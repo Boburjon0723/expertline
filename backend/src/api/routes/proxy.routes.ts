@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { isMediaStorageHost } from '../../config/storage';
 
 const router = Router();
 
@@ -98,10 +99,9 @@ router.get('/media-proxy', async (req: Request, res: Response) => {
         const url = String(req.query.url || '').trim();
         if (!url) return res.status(400).json({ error: 'url required' });
 
-        const allowed = ['storage.googleapis.com', 'firebasestorage.googleapis.com'];
         let hostname: string;
         try { hostname = new URL(url).hostname; } catch { return res.status(400).json({ error: 'invalid url' }); }
-        if (!allowed.some(h => hostname === h || hostname.endsWith('.' + h) || hostname.endsWith('.firebasestorage.app'))) {
+        if (!isMediaStorageHost(hostname)) {
             return res.status(403).json({ error: 'host not allowed' });
         }
 

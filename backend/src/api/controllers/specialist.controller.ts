@@ -111,20 +111,12 @@ export const saveWhiteboardSnapshot = async (req: Request, res: Response) => {
 
             let imageUrl = '';
             try {
-                const { bucket } = await import('../../config/firebase');
+                const { uploadObject } = await import('../../config/storage');
                 const crypto = await import('crypto');
                 const fileName = `whiteboard-${crypto.randomUUID()}${ext}`;
-                const file = bucket.file(fileName);
-                await file.save(buffer, {
-                    metadata: {
-                        contentType: mime,
-                        contentDisposition: `inline; filename="${fileName}"`,
-                    },
-                });
-                await file.makePublic();
-                imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+                imageUrl = await uploadObject(buffer, fileName, mime);
             } catch (uploadErr) {
-                console.warn('[saveWhiteboardSnapshot] Firebase upload failed, local fallback:', uploadErr);
+                console.warn('[saveWhiteboardSnapshot] Storage upload failed, local fallback:', uploadErr);
                 const fs = await import('fs');
                 const path = await import('path');
                 const crypto = await import('crypto');

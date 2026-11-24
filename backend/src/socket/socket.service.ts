@@ -9,6 +9,7 @@ import { pool } from '../config/database';
 import { NotificationService } from '../services/notification.service';
 import { safeDelCache, addUserToOnline, removeUserFromOnline } from '../config/redis';
 import { authCookieName, getCookieFromHeader } from '../config/authCookies';
+import { MEDIA_URL_RE } from '../config/storage';
 
 
 async function getJoinerProfileForSession(userId: string | undefined) {
@@ -424,7 +425,7 @@ export class SocketService {
                                     else if (/\.(mp4|webm|mov|mkv)(\?|#|$)/i.test(u)) preview = '🎬 Video';
                                     else if (/\.(png|jpe?g|gif|webp)(\?|#|$)/i.test(u)) preview = '📷 Rasm';
                                     else if (
-                                        /storage\.googleapis\.com|firebasestorage/i.test(u)
+                                        MEDIA_URL_RE.test(u)
                                     ) {
                                         preview = '📁 Fayl';
                                     }

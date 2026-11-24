@@ -5,35 +5,21 @@ import { pool } from '../../config/database';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import { bucket } from '../../config/firebase';
+import { uploadObject, isMediaStorageHost } from '../../config/storage';
 import { attachmentDisposition, mimeFromFilename } from '../../middleware/upload.middleware';
 
-async function uploadToFirebase(file: any): Promise<string> {
+async function uploadToStorage(file: any): Promise<string> {
     const fileExt = path.extname(file.originalname).toLowerCase().slice(0, 16);
-    const fileName = `${crypto.randomUUID()}${fileExt}`;
-    const filePath = fileName;
+    const objectKey = `${crypto.randomUUID()}${fileExt}`;
     const contentType = mimeFromFilename(file.originalname, file.mimetype);
-
-    const fileUpload = bucket.file(filePath);
-
-    await fileUpload.save(fs.readFileSync(file.path), {
-        metadata: {
-            contentType,
-            contentDisposition: attachmentDisposition(file.originalname || `file${fileExt}`),
+    try {
+        return await uploadObject(fs.readFileSync(file.path), objectKey, contentType);
+    } finally {
+        // multer yaratgan vaqtinchalik faylni tozalash
+        if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
         }
-    });
-
-    // Make the file public (or use signed URL, but publicUrl is what we were using)
-    await fileUpload.makePublic();
-
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-
-    // Clean up local file created by multer
-    if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
     }
-
-    return publicUrl;
 }
 
 export const uploadMaterial = async (req: Request, res: Response): Promise<void> => {
@@ -98,7 +84,7 @@ export const uploadMaterial = async (req: Request, res: Response): Promise<void>
         }
 
         const file = req.file;
-        const file_url = await uploadToFirebase(file);
+        const file_url = await uploadToStorage(file);
 
         const material = await SessionMaterialModel.create({
             session_id: sessionId,
@@ -153,7 +139,7 @@ export const uploadFile = async (req: Request, res: Response): Promise<void> => 
         }
 
         const uploadedFiles = await Promise.all(files.map(async f => {
-            const publicUrl = await uploadToFirebase(f);
+            const publicUrl = await uploadToStorage(f);
             const mimetype = mimeFromFilename(f.originalname, f.mimetype);
             return {
                 name: f.originalname,
@@ -232,17 +218,9 @@ export const streamFile = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
-const DOWNLOAD_HOST_OK = (host: string) => {
-    const h = host.toLowerCase();
-    return (
-        h === 'storage.googleapis.com' ||
-        h === 'firebasestorage.googleapis.com' ||
-        h.endsWith('.googleapis.com') ||
-        h.endsWith('.firebasestorage.app')
-    );
-};
+const DOWNLOAD_HOST_OK = isMediaStorageHost;
 
-/** Chat media (GCS) ni attachment sifatida beradi — brauzer yangi tab ochmasin. */
+/** Chat media (Supabase Storage / eski GCS) ni attachment sifatida beradi — brauzer yangi tab ochmasin. */
 export const downloadRemoteFile = async (req: Request, res: Response): Promise<void> => {
     try {
         const raw = String(req.query.url || '');

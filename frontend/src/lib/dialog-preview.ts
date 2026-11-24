@@ -50,7 +50,7 @@ function decodeUrlish(s: string): string {
 }
 
 function isStorageHost(url: string): boolean {
-    return /storage\.googleapis\.com|firebasestorage\.googleapis\.com|\.firebasestorage\.app/i.test(
+    return /\.supabase\.co\/storage\/|storage\.googleapis\.com|firebasestorage\.googleapis\.com|\.firebasestorage\.app/i.test(
         url
     );
 }
