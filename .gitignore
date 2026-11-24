@@ -37,3 +37,7 @@ mobile-app/.expo/
 **/local.properties
 mobile-android/.gradle/
 mobile-android/**/build/
+
+# Expo prebuild (native papkalar app.json dan yaratiladi)
+mobile-app/ios/
+mobile-app/android/
