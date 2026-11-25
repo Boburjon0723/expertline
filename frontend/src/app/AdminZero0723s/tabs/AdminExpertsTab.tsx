@@ -39,7 +39,7 @@ export function AdminExpertsTab({
                                             <h3 className="text-2xl font-bold text-white">{exp.name} {exp.surname}</h3>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-indigo-400 font-bold text-sm bg-indigo-400/10 px-3 py-1 rounded-full border border-indigo-400/20 uppercase tracking-wider">{exp.profession}</span>
-                                                <span className="text-slate-500 text-sm">@{exp.username}</span>
+                                                {exp.username ? <span className="text-slate-500 text-sm">@{exp.username}</span> : null}
                                             </div>
                                             <p className="text-slate-400 text-sm mt-3 leading-relaxed max-w-xl italic">{exp.bio_expert || 'Biografiya kiritilmagan.'}</p>
                                         </div>

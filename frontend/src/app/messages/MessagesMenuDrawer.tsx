@@ -88,7 +88,12 @@ export function MessagesMenuDrawer({
                     </div>
                     <div className="flex-1 min-w-0">
                         <h3 className="text-white font-medium truncate text-[16px]">{currentUser?.name}</h3>
-                        <p className="text-[#aaaaaa] text-[14px] truncate">@{currentUser?.username}</p>
+                        {/* Username bo'lmasa — telefon raqami (yolg'iz "@" emas) */}
+                        {(currentUser?.username || currentUser?.phone) && (
+                            <p className="text-[#aaaaaa] text-[14px] truncate">
+                                {currentUser?.username ? `@${currentUser.username}` : currentUser?.phone}
+                            </p>
+                        )}
                     </div>
                 </div>
 

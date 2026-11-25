@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, BadgeCheck, MessageCircle, Search, X } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { getUser } from '@/lib/auth-storage';
@@ -24,6 +24,9 @@ type ExpertRow = {
     bio_expert?: string;
     service_languages?: string;
 };
+
+/** Kasb kaliti: katta-kichik harf va bo'shliqlardan qat'i nazar bir xil guruh */
+const professionKey = (e: ExpertRow) => String(e.profession || '').trim().toLowerCase();
 
 const fullName = (e: ExpertRow) => `${e.name || ''} ${e.surname || ''}`.trim() || (e.username ? `@${e.username}` : '—');
 const specialtyLine = (e: ExpertRow) => e.specialization_details || e.specialization || '';
@@ -55,6 +58,30 @@ export default function ExpertsPanel({ onBack, onStartChat, initialExpert = null
     const [historyVersion, setHistoryVersion] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
     const q = query.trim();
+    /** Tanlangan kategoriya (kasb kaliti); null — hammasi */
+    const [category, setCategory] = useState<string | null>(null);
+
+    // Kategoriyalar — mavjud mutaxassislarning kasblaridan (ko'pi birinchi); o'zi yozgan kasblar ham chiqadi
+    const categories = useMemo(() => {
+        const map = new Map<string, { label: string; n: number }>();
+        for (const e of items) {
+            const key = professionKey(e);
+            if (!key) continue;
+            const cur = map.get(key);
+            if (cur) cur.n++;
+            else map.set(key, { label: String(e.profession).trim(), n: 1 });
+        }
+        return [...map.entries()]
+            .map(([key, v]) => ({ key, ...v }))
+            .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
+    }, [items]);
+
+    // Tanlangan kategoriya qidiruv natijalarida qolmasa — "Hammasi"
+    const activeCategory = category && categories.some((c) => c.key === category) ? category : null;
+    const visible = useMemo(
+        () => (activeCategory ? items.filter((e) => professionKey(e) === activeCategory) : items),
+        [items, activeCategory]
+    );
 
     useEffect(() => {
         const ac = new AbortController();
@@ -113,7 +140,10 @@ export default function ExpertsPanel({ onBack, onStartChat, initialExpert = null
                         <ArrowLeft className="h-5 w-5" />
                     </button>
                     <div className="relative flex-1 min-w-0">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#aaaaaa] pointer-events-none" />
+                        {/* Chat ro'yxatidagi qidiruv bilan bir xil: lupa input balandligi bo'ylab markazda */}
+                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                            <Search className="h-4 w-4 text-[#aaaaaa]" />
+                        </div>
                         <input
                             ref={inputRef}
                             value={query}
@@ -135,6 +165,28 @@ export default function ExpertsPanel({ onBack, onStartChat, initialExpert = null
                         )}
                     </div>
                 </div>
+                {categories.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar px-1 pt-2.5">
+                        {[{ key: null as string | null, label: t('all'), n: items.length }, ...categories].map((c) => {
+                            const on = activeCategory === c.key;
+                            return (
+                                <button
+                                    key={c.key ?? '__all'}
+                                    type="button"
+                                    onClick={() => setCategory(c.key)}
+                                    className={`shrink-0 flex items-center gap-1.5 h-8 px-3.5 rounded-full border text-[14px] font-medium transition-colors ${
+                                        on
+                                            ? 'bg-[#8774e1] border-[#8774e1] text-white'
+                                            : 'bg-white/[0.06] border-white/[0.1] text-white/85 hover:bg-white/[0.1]'
+                                    }`}
+                                >
+                                    <span className="max-w-[180px] truncate">{c.label}</span>
+                                    <span className={`text-[12px] ${on ? 'text-white/85' : 'text-white/45'}`}>{c.n}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
                 <h2 className="px-3 pt-3 text-[14px] font-medium text-[#8774e1]">{t('experts_tab')}</h2>
             </div>
 
@@ -161,12 +213,12 @@ export default function ExpertsPanel({ onBack, onStartChat, initialExpert = null
                             </div>
                         </div>
                     ))
-                ) : items.length === 0 ? (
+                ) : visible.length === 0 ? (
                     <div className="flex items-center justify-center h-40 mt-10 text-[14px] text-[#aaaaaa]">
                         {q ? t('listings_nothing_found') : t('experts_empty_list')}
                     </div>
                 ) : (
-                    items.map((e) => (
+                    visible.map((e) => (
                         <button
                             key={e.id}
                             type="button"

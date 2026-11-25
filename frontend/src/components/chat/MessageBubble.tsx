@@ -220,6 +220,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         const h = Number((fileMeta as { height?: unknown }).height) || 0;
         return w > 0 && h > 0 ? Math.min(1.8, Math.max(0.56, w / h)) : 4 / 3;
     }, [fileMeta]);
+    /**
+     * Rasm bloki rasmning haqiqiy nisbatida — qirqilmasdan to'liq ko'rinsin (Telegram kabi):
+     * eni 320px gacha, bo'yi 420px gacha; baland rasm (skrinshot) torroq bo'ladi.
+     * Faqat juda cho'zilgan rasmlar (1:4 dan ortiq) chetidan qirqiladi.
+     */
+    const imageBox = useMemo(() => {
+        const w = Number((fileMeta as { width?: unknown }).width) || 0;
+        const h = Number((fileMeta as { height?: unknown }).height) || 0;
+        const aspect = w > 0 && h > 0 ? Math.min(4, Math.max(0.25, w / h)) : 4 / 3;
+        const boxW = Math.max(140, Math.min(320, 420 * aspect));
+        return { width: `min(${Math.round(boxW)}px, 70vw)`, aspectRatio: aspect };
+    }, [fileMeta]);
     const videoDurationLabel = useMemo(() => {
         const ms = Number((fileMeta as { durationMs?: unknown }).durationMs) || 0;
         if (ms <= 0) return '';
@@ -416,27 +428,36 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             );
         };
 
-        const urlRegex = /(https?:\/\/[^\s]+)/gi;
-        const segments = text.split(urlRegex);
+        // http(s)://... yoki www.... ; gap oxiridagi tinish belgilari linkka kirmaydi (mobil LinkifiedText bilan bir xil)
+        const segments: { text: string; url?: string }[] = [];
+        let last = 0;
+        for (const m of text.matchAll(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi)) {
+            const start = m.index ?? 0;
+            const raw = m[0].replace(/[.,!?;:'"»)\]}]+$/, '');
+            if (!raw) continue;
+            if (start > last) segments.push({ text: text.slice(last, start) });
+            segments.push({ text: raw, url: /^https?:\/\//i.test(raw) ? raw : `https://${raw}` });
+            last = start + raw.length;
+        }
+        if (last < text.length) segments.push({ text: text.slice(last) });
 
         return (
             <span>
-                {segments.map((segment, i) => {
-                    const isUrl = /^https?:\/\//i.test(segment);
-                    if (isUrl) {
-                        const url = segment;
+                {segments.map((seg, i) => {
+                    if (seg.url) {
                         return (
                             <a
                                 key={`url-${i}`}
-                                href={url}
+                                href={seg.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-300 underline hover:text-blue-100 break-all"
                             >
-                                {url}
+                                {seg.text}
                             </a>
                         );
                     }
+                    const segment = seg.text;
                     return (
                         <React.Fragment key={`seg-${i}`}>
                             {highlightQuery(segment, `seg-${i}`)}
@@ -804,8 +825,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                     rasm yuklangach ustida silliq paydo bo'ladi — chat sakramaydi. */}
                                 <button
                                     type="button"
-                                    className="relative block w-[min(320px,70vw)] overflow-hidden rounded-[inherit] bg-gradient-to-br from-[#1f2a3a] to-[#0e1621]"
-                                    style={{ aspectRatio: thumbAspect }}
+                                    className="relative block overflow-hidden rounded-[inherit] bg-gradient-to-br from-[#1f2a3a] to-[#0e1621]"
+                                    style={imageBox}
                                     onClick={() => (imageShown ? onMediaClick?.(mediaSrc, 'image') : loadImage())}
                                 >
                                     {typeof fileMeta.thumb === 'string' && fileMeta.thumb ? (

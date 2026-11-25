@@ -843,7 +843,17 @@ body {
   border-radius: 0.5rem;
 }
 
-.message-bubble .image-wrapper img,
+/* O'lchami noma'lum rasm: asl nisbatida, qirqilmasdan (eni ham, bo'yi ham chegaralangan) */
+.message-bubble .image-wrapper img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(320px, 100%);
+  max-height: min(420px, 70vh);
+  object-fit: contain;
+  border-radius: inherit;
+}
+
 .message-bubble .video-wrapper video {
   display: block;
   width: 100%;

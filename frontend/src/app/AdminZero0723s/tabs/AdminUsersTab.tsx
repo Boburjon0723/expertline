@@ -36,7 +36,7 @@ export function AdminUsersTab({ users, onVerifyPhone, onToggleStatus }: AdminUse
                                         </div>
                                         <div>
                                             <div className="font-bold text-[15px]">{user.name} {user.surname}</div>
-                                            <div className="text-slate-500 text-xs">@{user.username || 'username'}</div>
+                                            {user.username ? <div className="text-slate-500 text-xs">@{user.username}</div> : null}
                                         </div>
                                     </div>
                                 </td>
