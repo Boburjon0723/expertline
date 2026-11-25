@@ -3,6 +3,8 @@ import { JobModel } from '../../models/postgres/Job';
 import { JobCategoryModel } from '../../models/postgres/JobCategory';
 import { pool } from '../../config/database';
 import { safeClearCache } from '../../config/redis';
+import { isRegionCode } from '../../constants/regions';
+import { isDirectionCode } from '../../constants/directions';
 
 const JOB_TEXT_MIN = 20;
 const JOB_TEXT_MAX = 3000;
@@ -35,6 +37,20 @@ export class JobController {
                 return res.status(400).json({ message: `E'lon matni ${JOB_TEXT_MAX} ta belgidan oshmasin` });
             }
 
+            // Viloyat (yoki 'remote' — masofaviy / butun O'zbekiston). Yangi klientlar majburiy yuboradi;
+            // eski o'rnatilgan ilovalar yubormaydi — ular uchun NULL qoladi.
+            const rawRegion = body.region ?? body.location;
+            if (rawRegion != null && rawRegion !== '' && !isRegionCode(rawRegion)) {
+                return res.status(400).json({ message: 'Viloyat noto\'g\'ri' });
+            }
+            const region = isRegionCode(rawRegion) ? rawRegion : undefined;
+            // Yo'nalish (IT, savdo, ...). Eski ilovalar yubormaydi — NULL qoladi.
+            const rawDirection = body.direction;
+            if (rawDirection != null && rawDirection !== '' && !isDirectionCode(rawDirection)) {
+                return res.status(400).json({ message: 'Yo\'nalish noto\'g\'ri' });
+            }
+            const direction = isDirectionCode(rawDirection) ? rawDirection : undefined;
+
             await client.query('BEGIN');
 
             // Kategoriya ixtiyoriy (eski klientlar yuborishi mumkin) — berilsa, mavjudligini tekshiramiz
@@ -50,6 +66,8 @@ export class JobController {
             const jobData = {
                 sub_type: subType as 'employer' | 'seeker',
                 short_text: text,
+                location: region,
+                direction,
                 category_id: categoryId as any,
                 type: (body.type === 'online' || body.type === 'offline' ? body.type : null) as any,
             };
@@ -79,19 +97,41 @@ export class JobController {
 
     getJobs = async (req: Request, res: Response) => {
         try {
-            const { type, category_id, sub_type, q, limit, offset } = req.query;
+            const { type, category_id, sub_type, q, limit, offset, region, direction } = req.query;
             const lim = limit != null ? Math.min(Math.max(parseInt(String(limit), 10) || 50, 1), 100) : undefined;
             const jobs = await this.jobModel.findAll({
                 type: type as string,
                 category_id: category_id ? parseInt(category_id as string) : undefined,
                 sub_type: sub_type as string,
                 q: typeof q === 'string' ? q.slice(0, 100) : undefined,
+                region: isRegionCode(region) ? region : undefined,
+                direction: isDirectionCode(direction) ? direction : undefined,
                 limit: lim,
                 offset: lim ? Math.max(parseInt(String(offset), 10) || 0, 0) : undefined,
             });
             res.json(jobs);
         } catch (error) {
             console.error('Get Jobs Error:', error);
+            res.status(500).json({ message: 'Internal server error' });
+        }
+    };
+
+    /**
+     * Filtr menyusi uchun sonlar: { regions: { samarkand: 12, ... }, directions: { it: 5, ... } }.
+     * Viloyat sonlari tanlangan yo'nalish ichida, yo'nalish sonlari tanlangan viloyat ichida hisoblanadi.
+     */
+    getFacets = async (req: Request, res: Response) => {
+        try {
+            const { sub_type: st, region, direction } = req.query;
+            res.json(
+                await this.jobModel.facets({
+                    subType: st === 'employer' || st === 'seeker' ? st : undefined,
+                    region: isRegionCode(region) ? region : undefined,
+                    direction: isDirectionCode(direction) ? direction : undefined,
+                })
+            );
+        } catch (error) {
+            console.error('Get Facets Error:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     };

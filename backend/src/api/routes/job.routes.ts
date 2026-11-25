@@ -7,6 +7,7 @@ const router = Router();
 const jobController = new JobController();
 
 router.get('/', cacheMiddleware(120), jobController.getJobs);
+router.get('/facets', cacheMiddleware(60), jobController.getFacets);
 router.get('/mine', authenticateToken, jobController.getMyJobs);
 router.patch('/:id/status', authenticateToken, jobController.updateJobStatus);
 router.get('/categories', cacheMiddleware(600), jobController.getCategories);

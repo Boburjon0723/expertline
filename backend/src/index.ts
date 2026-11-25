@@ -127,7 +127,8 @@ const runAutoMigration = async () => {
             'resume_url TEXT', 'company_name VARCHAR(255)', 'responsible_person VARCHAR(255)',
             'work_type VARCHAR(50)', 'work_hours VARCHAR(100)', 'day_off VARCHAR(100)',
             'age_range VARCHAR(50)', 'gender_pref VARCHAR(20)', 'requirements_json JSONB',
-            'salary_text VARCHAR(255)', 'benefits_json JSONB', 'apply_method_json JSONB'
+            'salary_text VARCHAR(255)', 'benefits_json JSONB', 'apply_method_json JSONB',
+            'direction VARCHAR(40)'
         ];
         for (const col of jobCols) {
             const colName = col.split(' ')[0];

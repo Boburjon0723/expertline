@@ -19,6 +19,8 @@ export interface Job {
     full_name?: string;
     birth_date?: Date;
     location?: string;
+    /** Yo'nalish kodi (constants/directions) */
+    direction?: string;
     experience_years?: number;
     salary_min?: string;
     is_salary_negotiable?: boolean;
@@ -56,16 +58,16 @@ export class JobModel {
                 user_id, title, sub_type, category_id, type, status, short_text, 
                 full_name, birth_date, location, experience_years, salary_min, is_salary_negotiable, skills_json, has_diploma, has_certificate, resume_url,
                 company_name, responsible_person, work_type, work_hours, day_off, age_range, gender_pref, requirements_json, salary_text, benefits_json, apply_method_json,
-                payment_status, publication_fee
+                payment_status, publication_fee, direction
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
             RETURNING *
         `;
         const values = [
             job.user_id, job.title || (job.short_text || '').split('\n')[0].slice(0, 120) || 'E\'lon', job.sub_type, job.category_id, job.type, job.status || 'active', job.short_text,
             job.full_name, job.birth_date, job.location, job.experience_years, job.salary_min, job.is_salary_negotiable, job.skills_json, job.has_diploma, job.has_certificate, job.resume_url,
             job.company_name, job.responsible_person, job.work_type, job.work_hours, job.day_off, job.age_range, job.gender_pref, job.requirements_json, job.salary_text, job.benefits_json, job.apply_method_json,
-            job.payment_status || 'unpaid', job.publication_fee || 0
+            job.payment_status || 'unpaid', job.publication_fee || 0, job.direction ?? null
         ];
 
         try {
@@ -83,6 +85,10 @@ export class JobModel {
         sub_type?: string;
         /** Matn bo'yicha qidiruv (e'lon matni, kompaniya, kategoriya, muallif ismi) */
         q?: string;
+        /** Viloyat kodi: shu viloyat e'lonlari birinchi, keyin masofaviy, keyin qolganlari */
+        region?: string;
+        /** Yo'nalish kodi — qat'iy filtr */
+        direction?: string;
         limit?: number;
         offset?: number;
     }): Promise<Job[]> {
@@ -116,6 +122,12 @@ export class JobModel {
             paramIndex++;
         }
 
+        if (filters.direction) {
+            query += ` AND j.direction = $${paramIndex}`;
+            values.push(filters.direction);
+            paramIndex++;
+        }
+
         const q = filters.q?.trim();
         if (q) {
             const p = `$${paramIndex}`;
@@ -131,7 +143,13 @@ export class JobModel {
             paramIndex++;
         }
 
-        query += ` ORDER BY j.created_at DESC`;
+        if (filters.region) {
+            query += ` ORDER BY CASE WHEN j.location = $${paramIndex} THEN 0 WHEN j.location = 'remote' THEN 1 ELSE 2 END, j.created_at DESC`;
+            values.push(filters.region);
+            paramIndex++;
+        } else {
+            query += ` ORDER BY j.created_at DESC`;
+        }
 
         if (filters.limit) {
             query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
@@ -152,6 +170,53 @@ export class JobModel {
                 phone: row.user_phone || ''
             }
         }));
+    }
+
+    async facets(f: { subType?: string; region?: string; direction?: string }): Promise<{
+        regions: Record<string, number>;
+        directions: Record<string, number>;
+    }> {
+        const count = async (column: 'location' | 'direction', extra?: { column: string; value: string }) => {
+            const values: any[] = [];
+            let where = `status = 'active' AND ${column} IS NOT NULL`;
+            if (f.subType) {
+                values.push(f.subType);
+                where += ` AND sub_type = $${values.length}`;
+            }
+            if (extra) {
+                values.push(extra.value);
+                where += ` AND ${extra.column} = $${values.length}`;
+            }
+            const result = await pool.query(
+                `SELECT ${column} AS k, COUNT(*)::int AS n FROM jobs WHERE ${where} GROUP BY ${column}`,
+                values
+            );
+            const out: Record<string, number> = {};
+            for (const r of result.rows) out[r.k] = r.n;
+            return out;
+        };
+        const [regions, directions] = await Promise.all([
+            count('location', f.direction ? { column: 'direction', value: f.direction } : undefined),
+            // Viloyat ichida: shu viloyat + masofaviy e'lonlar
+            f.region
+                ? (async () => {
+                      const values: any[] = [f.region];
+                      let where = `status = 'active' AND direction IS NOT NULL AND location IN ($1, 'remote')`;
+                      if (f.subType) {
+                          values.push(f.subType);
+                          where += ` AND sub_type = $2`;
+                      }
+                      const result = await pool.query(
+                          `SELECT direction AS k, COUNT(*)::int AS n FROM jobs WHERE ${where} GROUP BY direction`,
+                          values
+                      );
+                      const out: Record<string, number> = {};
+                      for (const r of result.rows) out[r.k] = r.n;
+                      return out;
+                  })()
+                : count('direction'),
+        ]);
+        return { regions, directions };
     }
 
     async findById(id: string): Promise<Job | null> {
