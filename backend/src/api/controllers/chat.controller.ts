@@ -186,37 +186,29 @@ export async function enrichPrivateChatRow(chat: any, currentUserId: string): Pr
         }
     }
 
-    if (meta.source === 'job_listing' && meta.snapshot) {
-        const snap = meta.snapshot as Record<string, unknown>;
-        const isPosterSide = String(meta.poster_id) === String(currentUserId);
-        if (isPosterSide) {
-            const user = await UserModel.findById(otherParticipantId);
-            if (user && user.is_active !== false) {
-                return {
-                    ...chat,
-                    otherUser: {
-                        id: user.id,
-                        name: user.name,
-                        surname: user.surname,
-                        avatar: user.avatar_url,
-                        avatar_url: user.avatar_url,
-                        listing_privacy: true,
-                    },
-                };
-            }
-        } else if (await isActiveUserId(String(meta.poster_id))) {
-            const posterName =
-                [snap.poster_name, snap.poster_surname].filter(Boolean).join(' ').trim() ||
-                snap.company_name ||
-                snap.full_name ||
-                "E'lon";
+    if (meta.source === 'job_listing' && meta.job_id) {
+        // E'lon orqali ochilgan chat: klientlar uni "Murojaatlar" tabida ko'rsatadi
+        const snap = (meta.snapshot || {}) as Record<string, unknown>;
+        const firstLine = String(snap.short_text || '').split('\n')[0].trim();
+        const listing = {
+            jobId: String(meta.job_id),
+            posterId: meta.poster_id != null ? String(meta.poster_id) : null,
+            title: String(snap.title || firstLine || "E'lon").slice(0, 120),
+            company: snap.company_name ? String(snap.company_name) : null,
+        };
+        // Suhbatdosh — haqiqiy foydalanuvchi (rasm bilan); telefon ko'rsatilmaydi
+        const user = await UserModel.findById(otherParticipantId);
+        if (user && user.is_active !== false) {
             return {
                 ...chat,
+                listing,
                 otherUser: {
-                    id: meta.poster_id,
+                    id: user.id,
+                    name: user.name,
+                    surname: user.surname,
+                    avatar: user.avatar_url,
+                    avatar_url: user.avatar_url,
                     listing_privacy: true,
-                    name: posterName,
-                    ...snap,
                 },
             };
         }
@@ -366,9 +358,18 @@ export const createChat = async (req: Request, res: Response) => {
             :   null;
 
         let chat = await ChatModel.findPrivateChat(currentUserId, participantId);
+        // Ish e'loni: oldindan yozishib yurgan shaxsiy chat murojaatga aylantirilmaydi (Shaxsiy da qoladi)
+        let keepPersonal = false;
+        if (chat && privateMeta && privateMeta.source === 'job_listing') {
+            const existingMeta = parseChatMetadata((chat as { metadata?: unknown }).metadata);
+            if (existingMeta.source !== 'job_listing') {
+                const hasMsgs = await pool.query('SELECT 1 FROM messages WHERE chat_id = $1 LIMIT 1', [chat.id]);
+                keepPersonal = (hasMsgs.rowCount ?? 0) > 0;
+            }
+        }
         if (!chat) {
             chat = await ChatModel.createPrivate(currentUserId, participantId, privateMeta);
-        } else if (privateMeta) {
+        } else if (privateMeta && !keepPersonal) {
             // E'londan ochilganda shu e'lon egasi — manba haqiqati.
             // Eski chatda teskari expert_id qolgan bo‘lsa, yangilaymiz (Brain e'lon → expert_id=Brain).
             await pool.query(
@@ -769,6 +770,8 @@ export const getChatDetails = async (req: Request, res: Response) => {
 
         const listMeta = parseChatMetadata((chat as any).metadata);
         const isListing = listMeta.source === 'expert_listing' && listMeta.expert_id && listMeta.snapshot;
+        // Ish e'loni orqali ochilgan chat — telefon/username ko'rsatilmaydi
+        const isJobListingChat = listMeta.source === 'job_listing' && !!listMeta.job_id;
 
         const participantsData = await Promise.all(
             thisChat.participants.map(async (pId: string) => {
@@ -785,6 +788,15 @@ export const getChatDetails = async (req: Request, res: Response) => {
                             listing_privacy: true,
                         };
                     }
+                    return {
+                        id: user.id,
+                        name: user.name,
+                        surname: user.surname,
+                        avatar: user.avatar_url,
+                        listing_privacy: true,
+                    };
+                }
+                if (isJobListingChat && String(pId) !== String(currentUserId)) {
                     return {
                         id: user.id,
                         name: user.name,

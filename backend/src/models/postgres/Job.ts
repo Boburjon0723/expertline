@@ -219,6 +219,30 @@ export class JobModel {
         return { regions, directions };
     }
 
+    /** Bitta faol e'lon — ro'yxatdagi bilan bir xil ko'rinishda (muallif bilan) */
+    async findPublicById(id: string): Promise<Job | null> {
+        const result = await pool.query(
+            `SELECT j.*, u.name as user_name, u.surname as user_surname, u.username as user_username,
+                    u.avatar_url as user_avatar_url
+             FROM jobs j
+             LEFT JOIN users u ON j.user_id = u.id
+             WHERE j.id::text = $1 AND j.status = 'active'
+             LIMIT 1`,
+            [id]
+        );
+        const row = result.rows[0];
+        if (!row) return null;
+        return {
+            ...row,
+            user: {
+                name: row.user_name || 'Unknown',
+                surname: row.user_surname || '',
+                username: row.user_username || '',
+                avatar_url: row.user_avatar_url || null,
+            },
+        };
+    }
+
     async findById(id: string): Promise<Job | null> {
         const query = `SELECT * FROM jobs WHERE id = $1`;
         const result = await pool.query(query, [id]);

@@ -53,9 +53,15 @@ describe('chatConsent.service', () => {
             isListingMessagingUnlocked({
                 source: 'job_listing',
                 job_id: 'j1',
+                intent: 'apply',
                 application_status: 'rejected',
             })
         ).toBe(false);
+    });
+
+    it('never locks a plain job listing chat', () => {
+        expect(isListingMessagingUnlocked({ source: 'job_listing', job_id: 'j1', intent: 'chat' })).toBe(true);
+        expect(isListingMessagingUnlocked({ source: 'job_listing', job_id: 'j1' })).toBe(true);
     });
 
     it('allows non-listing chats', () => {

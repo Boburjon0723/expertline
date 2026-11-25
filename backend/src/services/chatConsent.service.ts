@@ -79,6 +79,8 @@ export function computeListingConsentUpdate(params: {
 
 export function isListingMessagingUnlocked(meta: Record<string, unknown>): boolean {
     if (!isListingChatMetadata(meta)) return true;
+    // Oddiy ish e'loni chati ("Yozish") — qulflanmaydi; rozilik faqat ariza (intent=apply) va mutaxassis murojaatida
+    if (meta.source === 'job_listing' && meta.intent !== 'apply') return true;
     if (meta.application_status === 'accepted') return true;
     if (meta.application_status === 'rejected') return false;
     if (meta.client_accepted_at && meta.expert_accepted_at) return true;

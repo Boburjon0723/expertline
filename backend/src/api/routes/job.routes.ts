@@ -13,5 +13,7 @@ router.patch('/:id/status', authenticateToken, jobController.updateJobStatus);
 router.get('/categories', cacheMiddleware(600), jobController.getCategories);
 router.post('/', authenticateToken, jobController.createJob);
 router.post('/categories', authenticateToken, requireAdmin, jobController.createCategory);
+// Eng oxirida — '/mine', '/facets', '/categories' bilan to'qnashmasin
+router.get('/:id', authenticateToken, jobController.getJob);
 
 export default router;

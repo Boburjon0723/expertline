@@ -50,6 +50,13 @@ export class JobController {
                 return res.status(400).json({ message: 'Yo\'nalish noto\'g\'ri' });
             }
             const direction = isDirectionCode(rawDirection) ? rawDirection : undefined;
+            // Sarlavha (yangi klientlar yuboradi). Yo'q bo'lsa — matnning birinchi qatori (eski ilovalar).
+            const title = String(body.title || '').replace(/\s+/g, ' ').trim();
+            if (title && (title.length < 5 || title.length > 80)) {
+                return res.status(400).json({ message: "Sarlavha 5–80 belgi bo'lsin" });
+            }
+            // Kompaniya nomi — faqat ish beruvchi uchun, ixtiyoriy
+            const company = subType === 'employer' ? String(body.company_name || '').replace(/\s+/g, ' ').trim().slice(0, 80) : '';
 
             await client.query('BEGIN');
 
@@ -68,6 +75,8 @@ export class JobController {
                 short_text: text,
                 location: region,
                 direction,
+                title: title || undefined,
+                company_name: company || undefined,
                 category_id: categoryId as any,
                 type: (body.type === 'online' || body.type === 'offline' ? body.type : null) as any,
             };
@@ -132,6 +141,18 @@ export class JobController {
             );
         } catch (error) {
             console.error('Get Facets Error:', error);
+            res.status(500).json({ message: 'Internal server error' });
+        }
+    };
+
+    /** GET /api/jobs/:id — bitta faol e'lon (chatdagi "E'lon: ..." qatoridan ochish uchun) */
+    getJob = async (req: Request, res: Response) => {
+        try {
+            const job = await this.jobModel.findPublicById(String(req.params.id || ''));
+            if (!job) return res.status(404).json({ message: "E'lon topilmadi yoki yopilgan" });
+            res.json(job);
+        } catch (error) {
+            console.error('Get Job Error:', error);
             res.status(500).json({ message: 'Internal server error' });
         }
     };
