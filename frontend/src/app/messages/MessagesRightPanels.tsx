@@ -1,15 +1,12 @@
 'use client';
 
 import React from 'react';
-import ExpertActionsPanel from '@/components/chat/ExpertActionsPanel';
 import ChannelInfoPanel from '@/components/chat/ChannelInfoPanel';
 import UserInfoPanel from '@/components/chat/UserInfoPanel';
 import GroupInfoPanel from '@/components/chat/GroupInfoPanel';
 
 export type MessagesRightPanelsProps = {
     showRightPanel: boolean;
-    activeCategory: string;
-    selectedExpertInView: any;
     selectedChat: any;
     onCloseRightPanel: () => void;
     onChatDeleted: () => void;
@@ -20,8 +17,6 @@ export type MessagesRightPanelsProps = {
 
 export function MessagesRightPanels({
     showRightPanel,
-    activeCategory,
-    selectedExpertInView,
     selectedChat,
     onCloseRightPanel,
     onChatDeleted,
@@ -31,12 +26,6 @@ export function MessagesRightPanels({
 }: MessagesRightPanelsProps) {
     return (
         <>
-            {showRightPanel && activeCategory === 'services' && selectedExpertInView ? (
-                <aside className="hidden lg:flex fixed lg:relative inset-0 lg:inset-auto z-[110] lg:z-0 xl:flex w-80 h-full min-h-0 flex-shrink-0 flex-col overflow-hidden animate-slide-left lg:rounded-[24px] lg:shadow-[0_0_4px_0_rgba(0,0,0,0.24)]">
-                    <ExpertActionsPanel expert={selectedExpertInView} onClose={onCloseRightPanel} />
-                </aside>
-            ) : null}
-
             {selectedChat ? (
                 <aside
                     aria-hidden={!showRightPanel}

@@ -16,13 +16,18 @@ import { MessageDeliveryTicks } from './MessageDeliveryTicks';
 import { useChatDraftsMap } from '@/lib/chat-draft-store';
 import { useChatTypingMap } from '@/lib/chat-typing-store';
 import ChatSongPlayerBar from './ChatSongPlayerBar';
+import ListingsFeed, { type ListingSubType } from '@/components/market/ListingsFeed';
+import SearchSuggestions from '@/components/market/SearchSuggestions';
+import type { ListingRow } from '@/components/market/marketUi';
+import { addSearchHistory } from '@/lib/search-history';
 
-/** Telegram folders: chat types only. Wallet/experts/finance live in the hamburger menu. */
+/** Telegram papkalari: chat turlari + E'lonlar (chat ro'yxati o'rnida e'lonlar ko'rinadi). */
 export const CHAT_FOLDERS = [
     { id: 'all', label: 'all' },
     { id: 'user', label: 'personal' },
     { id: 'group', label: 'groups' },
     { id: 'channel', label: 'channels' },
+    { id: 'listings', label: 'folder_listings' },
 ] as const;
 
 export const CHAT_FOLDER_IDS = new Set<string>([...CHAT_FOLDERS.map((f) => f.id), 'listings']);
@@ -68,6 +73,13 @@ interface ChatListProps {
     setShowNotifications?: (show: boolean) => void;
     unreadCount?: number;
     selectedChatId?: string | number | null;
+    /** E'lonlar papkasi */
+    listingSubType?: ListingSubType;
+    onListingSubTypeChange?: (v: ListingSubType) => void;
+    selectedListingId?: string | null;
+    onListingSelect?: (listing: ListingRow) => void;
+    listingsRefreshKey?: number;
+    onComposeListing?: () => void;
 }
 
 export default function ChatList({
@@ -96,6 +108,12 @@ export default function ChatList({
     searchResults,
     isSearching,
     selectedChatId = null,
+    listingSubType = 'employer',
+    onListingSubTypeChange,
+    selectedListingId = null,
+    onListingSelect,
+    listingsRefreshKey = 0,
+    onComposeListing,
 }: ChatListProps) {
     const { language, t } = useLanguage();
     const { prefOf, togglePinned, toggleMuted, toggleArchived, setUnreadMarked } = useChatListPrefs();
@@ -113,6 +131,8 @@ export default function ChatList({
     });
     const youLabel = language === 'uz' ? 'Siz' : language === 'ru' ? 'Вы' : 'You';
     const searchActive = searchFocused || !!searchQuery.trim();
+    const [searchHistoryVersion, setSearchHistoryVersion] = useState(0);
+    const isListingsFolder = activeCategory === 'listings';
 
     const exitSearch = () => {
         onSearchChange('');
@@ -308,7 +328,7 @@ export default function ChatList({
 
     const matchesFolder = (chat: any, catId: string) => {
         if (catId === 'all') return true;
-        if (catId === 'listings') return isExpertListingChat(chat);
+        if (catId === 'listings') return false;
         if (catId === 'user') {
             // Oddiy private + mijozning o‘z murojaatlari (e'lon chatlari Userlar’da ham ko‘rinsin)
             if (!(chat.type === 'private' || !chat.type)) return false;
@@ -319,7 +339,14 @@ export default function ChatList({
     };
 
     const getFilteredChatsForCategory = (catId: string) => {
-        if (searchQuery) return searchResults;
+        if (searchQuery) {
+            // Qidiruv ochiq papkaga oid: Shaxsiy/Guruh/Kanal — faqat shu turdagi chatlar
+            if (catId === 'all') return searchResults;
+            return (searchResults || []).filter((item: any) => {
+                if (item.searchSource === 'chat') return matchesFolder(item, catId);
+                return catId === 'user'; // kontakt va global foydalanuvchilar — faqat Shaxsiy'da
+            });
+        }
         if (catId === 'contacts') return contacts;
         let list = (chats || []).filter((chat: any) => matchesFolder(chat, catId));
         if (!searchQuery && catId === 'all') {
@@ -380,6 +407,20 @@ export default function ChatList({
     }, [chats, currentUser?.id, searchQuery, viewingArchive, prefOf]);
 
     const renderCategoryFeed = (slideCatId: string): React.ReactNode => {
+        if (slideCatId === 'listings') {
+            return (
+                <ListingsFeed
+                    subType={listingSubType}
+                    onSubTypeChange={(v) => onListingSubTypeChange?.(v)}
+                    searchQuery={searchQuery}
+                    selectedId={selectedListingId}
+                    onSelect={(l) => onListingSelect?.(l)}
+                    refreshKey={listingsRefreshKey}
+                    currentUserId={currentUser?.id ? String(currentUser.id) : null}
+                    onSearchCommitted={() => setSearchHistoryVersion((v) => v + 1)}
+                />
+            );
+        }
         const fc = getFilteredChatsForCategory(slideCatId);
 
         const renderChatItem = (chat: any, index: number) => {
@@ -470,14 +511,22 @@ export default function ChatList({
                 <button
                     type="button"
                     key={rowId}
-                    onClick={() =>
-                        chat.searchSource === 'global' ||
-                        chat.searchSource === 'contact' ||
-                        chat.isGlobal ||
-                        chat.type === 'contact'
-                            ? handleAddContact(chat)
-                            : onChatSelect && onChatSelect(chat)
-                    }
+                    onClick={() => {
+                        if (searchQuery.trim().length >= 2) {
+                            addSearchHistory('chats', searchQuery);
+                            setSearchHistoryVersion((v) => v + 1);
+                        }
+                        if (
+                            chat.searchSource === 'global' ||
+                            chat.searchSource === 'contact' ||
+                            chat.isGlobal ||
+                            chat.type === 'contact'
+                        ) {
+                            handleAddContact(chat);
+                        } else {
+                            onChatSelect?.(chat);
+                        }
+                    }}
                     onContextMenu={(e) => {
                         if (
                             chat.searchSource === 'global' ||
@@ -897,7 +946,7 @@ export default function ChatList({
                             <input
                                 ref={searchInputRef}
                                 type="text"
-                                placeholder={t('search')}
+                                placeholder={isListingsFolder ? t('search_listings_ph') : t('search_chats_ph')}
                                 value={searchQuery}
                                 onChange={(e) => onSearchChange(e.target.value)}
                                 onFocus={() => setSearchFocused(true)}
@@ -922,6 +971,18 @@ export default function ChatList({
                         </div>
                     </div>
                     {!searchActive && renderFolderTabs()}
+                    {searchFocused && (isListingsFolder || !searchQuery.trim()) && (
+                        <SearchSuggestions
+                            scope={isListingsFolder ? 'listings' : 'chats'}
+                            subType={isListingsFolder ? listingSubType : undefined}
+                            query={searchQuery}
+                            historyVersion={searchHistoryVersion}
+                            onPick={(term) => {
+                                onSearchChange(term);
+                                searchInputRef.current?.focus();
+                            }}
+                        />
+                    )}
                     {!selectedChatId ? (
                         <div className="px-1 pb-1">
                             <ChatSongPlayerBar />
@@ -959,7 +1020,20 @@ export default function ChatList({
                 </div>
             )}
 
-            {!searchActive && !viewingArchive && (
+            {!searchActive && !viewingArchive && isListingsFolder && (
+                <button
+                    type="button"
+                    onClick={() => onComposeListing?.()}
+                    className="absolute right-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-30 h-14 w-14 rounded-full bg-[#8774e1] hover:bg-[#7a67d4] text-white shadow-[0_4px_16px_rgba(0,0,0,0.4)] flex items-center justify-center transition-colors"
+                    aria-label={t('listing_new')}
+                    title={t('listing_new')}
+                >
+                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                </button>
+            )}
+            {!searchActive && !viewingArchive && !isListingsFolder && (
                 <ComposeFabMenu
                     canCreateGroup={!currentUser?.is_expert || getExpertPanelMode(currentUser) === 'mentor'}
                     onNewChannel={() => setShowCreateChannelModal(true)}

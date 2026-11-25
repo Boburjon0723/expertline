@@ -95,7 +95,7 @@ export function MessagesMenuDrawer({
                 <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
                     {/* Asosiy bo'limlar */}
                     <button type="button" onClick={onOpenJobs} className={itemCls}>
-                        <Briefcase className={iconCls} /> {t('menu_marketplace')}
+                        <Briefcase className={iconCls} /> {t('experts_tab')}
                     </button>
                     <button type="button" onClick={onOpenSavedMessages} className={itemCls}>
                         <Bookmark className={iconCls} /> {t('saved_messages')}

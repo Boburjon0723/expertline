@@ -4,11 +4,14 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from
 import ChatList, { CHAT_FOLDER_IDS } from "@/components/chat/ChatList";
 import ChatCarouselPanel from "@/components/chat/ChatCarouselPanel";
 import GlobalCallOverlay from "@/components/chat/GlobalCallOverlay";
-import ServicesList from "@/components/chat/ServicesList";
 import ProfileViewer from "@/components/chat/ProfileViewer";
 import ExpenseTracker from "@/components/chat/ExpenseTracker";
 import CommunitiesList from "@/components/chat/CommunitiesList";
-import JobsPanel from "@/components/jobs/JobsPanel";
+import ExpertsPanel from "@/components/market/ExpertsPanel";
+import ListingDetail from "@/components/market/ListingDetail";
+import ListingComposeModal from "@/components/market/ListingComposeModal";
+import type { ListingSubType } from "@/components/market/ListingsFeed";
+import type { ListingRow } from "@/components/market/marketUi";
 import {
     buildExpertConsultIntro,
     buildJobApplyIntro,
@@ -89,8 +92,11 @@ export function MessagesPageContent() {
 
     // Core State
     const [activeCategory, setActiveCategory] = useState("all");
-    const [jobsMarketTab, setJobsMarketTab] = useState<'listings' | 'experts' | 'mine'>('listings');
-    const [jobsExpertId, setJobsExpertId] = useState<string | null>(null);
+    /** E'lonlar papkasi (chat ro'yxati tepasidagi tab) */
+    const [listingSubType, setListingSubType] = useState<ListingSubType>('employer');
+    const [selectedListing, setSelectedListing] = useState<ListingRow | null>(null);
+    const [listingsRefreshKey, setListingsRefreshKey] = useState(0);
+    const [showListingCompose, setShowListingCompose] = useState(false);
     const [selectedChat, setSelectedChat] = useState<any | null>(null);
     /** SSR bilan bir xil: birinchi renderda har doim null; keyin loadInitial / storage da getUser() — hydration buzilmaydi */
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -137,7 +143,7 @@ export function MessagesPageContent() {
 
     // Sidebar -> services selected expert
     const [selectedExpertFromSidebar, setSelectedExpertFromSidebar] = useState<any | null>(null);
-    // Markazda tanlangan ekspert (ServicesList dan)
+    // ?expert= havolasidan ochilgan ekspert
     const [selectedExpertInView, setSelectedExpertInView] = useState<any | null>(null);
     /** Talaba ?room= bilan muvaffaqiyatli kirganda video dars paneli */
     const [studentLiveRoomId, setStudentLiveRoomId] = useState<string | null>(null);
@@ -331,10 +337,8 @@ export function MessagesPageContent() {
     }, [isExpertMode, isMobile, currentUser, selectedChat, openMentorPanelForGroup, showError, t]);
 
     const handleCategoryNavChange = useCallback((catId: string) => {
-        if (catId === 'services') {
-            setJobsMarketTab('experts');
-            setJobsExpertId(null);
-            setActiveCategory('jobs');
+        if (catId === 'services' || catId === 'experts') {
+            setActiveCategory('experts');
             setSelectedChat(null);
             setShowRightPanel(false);
             return;
@@ -1629,9 +1633,7 @@ export function MessagesPageContent() {
                 if (cancelled) return;
                 setSelectedExpertFromSidebar(profile);
                 setSelectedExpertInView(profile);
-                setJobsMarketTab('experts');
-                setJobsExpertId(String(profile.id || expertParam));
-                setActiveCategory('jobs');
+                setActiveCategory('experts');
                 setShowRightPanel(false);
                 setIsExpertMode(false);
                 stripExpert();
@@ -1645,11 +1647,16 @@ export function MessagesPageContent() {
         };
     }, [expertParam, currentUser?.id, router, searchParams]);
 
-    const isPanelCategory = ['jobs', 'services', 'finance', 'communities', 'profile', 'settings', 'bots'].includes(activeCategory);
+    useEffect(() => {
+        if (activeCategory !== 'listings') setSelectedListing(null);
+    }, [activeCategory]);
+
+    const isPanelCategory = ['experts', 'finance', 'communities', 'profile', 'settings', 'bots'].includes(activeCategory);
     /** Konsultant/ustoz paneli chat tanlamasdan: main oynasi mobilda ham ko'rinsin */
     const showDetail =
         !!selectedChat ||
         isPanelCategory ||
+        (activeCategory === 'listings' && !!selectedListing) ||
         (isExpertMode && !!currentUser?.is_expert && !isMobile);
 
     /** Shaxsiy chat yoki o‘z guruhim: ekspert xizmat paneli. Kanal/guruhda boshqa odam yaratuvchisi bo‘lsa — panel yo‘q. */
@@ -1780,9 +1787,8 @@ export function MessagesPageContent() {
                         onOpenJobs={() => {
                             setShowMenu(false);
                             setShowRightPanel(false);
-                            setJobsMarketTab('listings');
-                            setJobsExpertId(null);
-                            setActiveCategory('jobs');
+                            setSelectedExpertFromSidebar(null);
+                            setActiveCategory('experts');
                         }}
                         onOpenSavedMessages={() => { void handleOpenSavedMessages(); }}
                         onToggleExpertPanel={() => { setShowMenu(false); handleToggleExpertPanel(); }}
@@ -1826,7 +1832,7 @@ export function MessagesPageContent() {
                 ) : null}
 
                 {/* Left Panel: ChatList */}
-                <aside className={` ${showDetail && activeCategory !== 'jobs' ? 'hidden lg:flex' : activeCategory === 'jobs' ? 'hidden' : 'flex'} ${isExpertMode || activeCategory === 'jobs' ? 'lg:w-0 lg:p-0 lg:m-0 lg:rounded-none lg:shadow-none w-0 p-0 opacity-0 pointer-events-none absolute lg:relative z-0' : 'lg:w-[420px] w-full opacity-100 relative z-10 lg:rounded-[24px] lg:shadow-[0_0_4px_0_rgba(0,0,0,0.24)]'} transition-all duration-300 ease-in-out lg:h-full flex-1 min-h-0 lg:flex-none lg:min-h-0 min-w-0 flex-col overflow-hidden bg-[#212121]`}>
+                <aside className={` ${showDetail && activeCategory !== 'experts' ? 'hidden lg:flex' : activeCategory === 'experts' ? 'hidden' : 'flex'} ${isExpertMode || activeCategory === 'experts' ? 'lg:w-0 lg:p-0 lg:m-0 lg:rounded-none lg:shadow-none w-0 p-0 opacity-0 pointer-events-none absolute lg:relative z-0' : 'lg:w-[420px] w-full opacity-100 relative z-10 lg:rounded-[24px] lg:shadow-[0_0_4px_0_rgba(0,0,0,0.24)]'} transition-all duration-300 ease-in-out lg:h-full flex-1 min-h-0 lg:flex-none lg:min-h-0 min-w-0 flex-col overflow-hidden bg-[#212121]`}>
                     <ChatList
                         activeCategory={activeCategory}
                         onCategoryChange={handleCategoryNavChange}
@@ -1846,6 +1852,19 @@ export function MessagesPageContent() {
                         hideHeader={false}
                         hideCategories={false}
                         selectedChatId={selectedChat?.id ?? selectedChat?._id ?? null}
+                        listingSubType={listingSubType}
+                        onListingSubTypeChange={(v) => {
+                            setListingSubType(v);
+                            setSelectedListing(null);
+                        }}
+                        selectedListingId={selectedListing?.id ?? null}
+                        onListingSelect={(l) => {
+                            setSelectedListing(l);
+                            setSelectedChat(null);
+                            setShowRightPanel(false);
+                        }}
+                        listingsRefreshKey={listingsRefreshKey}
+                        onComposeListing={() => setShowListingCompose(true)}
                         showMenu={showMenu} setShowMenu={setShowMenu}
                         showContactModal={showContactModal} setShowContactModal={setShowContactModal}
                         showGroupModal={showGroupModal} setShowGroupModal={setShowGroupModal}
@@ -1871,9 +1890,8 @@ export function MessagesPageContent() {
                         unreadCount={unreadCount}
                             isMobile={isMobile}
                         onExpertSelect={(exp) => {
-                            setJobsMarketTab('experts');
-                            setJobsExpertId(exp?.id ? String(exp.id) : null);
-                            setActiveCategory('jobs');
+                            setSelectedExpertFromSidebar(exp || null);
+                            setActiveCategory('experts');
                             setShowRightPanel(false);
                         }}
                     />
@@ -1895,85 +1913,29 @@ export function MessagesPageContent() {
                             : `${!showDetail ? 'hidden lg:flex lg:flex-col' : 'flex flex-col w-full'} flex-1 min-h-0 h-full min-w-0 relative overflow-hidden`
                     }
                 >
-                    {activeCategory === 'jobs' ? (
-                        <JobsPanel
-                            key={`jobs-${jobsMarketTab}-${jobsExpertId || 'none'}`}
-                            initialMarketTab={jobsMarketTab}
-                            initialExpertId={jobsExpertId}
-                            currentUser={currentUser}
-                            chats={chats}
+                    {activeCategory === 'experts' ? (
+                        <ExpertsPanel
+                            initialExpert={selectedExpertFromSidebar}
                             onBack={() => {
                                 setActiveCategory('all');
-                                setJobsExpertId(null);
+                                setSelectedExpertFromSidebar(null);
                             }}
                             onStartChat={handleAddContact}
-                            onOpenChat={(chat) => {
-                                setSelectedChat(chat);
-                                setActiveCategory('all');
-                                setShowRightPanel(false);
-                                setIsExpertMode(false);
-                            }}
-                            onOpenProfile={() => setActiveCategory('profile')}
                         />
                     )
-                        : activeCategory === 'services' ? (
-                            <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
-                                {/* Desktop: chatlar ro'yxatiga qaytish (oldingi holatda tugma yo'q edi) */}
-                                <header className="hidden lg:flex shrink-0 items-center gap-3 px-4 py-3 border-b border-white/10 bg-[#14161c]/90 backdrop-blur-xl">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setActiveCategory('all');
-                                            setSelectedExpertInView(null);
-                                            setSelectedExpertFromSidebar(null);
-                                            setShowRightPanel(false);
-                                        }}
-                                        className="flex items-center gap-2 rounded-xl px-3 py-2 text-white/90 hover:bg-white/10 transition-colors"
-                                    >
-                                        <ArrowLeft className="h-5 w-5 shrink-0" />
-                                        <span className="text-sm font-semibold">Chatlarga qaytish</span>
-                                    </button>
-                                    <span className="text-white/30 text-sm">|</span>
-                                    <h2 className="text-white font-bold text-base truncate max-w-[min(280px,40vw)]">
-                                        {selectedExpertInView
-                                            ? `${selectedExpertInView.name || ''} ${selectedExpertInView.surname || ''}`.trim() || 'Profil'
-                                            : 'Ekspert tanlang'}
-                                    </h2>
-                                </header>
-                                <header className="lg:hidden shrink-0 p-4 border-b border-white/5 flex items-center gap-3 bg-transparent pt-[max(2rem,env(safe-area-inset-top))]">
-                                    <button
-                                        onClick={() => {
-                                            setJobsMarketTab('experts');
-                                            setActiveCategory('jobs');
-                                            setSelectedExpertInView(null);
-                                            setSelectedExpertFromSidebar(null);
-                                            setShowRightPanel(false);
-                                        }}
-                                        className="flex items-center p-2 -ml-2 hover:bg-white/10 rounded-full text-white/70 shadow-lg"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                    </button>
-                                    <span className="text-white/30 text-sm">|</span>
-                                    <h2 className="text-white font-bold text-base truncate max-w-[calc(100%-110px)]">
-                                        {(selectedExpertInView
-                                            ? `${selectedExpertInView.name || ''} ${selectedExpertInView.surname || ''}`.trim()
-                                            : ''
-                                        ) || 'Profil'}
-                                    </h2>
-                                </header>
-                                <div className="flex-1 min-h-0 w-full flex flex-col p-4 overflow-hidden">
-                                    <ServicesList
-                                        activeTab="experts"
-                                        onStartChat={handleAddContact}
-                                        initialSelectedExpert={selectedExpertFromSidebar}
-                                        onExpertSelect={setSelectedExpertInView}
-                                        showRightPanel={showRightPanel}
-                                        onToggleRightPanel={() => setShowRightPanel(true)}
-                                    />
-                                </div>
-                            </div>
+                        : activeCategory === 'listings' && selectedListing ? (
+                            <ListingDetail
+                                key={selectedListing.id}
+                                listing={selectedListing}
+                                currentUserId={currentUser?.id ? String(currentUser.id) : null}
+                                onBack={() => setSelectedListing(null)}
+                                onContact={handleAddContact}
+                                onClosed={() => {
+                                    setSelectedListing(null);
+                                    setListingsRefreshKey((k) => k + 1);
+                                    showSuccess(t('listing_closed') as string);
+                                }}
+                            />
                         )
                             : activeCategory === 'finance' ? (
                                 <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
@@ -2089,11 +2051,23 @@ export function MessagesPageContent() {
                                                 ) : null}
                 </main>
 
-                {!hideRightPanelForSpecialistDashboard && activeCategory !== 'jobs' && (
+                {showListingCompose && (
+                    <ListingComposeModal
+                        initialType={listingSubType}
+                        onClose={() => setShowListingCompose(false)}
+                        onPublished={(type) => {
+                            setShowListingCompose(false);
+                            setListingSubType(type);
+                            setSelectedListing(null);
+                            setListingsRefreshKey((k) => k + 1);
+                            showSuccess(t('listing_published') as string);
+                        }}
+                    />
+                )}
+
+                {!hideRightPanelForSpecialistDashboard && activeCategory !== 'experts' && (
                     <MessagesRightPanels
                         showRightPanel={showRightPanel}
-                        activeCategory={activeCategory}
-                        selectedExpertInView={selectedExpertInView}
                         selectedChat={selectedChat}
                         onCloseRightPanel={() => setShowRightPanel(false)}
                         onChatDeleted={() => { fetchChats(); setSelectedChat(null); setShowRightPanel(false); }}

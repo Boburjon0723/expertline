@@ -406,11 +406,8 @@ export default function ProfileViewer({
     };
 
     const handleSaveUsername = async () => {
+        // Username ixtiyoriy: bo'sh qoldirilsa olib tashlanadi (backend NULL qiladi)
         const clean = editUsername.trim().replace(/^@+/, '');
-        if (!clean) {
-            setToast({ type: 'warning', message: 'Username boвЂsh boвЂlmasin' });
-            return;
-        }
         try {
             const res = await apiFetch('/api/users/me', {
                 method: 'PUT',
@@ -932,7 +929,9 @@ export default function ProfileViewer({
                                 setShowUsernameModal(true);
                             }}
                         >
-                            <p className="text-[16px] text-[#8774e1] leading-snug">@{user.username || 'username'}</p>
+                            <p className="text-[16px] text-[#8774e1] leading-snug">
+                                {user.username ? `@${user.username}` : t('add_username')}
+                            </p>
                             <p className="text-[13px] text-[#6d7f8f] mt-0.5">{t('username')}</p>
                         </button>
 
@@ -975,7 +974,9 @@ export default function ProfileViewer({
                         <div className="flex-1 min-w-0">
                             <p className="text-white font-medium text-[17px] leading-tight truncate">{fullName}</p>
                             <p className="text-[#aaaaaa] text-[14px] truncate mt-0.5">{user.phone || ''}</p>
-                            <p className="text-[#aaaaaa] text-[14px] truncate">@{user.username || 'username'}</p>
+                            {user.username ? (
+                                <p className="text-[#aaaaaa] text-[14px] truncate">@{user.username}</p>
+                            ) : null}
                         </div>
                         <ChevronRight className="h-5 w-5 text-[#6d7f8f] shrink-0" />
                     </button>
