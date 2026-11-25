@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { navigationRef } from "../../../lib/navigationRef";
 import { useChatStore } from "../../../store/chatStore";
 import { AnimatedPressable } from "../../../components/AnimatedPressable";
+import { palette } from "../../../lib/theme";
 
 function fmt(sec: number) {
   if (!sec || !Number.isFinite(sec)) return "00:00";
@@ -55,7 +56,7 @@ export function ChatSongMiniBar() {
   if (!s.track) return null;
   const progress = s.duration ? Math.min(1, s.currentTime / s.duration) : 0;
   const hasQueue = s.playlist.length > 1;
-  const accent = "#64b5ef";
+  const accent = palette.accent;
   const queueColor = hasQueue ? accent : "rgba(255,255,255,0.28)";
   const barBg =
     themeId === "vibrant" ? "rgba(30, 41, 59, 0.72)" : "rgba(255, 255, 255, 0.08)";
@@ -93,7 +94,7 @@ export function ChatSongMiniBar() {
             {s.playing ? (
               <View style={styles.pause} />
             ) : (
-              <Play color="#64b5ef" size={18} fill="#64b5ef" />
+              <Play color={palette.accent} size={18} fill={palette.accent} />
             )}
           </AnimatedPressable>
           <AnimatedPressable
@@ -125,12 +126,12 @@ export function ChatSongMiniBar() {
             accessibilityLabel="Pleylist"
           >
             <ChevronsUpDown
-              color={listOpen ? "#64b5ef" : "rgba(255,255,255,0.55)"}
+              color={listOpen ? palette.accent : "rgba(255,255,255,0.55)"}
               size={15}
             />
           </AnimatedPressable>
           <AnimatedPressable style={styles.icon} hitSlop={8} onPress={() => mobileSongPlayer.toggleRepeatOne()}>
-            <Repeat color={s.repeatOne ? "#64b5ef" : "rgba(255,255,255,0.45)"} size={15} />
+            <Repeat color={s.repeatOne ? palette.accent : "rgba(255,255,255,0.45)"} size={15} />
             {s.repeatOne ? <Text style={styles.one}>1</Text> : null}
           </AnimatedPressable>
           <AnimatedPressable style={styles.icon} hitSlop={8} onPress={() => void mobileSongPlayer.cycleRate()}>
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
     height: 11,
     borderLeftWidth: 2.5,
     borderRightWidth: 2.5,
-    borderColor: "#64b5ef",
+    borderColor: palette.accent,
   },
   pauseSm: {
     width: 8,
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 4,
     right: 4,
-    color: "#64b5ef",
+    color: palette.accent,
     fontSize: 8,
     fontWeight: "800",
   },
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: 2,
     width: "100%",
-    backgroundColor: "#64b5ef",
+    backgroundColor: palette.accent,
     transformOrigin: "left center",
   },
   sheetBackdrop: {

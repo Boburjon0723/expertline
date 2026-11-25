@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { File, Play, X } from "lucide-react-native";
 import { ResizeMode, Video } from "expo-av";
+import { palette } from "../../../lib/theme";
 
 export type PendingSendFile = {
   uri: string;
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: "#0e1621",
+    backgroundColor: palette.bg,
   },
   videoThumb: { width: "100%", height: "100%" },
   videoPlay: {
@@ -245,8 +246,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkOn: {
-    backgroundColor: "#64b5ef",
-    borderColor: "#64b5ef",
+    backgroundColor: palette.accent,
+    borderColor: palette.accent,
   },
   checkMark: { color: "#fff", fontSize: 13, fontWeight: "800" },
   checkLabel: { color: "rgba(255,255,255,0.85)", fontSize: 15 },
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#0e1621",
+    backgroundColor: palette.bg,
   },
   fileIcon: {
     backgroundColor: "#5eb5f7",
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   actionsRight: { flexDirection: "row", alignItems: "center", gap: 20 },
-  link: { color: "#64b5ef", fontSize: 16, fontWeight: "600" },
+  link: { color: palette.accent, fontSize: 16, fontWeight: "600" },
   cancel: { color: "rgba(255,255,255,0.55)", fontSize: 16, fontWeight: "600" },
-  send: { color: "#64b5ef", fontSize: 16, fontWeight: "700" },
+  send: { color: palette.accent, fontSize: 16, fontWeight: "700" },
 });

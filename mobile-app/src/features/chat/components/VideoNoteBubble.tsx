@@ -4,6 +4,7 @@ import { ResizeMode, Video, type AVPlaybackStatus } from "expo-av";
 import { Play } from "lucide-react-native";
 import { peekCachedMediaUriSync } from "../../../lib/media-cache";
 import { ProgressControl } from "./UploadingMediaBubble";
+import { palette } from "../../../lib/theme";
 
 const SIZE = 220;
 
@@ -107,7 +108,7 @@ export function VideoNoteBubble({
 
 const styles = StyleSheet.create({
   wrap: { width: SIZE, height: SIZE, position: "relative" },
-  circle: { width: SIZE, height: SIZE, borderRadius: SIZE / 2, overflow: "hidden", backgroundColor: "#0e1621" },
+  circle: { width: SIZE, height: SIZE, borderRadius: SIZE / 2, overflow: "hidden", backgroundColor: palette.bg },
   center: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
   play: {
     width: 52,

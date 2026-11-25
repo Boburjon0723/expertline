@@ -68,6 +68,7 @@ import {
   uploadChatFileRequest,
 } from "../service";
 import { useAuthStore } from "../../auth/store";
+import { palette } from "../../../lib/theme";
 
 type Props = {
   route: {
@@ -555,7 +556,7 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
     if (loadingFlag) {
       return (
         <View style={styles.mediaCenter}>
-          <ActivityIndicator color="#8774e1" />
+          <ActivityIndicator color={palette.accent} />
         </View>
       );
     }
@@ -628,11 +629,11 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
           }}
         >
           {kind === "links" ? (
-            <Link2 color="#8774e1" size={20} />
+            <Link2 color={palette.accent} size={20} />
           ) : kind === "voice" ? (
-            <Mic color="#8774e1" size={20} />
+            <Mic color={palette.accent} size={20} />
           ) : (
-            <Link2 color="#8774e1" size={20} />
+            <Link2 color={palette.accent} size={20} />
           )}
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.sharedTitle} numberOfLines={1}>
@@ -663,7 +664,7 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
             </Pressable>
           </View>
           <View style={styles.center}>
-            <ActivityIndicator color="#38bdf8" size="large" />
+            <ActivityIndicator color={palette.accent} size="large" />
           </View>
         </ChatBackground>
       </View>
@@ -764,8 +765,8 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
             <View style={styles.card}>
               <Text style={styles.sectionLabel}>Taklif havolasi</Text>
               <Pressable style={styles.listRow} onPress={() => void copyInvite()}>
-                <Link2 color="#8774e1" size={20} />
-                <Text style={[styles.listText, { color: "#8774e1" }]} numberOfLines={1}>
+                <Link2 color={palette.accent} size={20} />
+                <Text style={[styles.listText, { color: palette.accent }]} numberOfLines={1}>
                   {inviteLink}
                 </Text>
                 {copiedLink ? (
@@ -794,8 +795,8 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
                 <>
                   <View style={styles.sep} />
                   <Pressable style={styles.actionRow} onPress={() => void openInviteModal()}>
-                    <UserPlus color="#8774e1" size={20} />
-                    <Text style={[styles.actionLabel, { color: "#8774e1" }]}>
+                    <UserPlus color={palette.accent} size={20} />
+                    <Text style={[styles.actionLabel, { color: palette.accent }]}>
                       Guruhga taklif
                     </Text>
                   </Pressable>
@@ -804,16 +805,16 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
 
               <View style={styles.sep} />
               <Pressable style={styles.actionRow} disabled={actionBusy} onPress={leaveGroup}>
-                <LogOut color="#e53935" size={20} />
-                <Text style={[styles.actionLabel, { color: "#e53935" }]}>{leaveLabel}</Text>
+                <LogOut color={palette.danger} size={20} />
+                <Text style={[styles.actionLabel, { color: palette.danger }]}>{leaveLabel}</Text>
               </Pressable>
 
               {isCreator ? (
                 <>
                   <View style={styles.sep} />
                   <Pressable style={styles.actionRow} disabled={actionBusy} onPress={deleteGroup}>
-                    <Trash2 color="#e53935" size={20} />
-                    <Text style={[styles.actionLabel, { color: "#e53935" }]}>
+                    <Trash2 color={palette.danger} size={20} />
+                    <Text style={[styles.actionLabel, { color: palette.danger }]}>
                       {deleteLabel}
                     </Text>
                   </Pressable>
@@ -865,7 +866,7 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
                         {isMe ? " (Siz)" : ""}
                       </Text>
                       <Text
-                        style={[styles.memberSub, isCreatorMember && { color: "#8774e1" }]}
+                        style={[styles.memberSub, isCreatorMember && { color: palette.accent }]}
                       >
                         {isCreatorMember ? "Yaratuvchi" : "a'zo"}
                       </Text>
@@ -919,7 +920,7 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
                   Taklif kontaktning shaxsiy chatiga yuboriladi
                 </Text>
                 {contactsLoading ? (
-                  <ActivityIndicator color="#8774e1" style={{ marginVertical: 24 }} />
+                  <ActivityIndicator color={palette.accent} style={{ marginVertical: 24 }} />
                 ) : (
                   <FlatList
                     data={contacts}
@@ -940,9 +941,9 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
                           {c.phone ? <Text style={styles.memberSub}>{c.phone}</Text> : null}
                         </View>
                         {inviteBusyId === c.id ? (
-                          <ActivityIndicator color="#8774e1" />
+                          <ActivityIndicator color={palette.accent} />
                         ) : (
-                          <UserPlus color="#8774e1" size={20} />
+                          <UserPlus color={palette.accent} size={20} />
                         )}
                       </Pressable>
                     )}
@@ -987,8 +988,8 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
                           void sendInviteToUser(String(m.id), label);
                         }}
                       >
-                        <UserPlus color="#8774e1" size={20} />
-                        <Text style={[styles.actionLabel, { color: "#8774e1" }]}>
+                        <UserPlus color={palette.accent} size={20} />
+                        <Text style={[styles.actionLabel, { color: palette.accent }]}>
                           Obuna taklifi yuborish
                         </Text>
                       </Pressable>
@@ -1134,8 +1135,8 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
                 disabled={actionBusy}
                 onPress={handleAddContact}
               >
-                <UserPlus color="#8774e1" size={20} />
-                <Text style={[styles.actionLabel, { color: "#8774e1" }]}>
+                <UserPlus color={palette.accent} size={20} />
+                <Text style={[styles.actionLabel, { color: palette.accent }]}>
                   Kontaktga qo‘shish
                 </Text>
               </Pressable>
@@ -1286,7 +1287,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     borderBottomWidth: 2,
-    borderBottomColor: "#8774e1",
+    borderBottomColor: palette.accent,
     minWidth: 180,
     paddingVertical: 6,
   },
@@ -1296,12 +1297,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   status: {
-    color: "#38bdf8",
+    color: palette.accent,
     fontSize: 14,
     marginTop: 10,
   },
   statusMuted: {
-    color: "#aaaaaa",
+    color: palette.textSecondary,
     fontSize: 14,
     marginTop: 6,
   },
@@ -1320,10 +1321,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   editCancel: { color: "rgba(255,255,255,0.45)", fontSize: 14 },
-  editSave: { color: "#8774e1", fontSize: 14, fontWeight: "600" },
+  editSave: { color: palette.accent, fontSize: 14, fontWeight: "600" },
   sectionGap: { height: 10, backgroundColor: "transparent" },
   sectionLabel: {
-    color: "#aaaaaa",
+    color: palette.textSecondary,
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.6,
@@ -1366,7 +1367,7 @@ const styles = StyleSheet.create({
   },
   row: { padding: 16 },
   rowMain: { color: "#fff", fontSize: 17, fontWeight: "600" },
-  rowSub: { color: "#38bdf8", fontSize: 12, marginTop: 6, fontWeight: "500" },
+  rowSub: { color: palette.accent, fontSize: 12, marginTop: 6, fontWeight: "500" },
   rowMuted: { color: "rgba(255,255,255,0.45)", fontSize: 15 },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: "rgba(255,255,255,0.1)" },
   listRow: {
@@ -1410,7 +1411,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   memberName: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  memberSub: { color: "#aaaaaa", fontSize: 13, marginTop: 2 },
+  memberSub: { color: palette.textSecondary, fontSize: 13, marginTop: 2 },
   emptyMembers: {
     color: "rgba(255,255,255,0.35)",
     textAlign: "center",
@@ -1423,15 +1424,15 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(255,255,255,0.08)",
   },
   mediaTab: { flex: 1, alignItems: "center", paddingVertical: 12, position: "relative" },
-  mediaTabText: { color: "#aaaaaa", fontSize: 12 },
-  mediaTabTextActive: { color: "#8774e1", fontWeight: "600" },
+  mediaTabText: { color: palette.textSecondary, fontSize: 12 },
+  mediaTabTextActive: { color: palette.accent, fontWeight: "600" },
   mediaTabUnderline: {
     position: "absolute",
     bottom: 0,
     left: 8,
     right: 8,
     height: 2,
-    backgroundColor: "#8774e1",
+    backgroundColor: palette.accent,
     borderRadius: 1,
   },
   emptyMedia: {
@@ -1471,21 +1472,21 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
   sharedTitle: { color: "rgba(255,255,255,0.9)", fontSize: 14 },
-  sharedSub: { color: "#aaaaaa", fontSize: 12, marginTop: 2 },
+  sharedSub: { color: palette.textSecondary, fontSize: 12, marginTop: 2 },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.55)",
     justifyContent: "flex-end",
   },
   modalSheet: {
-    backgroundColor: "#212121",
+    backgroundColor: palette.bg,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingTop: 16,
     paddingHorizontal: 8,
   },
   memberMenuSheet: {
-    backgroundColor: "#212121",
+    backgroundColor: palette.bg,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingTop: 16,
@@ -1508,5 +1509,5 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  modalCancelText: { color: "#8774e1", fontSize: 16, fontWeight: "600" },
+  modalCancelText: { color: palette.accent, fontSize: 16, fontWeight: "600" },
 });

@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { apiFetch } from './api';
+import { palette } from "./theme";
 
 // Ushbu kod bildirishnomalar app ichidagida xabar va ovoz bilan chiqishini ta'minlaydi
 Notifications.setNotificationHandler({
@@ -20,7 +21,7 @@ export const setupNotifications = async () => {
       name: 'Asosiy bildirishnomalar',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#38bdf8',
+      lightColor: palette.accent,
       sound: 'default', // Tizimning o'z ovozi!
     });
     

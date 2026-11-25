@@ -108,6 +108,7 @@ import { VideoNoteBubble } from "../components/VideoNoteBubble";
 import { animateLayout, animateRemoval, configureKeyboardAnimation, PopIn } from "../../../lib/motion";
 import { isBlockedAppPackage } from "../../../lib/blocked-files";
 import { UploadingMediaBubble, UploadingVoiceBubble } from "../components/UploadingMediaBubble";
+import { palette } from "../../../lib/theme";
 
 const VideoPlayerModal = ({ visible, uri, onClose }: { visible: boolean; uri: string | null; onClose: () => void }) => {
   const local = useCachedMedia(uri, "video", true);
@@ -696,7 +697,7 @@ const MediaAttachment = ({
         style={styles.mediaContainer}
       >
         {cached.needsDownload && !src ? (
-          <View style={[styles.mediaImage, styles.mediaPlaceholder, { backgroundColor: "#0e1621" }]}>
+          <View style={[styles.mediaImage, styles.mediaPlaceholder, { backgroundColor: palette.bg }]}>
             {thumb ? <Image source={{ uri: thumb }} blurRadius={14} style={StyleSheet.absoluteFill} /> : null}
             {/* Telegram: o'rtada to'q dumaloq tugma */}
             <View style={styles.tgDownloadCircle}>
@@ -2446,7 +2447,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
       <>
         {item.parentId && item.parentPreview ? (
           <View style={[styles.replyQuote, isMe ? styles.replyQuoteMe : styles.replyQuoteOther]}>
-            <Text style={styles.replyQuoteName} numberOfLines={1}>
+            <Text style={[styles.replyQuoteName, isMe && { color: palette.text }]} numberOfLines={1}>
               {item.parentPreview.senderName || t("replyBarTitle")}
             </Text>
             <Text style={styles.replyQuoteText} numberOfLines={2}>
@@ -2579,6 +2580,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
            />
            ) : (
             <TelegramAudioBubble
+              isMe={isMe}
               uri={item.remoteFileUrl!}
               fileName={
                 String(item.metadata?.fileName || item.metadata?.originalname || "").trim() ||
@@ -2629,7 +2631,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
               </View>
             ) : !isMe ? (
               <Pressable
-                style={[styles.payNowBtn, { backgroundColor: "#8774e1" }]}
+                style={[styles.payNowBtn, { backgroundColor: palette.accent }]}
                 onPress={() => void joinInvitedGroup(item)}
               >
                 <Text style={styles.payNowBtnText}>Guruhga qo'shilish</Text>
@@ -2644,7 +2646,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
         {item.metadata?.kind === 'panel_open' && (
           <View style={styles.paymentCard}>
              <Pressable 
-               style={[styles.payNowBtn, { backgroundColor: '#10b981' }]}
+               style={[styles.payNowBtn, { backgroundColor: palette.success }]}
                   onPress={() => {
                   const sid =
                     item.metadata?.sessionId != null
@@ -2762,7 +2764,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             hitSlop={8}
           >
             {groupSelected ? (
-              <CheckCircle color="#3b82f6" size={22} />
+              <CheckCircle color={palette.accent} size={22} />
             ) : (
               <Circle color="rgba(255,255,255,0.45)" size={22} />
             )}
@@ -2814,7 +2816,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
     <View style={styles.chatBody}>
       {messages.length === 0 && isLoadingChats ? (
         <View style={styles.centerWrap}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <ActivityIndicator size="large" color={palette.accent} />
           <Text style={styles.hint}>Xabarlar yuklanmoqda...</Text>
         </View>
       ) : (
@@ -2918,7 +2920,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             <Text style={styles.recordingLabel}>{t("msgKindVoice")}</Text>
             <View style={{ flex: 1 }} />
             <Pressable onPress={() => void cancelRecording()} style={styles.recordingCancelBtn} hitSlop={8}>
-              <X color="#f87171" size={22} />
+              <X color={palette.danger} size={22} />
             </Pressable>
             <Pressable
               onPress={() => void sendRecording()}
@@ -3048,7 +3050,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
                 onPress={handleDeleteSelected}
                 disabled={selectedMessageIds.length === 0}
               >
-                <Trash2 color="#f87171" size={22} />
+                <Trash2 color={palette.danger} size={22} />
               </Pressable>
             </>
           ) : (
@@ -3070,7 +3072,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
               <Text
                 style={[
                   styles.headerStatus,
-                  (peerTyping || peerOnline) && { color: "#64b5ef" },
+                  (peerTyping || peerOnline) && { color: palette.accent },
                 ]}
                 numberOfLines={1}
               >
@@ -3474,9 +3476,9 @@ export function ChatDetailScreen({ route, navigation }: Props) {
                         {name}
                       </Text>
                       {busy ? (
-                        <ActivityIndicator color="#8774e1" size="small" />
+                        <ActivityIndicator color={palette.accent} size="small" />
                       ) : (
-                        <Send color="#8774e1" size={18} />
+                        <Send color={palette.accent} size={18} />
                       )}
                     </Pressable>
                   );
@@ -3589,7 +3591,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   headerStatus: {
-    color: "#10b981",
+    color: palette.success,
     fontSize: 11,
     marginTop: 2,
   },
@@ -3643,14 +3645,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bubbleSelected: {
-    backgroundColor: "rgba(59,130,246,0.12)",
+    backgroundColor: palette.accentSoft,
   },
   bubbleMenuTarget: {
-    backgroundColor: "rgba(100,181,239,0.18)",
+    backgroundColor: palette.accentSoft,
   },
   bubbleSongFocus: {
     borderWidth: 1.5,
-    borderColor: "rgba(100,181,239,0.85)",
+    borderColor: palette.accent,
   },
   myMessageRow: {
     justifyContent: "flex-end",
@@ -3681,11 +3683,11 @@ const styles = StyleSheet.create({
     overflow: "visible",
   },
   myBubbleBase: {
-    backgroundColor: "#2b5278",
+    backgroundColor: palette.bubbleOut,
     borderBottomRightRadius: 4,
   },
   otherBubbleBase: {
-    backgroundColor: "#182533",
+    backgroundColor: palette.bubbleIn,
     borderBottomLeftRadius: 4,
     borderWidth: 0,
   },
@@ -3789,7 +3791,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#0e1621",
+    backgroundColor: palette.bg,
   },
   mediaSaveBtn: {
     position: 'absolute',
@@ -3911,7 +3913,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#3b82f6",
+    backgroundColor: palette.accent,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -4078,10 +4080,10 @@ const styles = StyleSheet.create({
     width: 3,
     alignSelf: "stretch",
     borderRadius: 2,
-    backgroundColor: "#64b5ef",
+    backgroundColor: palette.accent,
   },
   replyBarLabel: {
-    color: "#64b5ef",
+    color: palette.accent,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -4213,7 +4215,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#ef4444",
+    backgroundColor: palette.danger,
   },
   recordingTimer: {
     color: "#fff",
@@ -4241,11 +4243,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.12)",
   },
   replyQuoteOther: {
-    borderLeftColor: "#64b5ef",
+    borderLeftColor: palette.accent,
     backgroundColor: "rgba(0,0,0,0.18)",
   },
   replyQuoteName: {
-    color: "#64b5ef",
+    color: palette.accent,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -4296,7 +4298,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   forwardCancelText: {
-    color: "#64b5ef",
+    color: palette.accent,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -4345,7 +4347,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#5288c1",
+    backgroundColor: palette.accent,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 0,
@@ -4371,7 +4373,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   callStatus: {
-    color: '#38bdf8',
+    color: palette.accent,
     fontSize: 18,
     marginTop: 10,
   },
@@ -4395,15 +4397,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   acceptBtn: {
-    backgroundColor: '#22c55e',
-    shadowColor: '#22c55e',
+    backgroundColor: palette.success,
+    shadowColor: palette.success,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.45,
     shadowRadius: 8,
   },
   rejectBtn: {
-    backgroundColor: '#ef4444',
-    shadowColor: '#ef4444',
+    backgroundColor: palette.danger,
+    shadowColor: palette.danger,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.45,
     shadowRadius: 8,
@@ -4411,7 +4413,7 @@ const styles = StyleSheet.create({
   joinSessionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#10b981',
+    backgroundColor: palette.success,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -4480,7 +4482,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   paymentValue: {
-    color: '#38bdf8',
+    color: palette.accent,
     fontSize: 18,
     fontWeight: '900',
   },
@@ -4488,7 +4490,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3b82f6',
+    backgroundColor: palette.accent,
     paddingVertical: 12,
     borderRadius: 12,
     gap: 8,
@@ -4542,7 +4544,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   callTimerText: {
-    color: '#38bdf8',
+    color: palette.accent,
     fontSize: 16,
     marginTop: 8,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
@@ -4581,14 +4583,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   controlBtnActive: {
-    backgroundColor: '#ef4444',
+    backgroundColor: palette.danger,
   },
   endCallBtn: {
     width: 75,
     height: 75,
     borderRadius: 38,
-    backgroundColor: '#ef4444',
-    shadowColor: '#ef4444',
+    backgroundColor: palette.danger,
+    shadowColor: palette.danger,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

@@ -10,9 +10,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, Bell, MessageSquare, Volume2, Vibrate } from "lucide-react-native";
 import { useAuthLocale } from "../../auth/locale";
+import { palette } from "../../../lib/theme";
 
 const ICON = 22;
-const ICON_COLOR = "#aaaaaa";
+const ICON_COLOR = palette.textSecondary;
 
 export function NotificationSettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -27,7 +28,7 @@ export function NotificationSettingsScreen({ navigation }: any) {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn} hitSlop={10}>
-          <ArrowLeft color="#aaaaaa" size={22} />
+          <ArrowLeft color={palette.textSecondary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t("settingsNotif")}</Text>
         <View style={styles.headerBtn} />
@@ -76,7 +77,7 @@ function NotifToggle({ icon, label, subLabel, value, onValueChange }: any) {
         {subLabel ? <Text style={styles.itemSubLabel}>{subLabel}</Text> : null}
       </View>
       <Switch
-        trackColor={{ false: "rgba(255,255,255,0.12)", true: "#8774e1" }}
+        trackColor={{ false: "rgba(255,255,255,0.12)", true: palette.accent }}
         thumbColor="#fff"
         ios_backgroundColor="rgba(255,255,255,0.12)"
         onValueChange={onValueChange}
@@ -87,7 +88,7 @@ function NotifToggle({ icon, label, subLabel, value, onValueChange }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#212121" },
+  container: { flex: 1, backgroundColor: palette.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -105,7 +106,7 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, textAlign: "center", color: "#fff", fontSize: 20, fontWeight: "500" },
   content: { flex: 1 },
   sectionTitle: {
-    color: "#aaaaaa",
+    color: palette.textSecondary,
     fontSize: 13,
     fontWeight: "500",
     paddingHorizontal: 20,
@@ -121,5 +122,5 @@ const styles = StyleSheet.create({
   },
   itemTextContainer: { flex: 1 },
   itemLabel: { color: "#fff", fontSize: 16 },
-  itemSubLabel: { color: "#aaaaaa", fontSize: 13, marginTop: 2 },
+  itemSubLabel: { color: palette.textSecondary, fontSize: 13, marginTop: 2 },
 });

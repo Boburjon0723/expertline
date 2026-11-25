@@ -48,6 +48,7 @@ import {
 import { downloadAndOpenWithSystemSheet } from "../../../lib/files";
 import { StudentWhiteboard } from "./StudentWhiteboard";
 import { useKeepAwake } from "expo-keep-awake";
+import { palette } from "../../../lib/theme";
 
 function emitStudentMicOpen(sessionId: string, enabled: boolean) {
   const socket = getSocket();
@@ -697,7 +698,7 @@ export function StudentSessionScreen({
     <View style={styles.videoGrid}>
       <View style={styles.remotePlaceholder}>
         <AvatarImage name={user?.name || t("studentPanelRole")} size={120} uri={user?.avatar_url || user?.avatar} />
-        {loading ? <ActivityIndicator color="#38bdf8" style={{ marginTop: 16 }} /> : null}
+        {loading ? <ActivityIndicator color={palette.accent} style={{ marginTop: 16 }} /> : null}
       </View>
     </View>
   );
@@ -1040,7 +1041,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   shareBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
-  roleLabel: { color: "#38bdf8", fontSize: 9, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
+  roleLabel: { color: palette.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
   whoName: { color: "#fff", fontSize: 12, fontWeight: "700", maxWidth: 120 },
   menuBtn: {
     width: 36,
@@ -1118,7 +1119,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  roundBtnOff: { backgroundColor: "#ef4444" },
+  roundBtnOff: { backgroundColor: palette.danger },
   dockBtn: {
     alignItems: "center",
     justifyContent: "center",
@@ -1184,7 +1185,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
     marginBottom: 4,
   },
-  optSel: { borderColor: "#38bdf8", backgroundColor: "rgba(56,189,248,0.18)" },
+  optSel: { borderColor: palette.accent, backgroundColor: "rgba(56,189,248,0.18)" },
   optDot: {
     width: 12,
     height: 12,
@@ -1192,7 +1193,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "rgba(255,255,255,0.35)",
   },
-  optDotOn: { backgroundColor: "#38bdf8", borderColor: "#38bdf8" },
+  optDotOn: { backgroundColor: palette.accent, borderColor: palette.accent },
   optText: { color: "#fff", fontSize: 12, flex: 1 },
   submitQuiz: {
     marginTop: 8,

@@ -26,6 +26,7 @@ import { fetchExpertDetail } from "../api";
 import { AvatarImage } from "../../../components/AvatarImage";
 import { createOrOpenPrivateChat } from "../../chat/service";
 import { useAuthLocale } from "../../auth/locale";
+import { palette } from "../../../lib/theme";
 
 const { width } = Dimensions.get("window");
 
@@ -69,7 +70,7 @@ export function ExpertDetailScreen({ route, navigation }: any) {
   if (loading && !expert) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator color="#0ea5e9" size="large" />
+        <ActivityIndicator color={palette.accent} size="large" />
       </View>
     );
   }
@@ -105,19 +106,19 @@ export function ExpertDetailScreen({ route, navigation }: any) {
            
            <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                 <Star color="#f59e0b" fill="#f59e0b" size={16} />
+                 <Star color={palette.warning} fill={palette.warning} size={16} />
                  <Text style={styles.statValue}>{expert.expert_rating || "5.0"}</Text>
                  <Text style={styles.statLabel}>Reyting</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                 <Award color="#38bdf8" size={16} />
+                 <Award color={palette.accent} size={16} />
                  <Text style={styles.statValue}>{expert.experience_years || "1"}+ yil</Text>
                  <Text style={styles.statLabel}>Tajriba</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                 <MessageSquare color="#10b981" size={16} />
+                 <MessageSquare color={palette.success} size={16} />
                  <Text style={styles.statValue}>100+</Text>
                  <Text style={styles.statLabel}>Maslahat</Text>
               </View>
@@ -214,7 +215,7 @@ const styles = StyleSheet.create({
     height: 126,
     borderRadius: 63,
     borderWidth: 3,
-    borderColor: "#0ea5e9",
+    borderColor: palette.accent,
     padding: 5,
     justifyContent: "center",
     alignItems: "center",
@@ -227,14 +228,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#10b981",
+    backgroundColor: palette.success,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
     borderColor: "#020617",
   },
   userName: { color: "#fff", fontSize: 24, fontWeight: "900", marginTop: 15, textAlign: "center" },
-  userProfession: { color: "#0ea5e9", fontSize: 14, fontWeight: "800", marginTop: 4, textTransform: "uppercase", letterSpacing: 1 },
+  userProfession: { color: palette.accent, fontSize: 14, fontWeight: "800", marginTop: 4, textTransform: "uppercase", letterSpacing: 1 },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -273,13 +274,13 @@ const styles = StyleSheet.create({
   },
   contactBtn: {
     height: 60,
-    backgroundColor: "#0ea5e9",
+    backgroundColor: palette.accent,
     borderRadius: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    shadowColor: "#0ea5e9",
+    shadowColor: palette.accent,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.4,
     shadowRadius: 15,

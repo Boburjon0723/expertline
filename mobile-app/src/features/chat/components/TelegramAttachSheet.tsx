@@ -22,6 +22,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { Camera, File, Image as ImageIcon, Send, X, type LucideIcon } from "lucide-react-native";
 import type { PendingSendFile } from "./TelegramSendPreviewSheet";
 import { configureKeyboardAnimation } from "../../../lib/motion";
+import { palette } from "../../../lib/theme";
 
 export type AttachAction = "gallery" | "file" | "camera";
 
@@ -401,7 +402,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12 },
   headerBtn: { width: 32, alignItems: "flex-start" },
   headerTitle: { flex: 1, textAlign: "center", color: "#fff", fontSize: 17, fontWeight: "600" },
-  tile: { width: TILE, height: TILE, backgroundColor: "#0e1621", overflow: "hidden" },
+  tile: { width: TILE, height: TILE, backgroundColor: palette.bg, overflow: "hidden" },
   cameraTile: { alignItems: "center", justifyContent: "center", backgroundColor: "#0b1118" },
   tileImg: { width: "100%", height: "100%" },
   tileDim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" },
@@ -418,7 +419,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  checkOn: { backgroundColor: "#3a8ee6", borderColor: "#3a8ee6" },
+  checkOn: { backgroundColor: palette.accent, borderColor: palette.accent },
   checkText: { color: "#fff", fontSize: 13, fontWeight: "700" },
   dur: {
     position: "absolute",
@@ -432,7 +433,7 @@ const styles = StyleSheet.create({
   durText: { color: "#fff", fontSize: 11, fontWeight: "600" },
   noPerm: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 14 },
   noPermText: { color: "rgba(255,255,255,0.7)", textAlign: "center" },
-  noPermBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: "#3a8ee6" },
+  noPermBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: palette.accent },
   noPermBtnText: { color: "#fff", fontWeight: "600" },
   bottomBar: {
     position: "absolute",
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#3a8ee6",
+    backgroundColor: palette.accent,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -482,5 +483,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  sendBadgeText: { color: "#3a8ee6", fontSize: 11, fontWeight: "800" },
+  sendBadgeText: { color: palette.accent, fontSize: 11, fontWeight: "800" },
 });

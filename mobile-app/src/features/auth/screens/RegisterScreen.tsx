@@ -20,6 +20,7 @@ import { registerRequest } from "../service";
 import { digitsOnly, validateRegister } from "../validation";
 import { useAuthLocale } from "../locale";
 import { LanguagePicker } from "../components/LanguagePicker";
+import { palette } from "../../../lib/theme";
 
 const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1080&auto=format&fit=crop";
 
@@ -239,7 +240,7 @@ export function RegisterScreen({ navigation }: Props) {
                     
                     {Platform.OS === "ios" && showPicker && (
                        <Pressable style={{alignItems: 'flex-end', marginBottom: 10}} onPress={() => setShowPicker(false)}>
-                          <Text style={{color: "#38bdf8", fontWeight: "bold"}}>Yopish</Text>
+                          <Text style={{color: palette.accent, fontWeight: "bold"}}>Yopish</Text>
                        </Pressable>
                     )}
                   </>
@@ -380,7 +381,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 24, paddingTop: Platform.OS === "ios" ? 80 : 60, paddingBottom: 24 },
   brandingContainer: { marginBottom: 35 },
   taglineBox: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(56, 189, 248, 0.12)", borderWidth: 1, borderColor: "rgba(56, 189, 248, 0.3)", paddingHorizontal: 16, paddingVertical: 6, borderRadius: 24, alignSelf: "flex-start", marginBottom: 20 },
-  pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#38bdf8", marginRight: 10, shadowColor: "#38bdf8", shadowOpacity: 1, shadowRadius: 10, elevation: 5 },
+  pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: palette.accent, marginRight: 10, shadowColor: palette.accent, shadowOpacity: 1, shadowRadius: 10, elevation: 5 },
   taglineText: { color: "#bae6fd", fontSize: 10, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase" },
   title: { fontSize: 32, fontWeight: "900", color: "#ffffff", letterSpacing: -1 },
   titleSuffix: { color: "rgba(255,255,255,0.4)" },
@@ -401,10 +402,10 @@ const styles = StyleSheet.create({
   countryText: { color: "#ffffff", fontWeight: "900", fontSize: 15, letterSpacing: 1 },
   input: { flex: 1, color: "#ffffff", fontSize: 15, height: "100%", fontWeight: "600" },
   eyeBtn: { padding: 10 },
-  submitButton: { height: 50, borderRadius: 25, backgroundColor: "#0ea5e9", justifyContent: "center", alignItems: "center", shadowColor: "#0ea5e9", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 12 },
+  submitButton: { height: 50, borderRadius: 25, backgroundColor: palette.accent, justifyContent: "center", alignItems: "center", shadowColor: palette.accent, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 12 },
   submitButtonDisabled: { opacity: 0.5, backgroundColor: "#475569" },
   submitText: { color: "#ffffff", fontSize: 12, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase", textAlign: "center" },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 28 },
   footerText: { color: "rgba(148, 163, 184, 0.8)", fontSize: 14, fontWeight: "500" },
-  linkText: { color: "#38bdf8", fontSize: 14, fontWeight: "900" },
+  linkText: { color: palette.accent, fontSize: 14, fontWeight: "900" },
 });

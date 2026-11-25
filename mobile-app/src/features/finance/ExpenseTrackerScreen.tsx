@@ -24,6 +24,7 @@ import {
 import { apiFetch } from "../../lib/api";
 import { useAuthLocale } from "../auth/locale";
 import { ChatBackground } from "../../components/ChatBackground";
+import { palette } from "../../lib/theme";
 
 type ExpenseType = "expense" | "income";
 
@@ -205,7 +206,7 @@ export function ExpenseTrackerScreen({ navigation }: any) {
 
         {loading ? (
           <View style={styles.center}>
-            <ActivityIndicator color="#6ab3f3" size="large" />
+            <ActivityIndicator color={palette.accent} size="large" />
           </View>
         ) : (
           <FlatList
@@ -224,7 +225,7 @@ export function ExpenseTrackerScreen({ navigation }: any) {
             }
             ListHeaderComponent={
               <View style={styles.statsRow}>
-                <Stat label={t("expenseBalance")} value={money(balance)} color="#6ab3f3" />
+                <Stat label={t("expenseBalance")} value={money(balance)} color={palette.accent} />
                 <Stat label={t("expenseIncome")} value={money(totalIncome)} color="#34d399" />
                 <Stat label={t("expenseOut")} value={money(totalExpense)} color="#fb7185" />
               </View>
@@ -317,7 +318,7 @@ export function ExpenseTrackerScreen({ navigation }: any) {
               style={styles.input}
             />
             <Pressable
-              style={[styles.saveBtn, form.type === "income" ? { backgroundColor: "#10b981" } : null]}
+              style={[styles.saveBtn, form.type === "income" ? { backgroundColor: palette.success } : null]}
               onPress={() => void submit()}
               disabled={saving}
             >
@@ -346,7 +347,7 @@ function Stat({ label, value, color }: { label: string; value: string; color: st
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0f0f0f" },
+  root: { flex: 1, backgroundColor: palette.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -371,7 +372,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: "#6ab3f3",
+    backgroundColor: palette.accent,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -379,7 +380,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   statCard: {
     flex: 1,
-    backgroundColor: "#212121",
+    backgroundColor: palette.bg,
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
@@ -400,7 +401,7 @@ const styles = StyleSheet.create({
   emptyText: { color: "rgba(255,255,255,0.45)", marginTop: 12, textAlign: "center" },
   emptyCta: {
     marginTop: 16,
-    backgroundColor: "#6ab3f3",
+    backgroundColor: palette.accent,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
@@ -410,7 +411,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#212121",
+    backgroundColor: palette.bg,
     borderRadius: 14,
     padding: 12,
     marginBottom: 8,
@@ -428,7 +429,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalSheet: {
-    backgroundColor: "#212121",
+    backgroundColor: palette.bg,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 16,
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: "#181818",
+    backgroundColor: palette.surfaceSolid,
     alignItems: "center",
   },
   typeExpense: { backgroundColor: "#e11d48" },
@@ -459,14 +460,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#181818",
+    backgroundColor: palette.surfaceSolid,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
   },
-  chipActive: { borderColor: "#6ab3f3", backgroundColor: "rgba(106,179,243,0.15)" },
+  chipActive: { borderColor: palette.accent, backgroundColor: "rgba(106,179,243,0.15)" },
   chipText: { color: "rgba(255,255,255,0.65)", fontSize: 12, fontWeight: "600" },
   input: {
-    backgroundColor: "#181818",
+    backgroundColor: palette.surfaceSolid,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",

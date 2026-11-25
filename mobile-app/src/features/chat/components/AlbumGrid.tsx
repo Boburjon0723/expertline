@@ -6,6 +6,7 @@ import { CachedImage } from "../../../components/CachedImage";
 import type { Message } from "../types";
 import { MEDIA_BUBBLE_WIDTH, type UploadInfo } from "../../../lib/upload-queue";
 import { ProgressControl } from "./UploadingMediaBubble";
+import { palette } from "../../../lib/theme";
 
 const { width } = Dimensions.get("window");
 const GRID_W = Math.min(width * 0.72, MEDIA_BUBBLE_WIDTH);
@@ -154,7 +155,7 @@ export function AlbumGrid({
 const styles = StyleSheet.create({
   grid: { width: GRID_W, borderRadius: 12, overflow: "hidden", position: "relative" },
   row: { flexDirection: "row" },
-  tile: { backgroundColor: "#0e1621", overflow: "hidden" },
+  tile: { backgroundColor: palette.bg, overflow: "hidden" },
   fill: { width: "100%", height: "100%" },
   videoBg: { backgroundColor: "#1f2a3a" },
   center: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },

@@ -18,6 +18,7 @@ import { ChevronLeft, Check, Moon, Zap, Send, Image as ImageIcon } from "lucide-
 
 import { useAppearanceStore } from "../../../lib/appearance-store";
 import { THEMES, BACKGROUND_PRESETS } from "../../../lib/constants";
+import { palette } from "../../../lib/theme";
 
 
 const { width } = Dimensions.get("window");
@@ -52,21 +53,21 @@ export function ThemeDesignScreen({ navigation }: any) {
       id: "vibrant",
       name: "Vibrant Glass",
       desc: "Shaffof dizayn va neon ranglar",
-      icon: <Zap color="#0ea5e9" size={20} />,
+      icon: <Zap color={palette.accent} size={20} />,
       bg: THEMES.default.background,
     },
     {
       id: "telegram",
       name: "Telegram Style",
       desc: "Klassik messenjer ko'rinishi",
-      icon: <Send color="#38bdf8" size={20} />,
+      icon: <Send color={palette.accent} size={20} />,
       bg: THEMES.telegram.background,
     },
     {
       id: "pure_dark",
       name: "Telegram Dark",
       desc: "Tungi messenjer ko'rinishi",
-      icon: <Moon color="#38bdf8" size={20} />,
+      icon: <Moon color={palette.accent} size={20} />,
       bg: THEMES.pure_dark.background,
     },
 
@@ -128,7 +129,7 @@ export function ThemeDesignScreen({ navigation }: any) {
             maximumValue={100}
             value={imageBlur}
             onValueChange={setImageBlur}
-            minimumTrackTintColor="#0ea5e9"
+            minimumTrackTintColor={palette.accent}
             maximumTrackTintColor="rgba(255,255,255,0.1)"
             thumbTintColor="#fff"
           />
@@ -145,7 +146,7 @@ export function ThemeDesignScreen({ navigation }: any) {
             maximumValue={100}
             value={panelBlur}
             onValueChange={setPanelBlur}
-            minimumTrackTintColor="#0ea5e9"
+            minimumTrackTintColor={palette.accent}
             maximumTrackTintColor="rgba(255,255,255,0.1)"
             thumbTintColor="#fff"
           />
@@ -155,7 +156,7 @@ export function ThemeDesignScreen({ navigation }: any) {
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>CHAT FONINI TANLASH</Text>
           <Pressable style={styles.pickButton} onPress={handlePickImage}>
-            <ImageIcon color="#0ea5e9" size={16} />
+            <ImageIcon color={palette.accent} size={16} />
             <Text style={styles.pickButtonText}>Galereyadan</Text>
           </Pressable>
         </View>
@@ -217,7 +218,7 @@ const styles = StyleSheet.create({
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, marginTop: 10 },
   sectionTitle: { color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "900", letterSpacing: 1.5, marginBottom: 0 },
   pickButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(14, 165, 233, 0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(14, 165, 233, 0.2)' },
-  pickButtonText: { color: '#0ea5e9', fontSize: 12, fontWeight: '700' },
+  pickButtonText: { color: palette.accent, fontSize: 12, fontWeight: '700' },
   themeCard: {
 
     backgroundColor: "rgba(255,255,255,0.03)",
@@ -230,7 +231,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   themeCardActive: {
-    borderColor: "#0ea5e9",
+    borderColor: palette.accent,
     backgroundColor: "rgba(14, 165, 233, 0.05)",
   },
   themePreview: {
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#0ea5e9",
+    backgroundColor: palette.accent,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
   modeTitle: { color: "#fff", fontSize: 15, fontWeight: "700" },
   modeDesc: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
   toggle: { width: 48, height: 26, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.1)", padding: 2 },
-  toggleActive: { backgroundColor: "#0ea5e9" },
+  toggleActive: { backgroundColor: palette.accent },
   toggleDot: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff" },
   toggleDotActive: { alignSelf: "flex-end" },
 
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
   },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   label: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  labelValue: { color: "#0ea5e9", fontSize: 14, fontWeight: "bold" },
+  labelValue: { color: palette.accent, fontSize: 14, fontWeight: "bold" },
   slider: { width: '100%', height: 40 },
   
   presetsList: { marginTop: 5 },
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
     overflow: "hidden", 
     position: 'relative' 
   },
-  presetCardActive: { borderColor: "#0ea5e9" },
+  presetCardActive: { borderColor: palette.accent },
   presetImage: { width: "100%", height: "100%" },
   presetCheck: { 
     position: 'absolute', 
@@ -307,7 +308,7 @@ const styles = StyleSheet.create({
     width: 18, 
     height: 18, 
     borderRadius: 9, 
-    backgroundColor: "#0ea5e9", 
+    backgroundColor: palette.accent, 
     justifyContent: "center", 
     alignItems: "center" 
   },

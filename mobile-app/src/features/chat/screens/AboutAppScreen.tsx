@@ -3,9 +3,10 @@ import { StyleSheet, Text, View, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, ShieldCheck, Globe } from "lucide-react-native";
 import { useAuthLocale } from "../../auth/locale";
+import { palette } from "../../../lib/theme";
 
 const ICON = 22;
-const ICON_COLOR = "#aaaaaa";
+const ICON_COLOR = palette.textSecondary;
 
 export function AboutAppScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -15,7 +16,7 @@ export function AboutAppScreen({ navigation }: any) {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn} hitSlop={10}>
-          <ArrowLeft color="#aaaaaa" size={22} />
+          <ArrowLeft color={palette.textSecondary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t("settingsAbout")}</Text>
         <View style={styles.headerBtn} />
@@ -48,7 +49,7 @@ export function AboutAppScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#212121" },
+  container: { flex: 1, backgroundColor: palette.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -66,9 +67,9 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, textAlign: "center", color: "#fff", fontSize: 20, fontWeight: "500" },
   scrollContent: { paddingBottom: 40 },
   appName: { color: "#fff", fontSize: 20, fontWeight: "500", paddingHorizontal: 20, paddingTop: 16 },
-  version: { color: "#aaaaaa", fontSize: 14, paddingHorizontal: 20, paddingTop: 4 },
+  version: { color: palette.textSecondary, fontSize: 14, paddingHorizontal: 20, paddingTop: 4 },
   description: {
-    color: "#aaaaaa",
+    color: palette.textSecondary,
     fontSize: 14,
     lineHeight: 20,
     paddingHorizontal: 20,
@@ -84,6 +85,6 @@ const styles = StyleSheet.create({
   },
   itemText: { flex: 1 },
   itemTitle: { color: "#fff", fontSize: 16 },
-  itemDesc: { color: "#aaaaaa", fontSize: 13, marginTop: 2 },
-  copyright: { color: "#aaaaaa", fontSize: 13, paddingHorizontal: 20, paddingTop: 24 },
+  itemDesc: { color: palette.textSecondary, fontSize: 13, marginTop: 2 },
+  copyright: { color: palette.textSecondary, fontSize: 13, paddingHorizontal: 20, paddingTop: 24 },
 });

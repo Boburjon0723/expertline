@@ -10,6 +10,7 @@ import {
   startMediaDownload,
   subscribeMediaCache,
 } from "../../../lib/media-cache";
+import { palette } from "../../../lib/theme";
 
 function formatDur(ms: number) {
   const t = Math.round(ms / 1000);
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
     height: 320,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#0e1621",
+    backgroundColor: palette.bg,
   },
   video: { width: "100%", height: "100%" },
   placeholder: { backgroundColor: "#1a2733" },

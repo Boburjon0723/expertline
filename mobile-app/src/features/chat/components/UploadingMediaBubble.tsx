@@ -12,6 +12,7 @@ import {
   mediaAspect,
   type UploadInfo,
 } from "../../../lib/upload-queue";
+import { palette } from "../../../lib/theme";
 
 const { width } = Dimensions.get("window");
 const RING = 52;
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#0e1621",
+    backgroundColor: palette.bg,
   },
   media: { width: "100%", height: "100%" },
   dim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" },
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  ringLight: { backgroundColor: "#3a8ee6" },
+  ringLight: { backgroundColor: palette.accent },
   badge: {
     position: "absolute",
     top: 8,

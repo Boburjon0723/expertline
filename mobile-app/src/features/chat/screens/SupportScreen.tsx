@@ -3,9 +3,10 @@ import { StyleSheet, Text, View, ScrollView, Pressable, Linking } from "react-na
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, MessageCircle, Phone, Send } from "lucide-react-native";
 import { useAuthLocale } from "../../auth/locale";
+import { palette } from "../../../lib/theme";
 
 const ICON = 22;
-const ICON_COLOR = "#aaaaaa";
+const ICON_COLOR = palette.textSecondary;
 
 export function SupportScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -18,7 +19,7 @@ export function SupportScreen({ navigation }: any) {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn} hitSlop={10}>
-          <ArrowLeft color="#aaaaaa" size={22} />
+          <ArrowLeft color={palette.textSecondary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t("settingsOther")}</Text>
         <View style={styles.headerBtn} />
@@ -56,7 +57,7 @@ function SupportOption({ icon, title, onPress }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#212121" },
+  container: { flex: 1, backgroundColor: palette.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -73,7 +74,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { flex: 1, textAlign: "center", color: "#fff", fontSize: 20, fontWeight: "500" },
   intro: { color: "#fff", fontSize: 16, fontWeight: "500", paddingHorizontal: 20, paddingTop: 16 },
-  introSub: { color: "#aaaaaa", fontSize: 14, lineHeight: 20, paddingHorizontal: 20, paddingTop: 6, paddingBottom: 12 },
+  introSub: { color: palette.textSecondary, fontSize: 14, lineHeight: 20, paddingHorizontal: 20, paddingTop: 6, paddingBottom: 12 },
   item: {
     flexDirection: "row",
     alignItems: "center",
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
   },
   pressed: { backgroundColor: "rgba(255,255,255,0.06)" },
   itemTitle: { color: "#fff", fontSize: 16 },
-  hoursLabel: { color: "#aaaaaa", fontSize: 13, fontWeight: "500", paddingHorizontal: 20, paddingTop: 24 },
+  hoursLabel: { color: palette.textSecondary, fontSize: 13, fontWeight: "500", paddingHorizontal: 20, paddingTop: 24 },
   hoursText: { color: "#fff", fontSize: 16, paddingHorizontal: 20, paddingTop: 8 },
-  hoursSub: { color: "#aaaaaa", fontSize: 14, paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
+  hoursSub: { color: palette.textSecondary, fontSize: 14, paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
 });

@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,27 +11,33 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  ArrowLeft,
-  User,
+  Award,
   Bell,
+  Bookmark,
+  ChevronRight,
   Lock,
   Palette,
   Globe,
   Shield,
   Info,
   LifeBuoy,
-  Moon,
 } from "lucide-react-native";
 import { AvatarImage } from "../../../components/AvatarImage";
 import { useAuthStore } from "../../auth/store";
 import { fetchProfileRequest } from "../../auth/profileApi";
 import { AuthUser } from "../../auth/types";
 import { useAuthLocale } from "../../auth/locale";
+import { openSavedMessagesRequest } from "../service";
+import { palette } from "../../../lib/theme";
 
 const ICON = 22;
-const ICON_COLOR = "#aaaaaa";
+const ICON_COLOR = palette.textSecondary;
 
-export function SettingsScreen({ navigation, isTab }: any) {
+/**
+ * Sozlamalar — pastki tabdagi oxirgi bo'lim (eski chap menyu o'rniga).
+ * ChatListScreen ichida chiziladi; ichki sahifalar stack orqali ochiladi.
+ */
+export function SettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((s) => s.user) as AuthUser | null;
   const logout = useAuthStore((s) => s.logout);
@@ -59,27 +66,34 @@ export function SettingsScreen({ navigation, isTab }: any) {
     navigation.replace("Login");
   };
 
-  const displayName = [currentUser?.name, currentUser?.surname].filter(Boolean).join(" ") || "Foydalanuvchi";
+  const openSavedMessages = async () => {
+    try {
+      const opened = await openSavedMessagesRequest();
+      navigation.navigate("ChatDetail", {
+        chatId: opened.chatId,
+        name: t("savedMessages"),
+        avatarUrl: null,
+      });
+    } catch (e: any) {
+      Alert.alert(t("savedMessages"), e?.message || t("loginErrorGeneric"));
+    }
+  };
+
+  const displayName = [currentUser?.name, currentUser?.surname].filter(Boolean).join(" ") || "User";
   const username = currentUser?.username ? `@${currentUser.username}` : "";
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        {!isTab ? (
-          <Pressable onPress={() => navigation?.goBack()} style={styles.headerBtn} hitSlop={10}>
-            <ArrowLeft color="#aaaaaa" size={22} />
-          </Pressable>
-        ) : (
-          <View style={styles.headerBtn} />
-        )}
-        <Text style={styles.headerTitle}>{t("settingsTitle")}</Text>
-        <View style={styles.headerBtn} />
-      </View>
+      <Text style={styles.headerTitle}>{t("settingsTitle")}</Text>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 140 }}
+        showsVerticalScrollIndicator={false}
+      >
         <Pressable
-          style={({ pressed }) => [styles.profileRow, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.card, styles.profileRow, pressed && styles.pressed]}
           onPress={() => navigation.navigate("Profile")}
         >
           <AvatarImage
@@ -102,54 +116,64 @@ export function SettingsScreen({ navigation, isTab }: any) {
               </Text>
             ) : null}
           </View>
+          <ChevronRight color={palette.textSecondary} size={20} />
         </Pressable>
 
-        <View style={styles.divider} />
+        <Section>
+          <MenuItem
+            icon={<Bookmark color={ICON_COLOR} size={ICON} />}
+            label={t("savedMessages")}
+            onPress={() => void openSavedMessages()}
+          />
+          <MenuItem
+            icon={<Award color={ICON_COLOR} size={ICON} />}
+            label={t("expertProfileTitle")}
+            hint={t("expertProfileSub")}
+            onPress={() => navigation.navigate("ExpertProfile")}
+          />
+        </Section>
 
-        <SettingItem
-          icon={<User color={ICON_COLOR} size={ICON} />}
-          label={t("settingsProfile")}
-          onPress={() => navigation.navigate("Profile")}
-        />
-        <SettingItem
-          icon={<Bell color={ICON_COLOR} size={ICON} />}
-          label={t("settingsNotif")}
-          onPress={() => navigation.navigate("NotificationSettings")}
-        />
-        <SettingItem
-          icon={<Lock color={ICON_COLOR} size={ICON} />}
-          label={t("settingsPrivacy")}
-          onPress={() => navigation.navigate("PrivacySettings")}
-        />
-        <SettingItem
-          icon={<Palette color={ICON_COLOR} size={ICON} />}
-          label={t("settingsTheme")}
-          onPress={() => navigation.navigate("ThemeDesign")}
-        />
-        <SettingItem
-          icon={<Globe color={ICON_COLOR} size={ICON} />}
-          label={t("settingsLang")}
-          onPress={() => navigation.navigate("LanguageSettings")}
-        />
-        <SettingItem
-          icon={<Shield color={ICON_COLOR} size={ICON} />}
-          label={t("settingsData")}
-          hint={t("dataAutoDownSub")}
-          onPress={() => navigation.navigate("DataStorageSettings")}
-        />
+        <Section>
+          <MenuItem
+            icon={<Bell color={ICON_COLOR} size={ICON} />}
+            label={t("settingsNotif")}
+            onPress={() => navigation.navigate("NotificationSettings")}
+          />
+          <MenuItem
+            icon={<Lock color={ICON_COLOR} size={ICON} />}
+            label={t("settingsPrivacy")}
+            onPress={() => navigation.navigate("PrivacySettings")}
+          />
+          <MenuItem
+            icon={<Palette color={ICON_COLOR} size={ICON} />}
+            label={t("settingsTheme")}
+            onPress={() => navigation.navigate("ThemeDesign")}
+          />
+          <MenuItem
+            icon={<Globe color={ICON_COLOR} size={ICON} />}
+            label={t("settingsLang")}
+            onPress={() => navigation.navigate("LanguageSettings")}
+          />
+          <MenuItem
+            icon={<Shield color={ICON_COLOR} size={ICON} />}
+            label={t("settingsData")}
+            hint={t("dataAutoDownSub")}
+            onPress={() => navigation.navigate("DataStorageSettings")}
+          />
+        </Section>
 
-        <View style={styles.divider} />
-
-        <SettingItem
-          icon={<LifeBuoy color={ICON_COLOR} size={ICON} />}
-          label={t("supportHelp")}
-          onPress={() => navigation.navigate("Support")}
-        />
-        <SettingItem
-          icon={<Info color={ICON_COLOR} size={ICON} />}
-          label={t("settingsAbout")}
-          onPress={() => navigation.navigate("AboutApp")}
-        />
+        <Section>
+          <MenuItem
+            icon={<LifeBuoy color={ICON_COLOR} size={ICON} />}
+            label={t("supportHelp")}
+            onPress={() => navigation.navigate("Support")}
+          />
+          <MenuItem
+            icon={<Info color={ICON_COLOR} size={ICON} />}
+            label={t("settingsAbout")}
+            onPress={() => navigation.navigate("AboutApp")}
+          />
+        </Section>
 
         <Pressable
           style={({ pressed }) => [styles.logoutBtn, pressed && styles.logoutPressed]}
@@ -158,16 +182,16 @@ export function SettingsScreen({ navigation, isTab }: any) {
           <Text style={styles.logoutLabel}>{t("settingsLogout")}</Text>
         </Pressable>
       </ScrollView>
-
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <Text style={styles.version}>v 1.2.0</Text>
-        <Moon color="#aaaaaa" size={16} />
-      </View>
     </View>
   );
 }
 
-function SettingItem({
+/** Telegram/iOS uslubidagi guruhlangan shisha kartochka */
+function Section({ children }: { children: React.ReactNode }) {
+  return <View style={[styles.card, styles.section]}>{children}</View>;
+}
+
+function MenuItem({
   icon,
   label,
   hint,
@@ -190,73 +214,53 @@ function SettingItem({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#212121" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-  },
-  headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  container: { flex: 1 },
   headerTitle: {
-    flex: 1,
     textAlign: "center",
     color: "#fff",
     fontSize: 20,
-    fontWeight: "500",
+    fontWeight: "600",
+    paddingTop: 4,
+    paddingBottom: 12,
   },
+  card: {
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    overflow: "hidden",
+  },
+  section: { marginTop: 14 },
   content: { flex: 1 },
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   profileText: { flex: 1, minWidth: 0 },
-  profileName: { color: "#fff", fontSize: 16, fontWeight: "500" },
-  profileMuted: { color: "#aaaaaa", fontSize: 14, marginTop: 2 },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    marginVertical: 8,
-    marginHorizontal: 20,
-  },
+  profileName: { color: "#fff", fontSize: 17, fontWeight: "500" },
+  profileMuted: { color: palette.textSecondary, fontSize: 14, marginTop: 2 },
   item: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
   },
   pressed: { backgroundColor: "rgba(255,255,255,0.06)" },
   itemText: { color: "#fff", fontSize: 16 },
-  itemHint: { color: "#aaaaaa", fontSize: 13, marginTop: 2 },
+  itemHint: { color: palette.textSecondary, fontSize: 13, marginTop: 2 },
   logoutBtn: {
-    marginHorizontal: 16,
-    marginTop: 24,
+    marginTop: 20,
     marginBottom: 8,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: "center",
   },
   logoutPressed: { backgroundColor: "rgba(229,57,53,0.1)" },
-  logoutLabel: { color: "#e53935", fontSize: 16 },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(255,255,255,0.06)",
-  },
-  version: { color: "#aaaaaa", fontSize: 13 },
+  logoutLabel: { color: palette.danger, fontSize: 16 },
 });
+
+export default SettingsScreen;

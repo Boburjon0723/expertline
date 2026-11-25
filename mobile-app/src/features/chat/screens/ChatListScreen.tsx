@@ -19,7 +19,6 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  ClipboardList,
   Briefcase,
   MessageSquare,
   Search,
@@ -38,6 +37,7 @@ import { Chat } from "../types";
 import { ChatBackground } from "../../../components/ChatBackground";
 import { useAuthStore } from "../../auth/store";
 import { normalizeUserId } from "../service";
+import { palette } from "../../../lib/theme";
 
 /** Ro'yxat vaqti: bugun — soat, shu hafta — hafta kuni, aks holda kun.oy */
 function chatListTimeLabel(iso?: string | null, fallback?: string): string {
@@ -51,18 +51,17 @@ function chatListTimeLabel(iso?: string | null, fallback?: string): string {
   if (days < 6) return ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"][d.getDay()];
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
-import { ServicesView, ContactsView } from "./DashboardViews";
-import { JobListScreen } from "../../jobs/screens/JobListScreen";
+import { ContactsView } from "./DashboardViews";
+import { ExpertsView } from "../../market/ExpertsView";
+import { SettingsScreen } from "./SettingsScreen";
 import { ChatSongMiniBar } from "../components/ChatSongMiniBar";
 import {
   CHAT_CATEGORY_ITEMS,
-  HEADER_LEFT_ACTIONS,
   HEADER_RIGHT_ACTIONS,
   getMenuIcon,
   getVisibleComposeMenuItems,
   type ComposeActionId,
 } from "../chat-shell-menu";
-import { MessagesMenuDrawer } from "../components/MessagesMenuDrawer";
 import { AvatarImage } from "../../../components/AvatarImage";
 import { getSocket, chatMetadataMap } from "../../../lib/socket";
 import { E2E_PLACEHOLDER, isE2eEnvelope } from "../../../lib/e2e-envelope";
@@ -81,6 +80,9 @@ import PagerView from "react-native-pager-view";
 import { useChatStore } from "../../../store/chatStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuthLocale } from "../../auth/locale";
+import { ListingsFeed } from "../../market/ListingsFeed";
+import { SearchSuggestions } from "../../market/SearchSuggestions";
+import { addSearchHistory, type ListingSubType } from "../../market/api";
 
 const ICON_MD = 24;
 
@@ -88,6 +90,7 @@ function categoryMatchesChat(categoryId: string, chat: Chat): boolean {
   if (categoryId === "archive") return !!chat.archived;
   if (chat.archived) return false;
   if (categoryId === "all") return true;
+  if (categoryId === "listings") return false;
   const t = (chat.type || "").toLowerCase();
   switch (categoryId) {
     case "user":
@@ -131,8 +134,8 @@ function ChatListAvatar({ item }: { item: Chat }) {
 }
 
 const BOTTOM_TABS: {
-  id: "chats" | "contacts" | "jobs" | "services";
-  labelKey: "tabChats" | "tabContacts" | "menuJobs" | "tabServices";
+  id: "chats" | "contacts" | "services";
+  labelKey: "tabChats" | "tabContacts" | "tabExperts";
   icon: (active: boolean) => React.ReactNode;
 }[] = [
   {
@@ -146,13 +149,8 @@ const BOTTOM_TABS: {
     icon: (active) => <Users color={active ? "#fff" : "rgba(255,255,255,0.4)"} size={ICON_MD} />,
   },
   {
-    id: "jobs",
-    labelKey: "menuJobs",
-    icon: (active) => <ClipboardList color={active ? "#fff" : "rgba(255,255,255,0.4)"} size={ICON_MD} />,
-  },
-  {
     id: "services",
-    labelKey: "tabServices",
+    labelKey: "tabExperts",
     icon: (active) => <Briefcase color={active ? "#fff" : "rgba(255,255,255,0.4)"} size={ICON_MD} />,
   },
 ];
@@ -164,13 +162,15 @@ export function ChatListScreen({ navigation }: any) {
     (currentUser as { id?: string; _id?: string } | null)?.id ??
       (currentUser as { _id?: string } | null)?._id
   );
-  const [bottomTab, setBottomTab] = useState<"chats" | "contacts" | "jobs" | "services">("chats");
+  const [bottomTab, setBottomTab] = useState<"chats" | "contacts" | "services" | "settings">("chats");
 
   const { chats, loadChats, isLoadingChats, updateChatLocally, removeChatLocally } = useChatStore();
   const { t } = useAuthLocale();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showMenu, setShowMenu] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [searchHistoryVersion, setSearchHistoryVersion] = useState(0);
+  const [listingSubType, setListingSubType] = useState<ListingSubType>("employer");
   const [contactHits, setContactHits] = useState<ContactRow[]>([]);
   const [typingByChat, setTypingByChat] = useState<Record<string, boolean>>({});
   const [draftsByChat, setDraftsByChat] = useState<Record<string, string>>({});
@@ -200,18 +200,22 @@ export function ChatListScreen({ navigation }: any) {
     [chats]
   );
 
+  /** Qaysi papka ochiq bo'lsa — qidiruv o'sha papkaga oid */
+  const activeCategoryId = CHAT_CATEGORY_ITEMS[pageIndex]?.id ?? "all";
+  const isListingsPage = activeCategoryId === "listings";
+
   const searchFilteredChats = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return sortChats(chats.filter((c) => !c.archived));
+    const inFolder = chats.filter((c) => categoryMatchesChat(activeCategoryId, c));
+    if (!q) return sortChats(inFolder);
     return sortChats(
-      chats.filter(
+      inFolder.filter(
         (c) =>
-          !c.archived &&
-          ((c.name || "").toLowerCase().includes(q) ||
-            (c.lastMessage || "").toLowerCase().includes(q))
+          (c.name || "").toLowerCase().includes(q) ||
+          (c.lastMessage || "").toLowerCase().includes(q)
       )
     );
-  }, [chats, searchQuery]);
+  }, [chats, searchQuery, activeCategoryId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -574,13 +578,16 @@ export function ChatListScreen({ navigation }: any) {
         toggleChatSelected(item.id);
         return;
       }
+      if (searchQuery.trim().length >= 2) {
+        void addSearchHistory("chats", searchQuery).then(() => setSearchHistoryVersion((v) => v + 1));
+      }
       navigation.navigate("ChatDetail", {
         chatId: item.id,
         name: item.is_saved_messages ? t("savedMessages") : item.name,
         avatarUrl: item.avatarUrl ?? null,
       });
     },
-    [isBulkSelecting, navigation, t, toggleChatSelected]
+    [isBulkSelecting, navigation, t, toggleChatSelected, searchQuery]
   );
 
   const openContactChat = useCallback(
@@ -669,10 +676,6 @@ export function ChatListScreen({ navigation }: any) {
 
   const onHeaderAction = useCallback(
     (id: string) => {
-      if (id === "more") {
-        setShowMenu(true);
-        return;
-      }
       if (id === "compose") {
         const items = getVisibleComposeMenuItems({ isExpert });
         if (items.length === 0) return;
@@ -750,7 +753,7 @@ export function ChatListScreen({ navigation }: any) {
           {isBulkSelecting ? (
             <View style={styles.selectCheckWrap}>
               {selected ? (
-                <CheckCircle color="#3b82f6" size={22} />
+                <CheckCircle color={palette.accent} size={22} />
               ) : (
                 <Circle color="rgba(255,255,255,0.45)" size={22} />
               )}
@@ -807,7 +810,7 @@ export function ChatListScreen({ navigation }: any) {
   );
 
   const searchListHeader =
-    contactHits.length > 0 ? (
+    contactHits.length > 0 && (activeCategoryId === "all" || activeCategoryId === "user") ? (
       <View style={styles.contactsSection}>
         <Text style={styles.sectionTitle}>{t("searchContactsSection")}</Text>
         {contactHits.map((c) => (
@@ -896,32 +899,28 @@ export function ChatListScreen({ navigation }: any) {
                       onPress={runBulkDelete}
                       accessibilityLabel={t("msgDelete")}
                     >
-                      <Trash2 color="#f87171" size={20} />
+                      <Trash2 color={palette.danger} size={20} />
                     </Pressable>
                   </View>
                 ) : (
                   <View style={styles.searchRow}>
-                    {HEADER_LEFT_ACTIONS.map((action) => {
-                      const Icon = getMenuIcon(action.icon);
-                      return (
-                        <Pressable
-                          key={action.id}
-                          onPress={() => onHeaderAction(action.id)}
-                          style={styles.headerIconBtn}
-                          accessibilityLabel={action.accessibilityLabel}
-                        >
-                          <Icon color="#fff" size={22} />
-                        </Pressable>
-                      );
-                    })}
+                    <Pressable
+                      onPress={() => onComposeAction("bulk_select")}
+                      style={styles.headerEditBtn}
+                      accessibilityLabel={t("msgEdit")}
+                    >
+                      <Text style={styles.headerEditText}>{t("msgEdit")}</Text>
+                    </Pressable>
                     <View style={styles.searchBox}>
                       <Search color="rgba(255,255,255,0.45)" size={18} />
                       <TextInput
-                        placeholder={t("searchPlaceholder")}
+                        placeholder={isListingsPage ? t("searchListingsPh") : t("searchChatsPh")}
                         placeholderTextColor="rgba(255,255,255,0.35)"
                         style={styles.searchInput}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
+                        onFocus={() => setSearchFocused(true)}
+                        onBlur={() => setSearchFocused(false)}
                         returnKeyType="search"
                       />
                     </View>
@@ -940,6 +939,15 @@ export function ChatListScreen({ navigation }: any) {
                     })}
                   </View>
                 )}
+                {searchFocused && (isListingsPage || !searchQuery.trim()) ? (
+                  <SearchSuggestions
+                    scope={isListingsPage ? "listings" : "chats"}
+                    subType={isListingsPage ? listingSubType : undefined}
+                    query={searchQuery}
+                    historyVersion={searchHistoryVersion}
+                    onPick={setSearchQuery}
+                  />
+                ) : null}
                 {useCategoryPager ? (
                   <ScrollView
                     ref={categoryNavScrollRef}
@@ -986,11 +994,19 @@ export function ChatListScreen({ navigation }: any) {
                 <PagerView
                   ref={pagerRef}
                   style={styles.pager}
-                  initialPage={0}
+                  initialPage={pageIndex}
                   onPageSelected={(e) => setPageIndex(e.nativeEvent.position)}
                 >
                   {CHAT_CATEGORY_ITEMS.map((cat) => (
                     <View key={cat.id} style={styles.pagerPage} collapsable={false}>
+                      {cat.id === "listings" ? (
+                        <ListingsFeed
+                          navigation={navigation}
+                          searchQuery=""
+                          subType={listingSubType}
+                          onSubTypeChange={setListingSubType}
+                        />
+                      ) : (
                       <FlatList
                         style={styles.chatList}
                         nestedScrollEnabled
@@ -1005,9 +1021,18 @@ export function ChatListScreen({ navigation }: any) {
                           <Text style={styles.emptyList}>{t("searchNoResult")}</Text>
                         }
                       />
+                      )}
                     </View>
                   ))}
                 </PagerView>
+              ) : isListingsPage ? (
+                <ListingsFeed
+                  navigation={navigation}
+                  searchQuery={searchQuery}
+                  subType={listingSubType}
+                  onSubTypeChange={setListingSubType}
+                  onSearchCommitted={() => setSearchHistoryVersion((v) => v + 1)}
+                />
               ) : (
                 <FlatList
                   style={styles.chatList}
@@ -1034,10 +1059,10 @@ export function ChatListScreen({ navigation }: any) {
             </View>
           ) : bottomTab === "contacts" ? (
             <ContactsView navigation={navigation} />
-          ) : bottomTab === "jobs" ? (
-            <JobListScreen navigation={navigation} />
+          ) : bottomTab === "settings" ? (
+            <SettingsScreen navigation={navigation} />
           ) : (
-            <ServicesView navigation={navigation} />
+            <ExpertsView navigation={navigation} />
           )}
         </View>
 
@@ -1058,22 +1083,30 @@ export function ChatListScreen({ navigation }: any) {
                 </Pressable>
               );
             })}
+            {/* Sozlamalar tabi — foydalanuvchi avatari (eski chap menyu o'rniga) */}
+            <Pressable style={styles.tabItem} onPress={() => setBottomTab("settings")}>
+              <View
+                style={[
+                  styles.tabAvatar,
+                  bottomTab === "settings" && styles.tabAvatarActive,
+                ]}
+              >
+                <AvatarImage
+                  uri={
+                    (currentUser as { avatar?: string | null; avatar_url?: string | null } | null)?.avatar ??
+                    (currentUser as { avatar_url?: string | null } | null)?.avatar_url ??
+                    null
+                  }
+                  name={(currentUser as { name?: string } | null)?.name || "U"}
+                  size={26}
+                />
+              </View>
+              <Text style={[styles.tabText, bottomTab === "settings" && styles.tabTextActive]}>
+                {t("settingsTitle")}
+              </Text>
+            </Pressable>
           </View>
         </View>
-        <MessagesMenuDrawer
-          visible={showMenu}
-          onClose={() => setShowMenu(false)}
-          onOpenProfile={() => navigation.navigate("Profile")}
-          onOpenExperts={() => setBottomTab("services")}
-          onOpenJobs={() => setBottomTab("jobs")}
-          onOpenSavedMessages={() => void openSavedMessages()}
-          onSupport={() => navigation.navigate("Support")}
-          onCreateGroup={() => onComposeAction("new_group")}
-          onCreateChannel={() => onComposeAction("new_channel")}
-          onOpenContacts={() => setBottomTab("contacts")}
-          onOpenSettings={() => navigation.navigate("Settings")}
-          showCreateGroup={!isExpert}
-        />
 
         <Modal
           visible={!!createModal}
@@ -1143,7 +1176,15 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   chatsTop: { paddingHorizontal: 16, paddingBottom: 8 },
-  categoryStrip: { flexGrow: 0 },
+  /** Kategoriyalar bitta umumiy "pill" konteyner ichida */
+  categoryStrip: {
+    flexGrow: 0,
+    marginTop: 10,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.16)",
+  },
   pager: { flex: 1 },
   pagerPage: { flex: 1 },
   chatList: { flex: 1 },
@@ -1178,6 +1219,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     paddingVertical: 0,
   },
+  headerEditBtn: {
+    height: 44,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerEditText: { color: "#fff", fontSize: 15, fontWeight: "600" },
   headerIconBtn: {
     width: 44,
     height: 44,
@@ -1189,9 +1241,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   categoryScroll: {
-    paddingTop: 10,
-    paddingBottom: 4,
-    gap: 8,
+    padding: 4,
+    gap: 2,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -1199,17 +1250,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    marginRight: 8,
   },
   categoryChipActive: {
     backgroundColor: "rgba(255,255,255,0.92)",
-    borderColor: "rgba(255,255,255,0.95)",
   },
   categoryChipText: { color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: "600" },
   categoryChipTextActive: { color: "#0f172a" },
@@ -1259,7 +1305,7 @@ const styles = StyleSheet.create({
   chatName: { color: "#fff", fontSize: 16, fontWeight: "bold", maxWidth: "80%" },
   chatNameMuted: { color: "rgba(255,255,255,0.75)" },
   chatTypeLabel: {
-    color: "#38bdf8",
+    color: palette.accent,
     fontSize: 10,
     marginLeft: 6,
     fontWeight: "bold",
@@ -1269,7 +1315,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   unreadBadge: {
-    backgroundColor: "#5288c1",
+    backgroundColor: palette.accent,
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -1282,10 +1328,10 @@ const styles = StyleSheet.create({
   chatMetaRight: { flexDirection: "row", alignItems: "center", gap: 3 },
   chatTime: { color: "rgba(255,255,255,0.45)", fontSize: 12 },
   chatTicks: { color: "rgba(255,255,255,0.45)", fontSize: 12 },
-  chatTicksRead: { color: "#64b5ef" },
+  chatTicksRead: { color: palette.accent },
   chatMsg: { color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 2 },
   chatMsgMuted: { color: "rgba(255,255,255,0.35)" },
-  chatMsgTyping: { color: "#38bdf8", fontStyle: "italic" },
+  chatMsgTyping: { color: palette.accent, fontStyle: "italic" },
 
   modalOverlay: {
     flex: 1,
@@ -1355,4 +1401,10 @@ const styles = StyleSheet.create({
   tabItem: { alignItems: "center", justifyContent: "center" },
   tabText: { color: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: "500", marginTop: 4 },
   tabTextActive: { color: "#fff" },
+  tabAvatar: {
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  tabAvatarActive: { borderColor: "#fff" },
 });

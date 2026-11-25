@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, Pressable, ScrollView } from "react-native";
 import { ArrowLeft, Check } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthLocale } from "../../auth/locale";
+import { palette } from "../../../lib/theme";
 
 export function LanguageSettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -18,7 +19,7 @@ export function LanguageSettingsScreen({ navigation }: any) {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn} hitSlop={10}>
-          <ArrowLeft color="#aaaaaa" size={22} />
+          <ArrowLeft color={palette.textSecondary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t("langTitle")}</Text>
         <View style={styles.headerBtn} />
@@ -36,7 +37,7 @@ export function LanguageSettingsScreen({ navigation }: any) {
               <Text style={styles.langName}>{langItem.name}</Text>
               <Text style={styles.langLabel}>{langItem.label}</Text>
             </View>
-            {lang === langItem.code ? <Check color="#8774e1" size={22} /> : null}
+            {lang === langItem.code ? <Check color={palette.accent} size={22} /> : null}
           </Pressable>
         ))}
         <Text style={styles.infoText}>{t("langInfo")}</Text>
@@ -46,7 +47,7 @@ export function LanguageSettingsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#212121" },
+  container: { flex: 1, backgroundColor: palette.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, textAlign: "center", color: "#fff", fontSize: 20, fontWeight: "500" },
   content: { flex: 1 },
   sectionTitle: {
-    color: "#aaaaaa",
+    color: palette.textSecondary,
     fontSize: 13,
     fontWeight: "500",
     paddingHorizontal: 20,
@@ -81,9 +82,9 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: "rgba(255,255,255,0.06)" },
   itemInfo: { flex: 1 },
   langName: { color: "#fff", fontSize: 16 },
-  langLabel: { color: "#aaaaaa", fontSize: 13, marginTop: 2 },
+  langLabel: { color: palette.textSecondary, fontSize: 13, marginTop: 2 },
   infoText: {
-    color: "#aaaaaa",
+    color: palette.textSecondary,
     fontSize: 13,
     lineHeight: 18,
     paddingHorizontal: 20,

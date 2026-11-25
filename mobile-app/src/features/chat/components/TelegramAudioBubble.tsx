@@ -8,6 +8,7 @@ import {
   subscribeMediaCache,
 } from "../../../lib/media-cache";
 import { mobileSongPlayer, type MobileSongTrack } from "../../../lib/mobile-song-player";
+import { palette } from "../../../lib/theme";
 
 function fmtMb(n: number) {
   if (n <= 0) return "0.0 MB";
@@ -28,6 +29,8 @@ type Props = {
   chatId: string;
   playlist: MobileSongTrack[];
   onLongPress?: () => void;
+  /** Mening xabarim (binafsha pufakcha) — tugma aksent emas, oq-shaffof bo'ladi */
+  isMe?: boolean;
 };
 
 export function TelegramAudioBubble({
@@ -38,6 +41,7 @@ export function TelegramAudioBubble({
   chatId,
   playlist,
   onLongPress,
+  isMe,
 }: Props) {
   const songId = useSyncExternalStore(
     mobileSongPlayer.subscribe,
@@ -141,7 +145,7 @@ export function TelegramAudioBubble({
           onPress={() => void togglePlay()}
           onLongPress={onLongPress}
           delayLongPress={280}
-          style={styles.play}
+          style={[styles.play, isMe && styles.playMine]}
         >
           {playing ? <View style={styles.pause} /> : <Play color="#fff" size={22} fill="#fff" />}
         </Pressable>
@@ -192,10 +196,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#64b5ef",
+    backgroundColor: palette.accent,
     alignItems: "center",
     justifyContent: "center",
   },
+  playMine: { backgroundColor: "rgba(255,255,255,0.22)" },
   pause: {
     width: 14,
     height: 14,

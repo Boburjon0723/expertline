@@ -17,6 +17,7 @@ import { ArrowLeft, Check, Plus } from "lucide-react-native";
 import { useAppearanceStore } from "../../../lib/appearance-store";
 import { CHAT_BACKGROUND_PRESETS } from "../../../lib/wallpapers";
 import { useAuthLocale } from "../../auth/locale";
+import { palette } from "../../../lib/theme";
 
 type Props = {
   navigation: { goBack: () => void };
@@ -59,7 +60,7 @@ export function ThemeDesignScreen({ navigation }: Props) {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn} hitSlop={12}>
-          <ArrowLeft color="#aaaaaa" size={22} />
+          <ArrowLeft color={palette.textSecondary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t("themeTitle")}</Text>
         <View style={{ width: 40 }} />
@@ -84,9 +85,9 @@ export function ThemeDesignScreen({ navigation }: Props) {
               step={1}
               value={panelBlur}
               onValueChange={setPanelBlur}
-              minimumTrackTintColor="#8774e1"
+              minimumTrackTintColor={palette.accent}
               maximumTrackTintColor="rgba(255,255,255,0.12)"
-              thumbTintColor="#8774e1"
+              thumbTintColor={palette.accent}
             />
           </View>
 
@@ -102,9 +103,9 @@ export function ThemeDesignScreen({ navigation }: Props) {
               step={1}
               value={imageBlur}
               onValueChange={setImageBlur}
-              minimumTrackTintColor="#8774e1"
+              minimumTrackTintColor={palette.accent}
               maximumTrackTintColor="rgba(255,255,255,0.12)"
-              thumbTintColor="#8774e1"
+              thumbTintColor={palette.accent}
             />
           </View>
 
@@ -113,7 +114,7 @@ export function ThemeDesignScreen({ navigation }: Props) {
             <Switch
               value={isDarkTheme}
               onValueChange={setDarkTheme}
-              trackColor={{ false: "rgba(255,255,255,0.12)", true: "#8774e1" }}
+              trackColor={{ false: "rgba(255,255,255,0.12)", true: palette.accent }}
               thumbColor="#fff"
             />
           </View>
@@ -161,7 +162,7 @@ export function ThemeDesignScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#212121" },
+  container: { flex: 1, backgroundColor: palette.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
   sectionLabel: {
-    color: "#aaaaaa",
+    color: palette.textSecondary,
     fontSize: 13,
     fontWeight: "500",
     marginBottom: 8,
@@ -192,7 +193,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sliderCap: { color: "#fff", fontSize: 16 },
-  sliderVal: { color: "#aaaaaa", fontSize: 13 },
+  sliderVal: { color: palette.textSecondary, fontSize: 13 },
   slider: { width: "100%", height: 44 },
   themeRow: {
     flexDirection: "row",
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 6,
   },
-  uploadText: { color: "#aaaaaa", fontSize: 12 },
+  uploadText: { color: palette.textSecondary, fontSize: 12 },
   thumbWrap: {
     aspectRatio: 16 / 10,
     borderRadius: 12,
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   thumbWrapSelected: {
-    borderColor: "#8774e1",
+    borderColor: palette.accent,
   },
   thumb: { width: "100%", height: "100%" },
   checkOverlay: {
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#8774e1",
+    backgroundColor: palette.accent,
     alignItems: "center",
     justifyContent: "center",
   },

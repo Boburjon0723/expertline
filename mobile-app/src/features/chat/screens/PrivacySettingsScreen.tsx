@@ -5,9 +5,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import * as SecureStore from "expo-secure-store";
 import { useAuthLocale } from "../../auth/locale";
+import { palette } from "../../../lib/theme";
 
 const ICON = 22;
-const ICON_COLOR = "#aaaaaa";
+const ICON_COLOR = palette.textSecondary;
 
 export function PrivacySettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -39,7 +40,7 @@ export function PrivacySettingsScreen({ navigation }: any) {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn} hitSlop={10}>
-          <ArrowLeft color="#aaaaaa" size={22} />
+          <ArrowLeft color={palette.textSecondary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t("privTitle")}</Text>
         <View style={styles.headerBtn} />
@@ -109,7 +110,7 @@ function PrivacyToggle({ icon, label, subLabel, value, onToggle }: any) {
       <Switch
         value={value}
         onValueChange={onToggle}
-        trackColor={{ false: "rgba(255,255,255,0.12)", true: "#8774e1" }}
+        trackColor={{ false: "rgba(255,255,255,0.12)", true: palette.accent }}
         thumbColor="#fff"
       />
     </View>
@@ -117,7 +118,7 @@ function PrivacyToggle({ icon, label, subLabel, value, onToggle }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#212121" },
+  container: { flex: 1, backgroundColor: palette.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, textAlign: "center", color: "#fff", fontSize: 20, fontWeight: "500" },
   content: { flex: 1 },
   sectionTitle: {
-    color: "#aaaaaa",
+    color: palette.textSecondary,
     fontSize: 13,
     fontWeight: "500",
     paddingHorizontal: 20,
@@ -152,9 +153,9 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: "rgba(255,255,255,0.06)" },
   itemText: { flex: 1 },
   itemLabel: { color: "#fff", fontSize: 16 },
-  itemSub: { color: "#aaaaaa", fontSize: 13, marginTop: 2 },
+  itemSub: { color: palette.textSecondary, fontSize: 13, marginTop: 2 },
   infoText: {
-    color: "#aaaaaa",
+    color: palette.textSecondary,
     fontSize: 13,
     lineHeight: 18,
     paddingHorizontal: 20,

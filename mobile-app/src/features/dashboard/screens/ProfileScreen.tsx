@@ -12,7 +12,7 @@ import {
   Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { Check, Camera, Briefcase, Award, Clock, DollarSign, AlignLeft } from "lucide-react-native";
+import { Check, Camera } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { apiFetch } from "../../../lib/api";
@@ -22,18 +22,10 @@ import { useAuthStore } from "../../auth/store";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthLocale } from "../../auth/locale";
 import { AvatarImage } from "../../../components/AvatarImage";
+import { palette } from "../../../lib/theme";
 
-const PREDEFINED_PROFESSIONS = [
-  "Mentor / Ustoz",
-  "Huquqshunos",
-  "Psixolog",
-  "Konsultant",
-  "Dasturchi",
-  "Boshqa",
-];
-
-const LINK = "#6ab3f3";
-const MUTED = "#6d7f8f";
+const LINK = palette.accent;
+const MUTED = palette.textSecondary;
 
 export function ProfileScreen() {
   const navigation = useNavigation();
@@ -51,16 +43,6 @@ export function ProfileScreen() {
   const [birthday, setBirthday] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  const [isExpertMode, setIsExpertMode] = useState(false);
-  const [verifiedStatus, setVerifiedStatus] = useState("none");
-  const [profession, setProfession] = useState("");
-  const [specialization, setSpecialization] = useState("");
-  const [experience, setExperience] = useState("");
-  const [pricingModel, setPricingModel] = useState("hourly");
-  const [price, setPrice] = useState("");
-  const [bioExpert, setBioExpert] = useState("");
-  const [savingExpert, setSavingExpert] = useState(false);
 
   useEffect(() => {
     void loadProfile();
@@ -85,22 +67,6 @@ export function ProfileScreen() {
           setBirthday(`${y}-${m}-${d}`);
         }
       }
-      setProfession(data.profession || "");
-      setSpecialization(data.specialization || data.specialization_details || "");
-      setExperience(data.experience_years ? String(data.experience_years) : "");
-      setPricingModel(data.pricing_model || "hourly");
-      setPrice(
-        data.hourly_rate
-          ? String(data.hourly_rate)
-          : data.service_price
-            ? String(data.service_price)
-            : ""
-      );
-      setBioExpert(data.bio_expert || data.bio || "");
-      setVerifiedStatus(data.verified_status || "none");
-      setIsExpertMode(
-        !!data.is_expert || data.verified_status === "pending" || data.verified_status === "approved"
-      );
     } catch {
       /* ignore */
     }
@@ -133,7 +99,7 @@ export function ProfileScreen() {
         body: formData,
       });
       if (!res.ok) {
-        Alert.alert("Xato", "Rasmni serverga yuklab bo'lmadi.");
+        Alert.alert(t("errTitle"), t("errAvatarUpload"));
         return;
       }
       const data = await res.json();
@@ -146,7 +112,7 @@ export function ProfileScreen() {
       });
       patchUser({ ...user, avatar_url: url, avatar: url });
     } catch {
-      Alert.alert("Xato", "Rasm yuklashda tarmoq xatosi yuz berdi.");
+      Alert.alert(t("errTitle"), t("errAvatarNetwork"));
     } finally {
       setUploadingAvatar(false);
     }
@@ -154,14 +120,11 @@ export function ProfileScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert("Xato", "Ism kiritilishi shart.");
+      Alert.alert(t("errTitle"), t("errNameRequired"));
       return;
     }
+    // Username ixtiyoriy: bo'sh qoldirilsa backend uni olib tashlaydi (NULL)
     const cleanUsername = username.trim().replace(/^@+/, "");
-    if (!cleanUsername) {
-      Alert.alert("Xato", "Username kiritilishi shart.");
-      return;
-    }
     setSaving(true);
     try {
       const payload = {
@@ -178,52 +141,15 @@ export function ProfileScreen() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        Alert.alert("Xato", (err as any).message || "Saqlab bo'lmadi, username band bo'lishi mumkin.");
+        Alert.alert(t("errTitle"), (err as any).message || t("errSaveProfile"));
         return;
       }
       patchUser({ ...user, ...payload, avatar: avatarUrl, avatar_url: avatarUrl });
       navigation.goBack();
     } catch {
-      Alert.alert("Xato", "Server bilan ulanishda muammo");
+      Alert.alert(t("errTitle"), t("errServer"));
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleSaveExpert = async () => {
-    if (!profession || !specialization || !experience || !price) {
-      Alert.alert("Xato", "Barcha majburiy maydonlarni to'ldiring.");
-      return;
-    }
-    setSavingExpert(true);
-    try {
-      const payload = {
-        is_expert: true,
-        profession,
-        specialization_details: specialization,
-        specialization,
-        experience_years: parseInt(experience, 10),
-        pricing_model: pricingModel,
-        hourly_rate: parseFloat(price) || 0,
-        currency: "MALI",
-        bio_expert: bioExpert,
-      };
-      const res = await apiFetch("/api/users/me", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        Alert.alert("Muvaffaqiyatli", "Mutaxassis profili yangilandi va tasdiqqa yuborildi.");
-        await loadProfile();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        Alert.alert("Xato", (err as any).message || "Saqlab bo'lmadi");
-      }
-    } catch {
-      Alert.alert("Xato", "Server bilan ulanishda muammo");
-    } finally {
-      setSavingExpert(false);
     }
   };
 
@@ -237,10 +163,10 @@ export function ProfileScreen() {
     lang === "ru" ? "Коротко о себе" : lang === "en" ? "A few words about yourself" : "O‘zingiz haqingizda qisqacha";
   const usernameHint =
     lang === "ru"
-      ? "Вы можете выбрать публичное имя пользователя."
+      ? "Необязательно. Можно выбрать публичное имя пользователя."
       : lang === "en"
-        ? "You can choose a public username."
-        : "Ommaviy username tanlashingiz mumkin.";
+        ? "Optional. You can choose a public username."
+        : "Ixtiyoriy. Ommaviy username tanlashingiz mumkin.";
   const title =
     lang === "ru" ? "Изменить профиль" : lang === "en" ? "Edit Profile" : "Profilni tahrirlash";
   const cancelLabel = lang === "ru" ? "Отмена" : lang === "en" ? "Cancel" : "Bekor qilish";
@@ -390,132 +316,6 @@ export function ProfileScreen() {
             />
           ) : null}
 
-          <View style={styles.gap} />
-
-          <View style={styles.expertHeader}>
-            <Text style={styles.expertTitle}>Mutaxassis</Text>
-            <Pressable onPress={() => setIsExpertMode(!isExpertMode)}>
-              <Text style={styles.headerLink}>{isExpertMode ? t("pickerClose") : "Ochish"}</Text>
-            </Pressable>
-          </View>
-          {verifiedStatus === "approved" ? (
-            <Text style={[styles.hint, { paddingHorizontal: 20 }]}>Tasdiqlangan</Text>
-          ) : verifiedStatus === "pending" ? (
-            <Text style={[styles.hint, { paddingHorizontal: 20 }]}>Ko‘rib chiqilmoqda</Text>
-          ) : null}
-
-          {isExpertMode ? (
-            <View style={styles.pad}>
-              <Text style={styles.hint}>
-                Mutaxassis profilini to‘liq to‘ldiring. Sizning xizmatlaringiz mijozlarga ko‘rinadi.
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }}>
-                {PREDEFINED_PROFESSIONS.map((prof) => (
-                  <Pressable
-                    key={prof}
-                    style={[styles.chip, profession === prof && styles.chipActive]}
-                    onPress={() => setProfession(prof)}
-                  >
-                    <Text style={[styles.chipText, profession === prof && styles.chipActiveText]}>{prof}</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-              {profession === "Boshqa" ? (
-                <View style={styles.card}>
-                  <View style={styles.iconField}>
-                    <Briefcase size={18} color={MUTED} />
-                    <TextInput
-                      style={[styles.field, { flex: 1 }]}
-                      placeholder="Kasbingizni kiriting"
-                      placeholderTextColor={MUTED}
-                      onChangeText={setProfession}
-                    />
-                  </View>
-                </View>
-              ) : null}
-
-              <View style={[styles.card, { marginTop: 12 }]}>
-                <View style={styles.iconField}>
-                  <Award size={18} color={MUTED} />
-                  <TextInput
-                    style={[styles.field, { flex: 1 }]}
-                    placeholder="Mutaxassislik"
-                    placeholderTextColor={MUTED}
-                    value={specialization}
-                    onChangeText={setSpecialization}
-                  />
-                </View>
-                <View style={styles.fieldDivider} />
-                <View style={[styles.iconField, { alignItems: "flex-start" }]}>
-                  <AlignLeft size={18} color={MUTED} style={{ marginTop: 16 }} />
-                  <TextInput
-                    style={[styles.field, styles.bio, { flex: 1 }]}
-                    placeholder="Mutaxassis tavsifi"
-                    placeholderTextColor={MUTED}
-                    multiline
-                    value={bioExpert}
-                    onChangeText={setBioExpert}
-                  />
-                </View>
-                <View style={styles.fieldDivider} />
-                <View style={styles.iconField}>
-                  <Clock size={18} color={MUTED} />
-                  <TextInput
-                    style={[styles.field, { flex: 1 }]}
-                    placeholder="Tajriba (yil)"
-                    placeholderTextColor={MUTED}
-                    keyboardType="numeric"
-                    value={experience}
-                    onChangeText={setExperience}
-                  />
-                </View>
-                <View style={styles.fieldDivider} />
-                <View style={styles.iconField}>
-                  <DollarSign size={18} color={MUTED} />
-                  <TextInput
-                    style={[styles.field, { flex: 1 }]}
-                    placeholder="Narx (MALI)"
-                    placeholderTextColor={MUTED}
-                    keyboardType="numeric"
-                    value={price}
-                    onChangeText={setPrice}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.row}>
-                <Pressable
-                  style={[styles.radio, pricingModel === "hourly" && styles.radioActive]}
-                  onPress={() => setPricingModel("hourly")}
-                >
-                  <Text style={[styles.radioText, pricingModel === "hourly" && styles.radioActiveText]}>
-                    Soatlik
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.radio, pricingModel === "session" && styles.radioActive]}
-                  onPress={() => setPricingModel("session")}
-                >
-                  <Text style={[styles.radioText, pricingModel === "session" && styles.radioActiveText]}>
-                    Seans
-                  </Text>
-                </Pressable>
-              </View>
-
-              <Pressable
-                style={styles.expertSave}
-                onPress={() => void handleSaveExpert()}
-                disabled={savingExpert}
-              >
-                {savingExpert ? (
-                  <ActivityIndicator color={LINK} />
-                ) : (
-                  <Text style={styles.expertSaveText}>Mutaxassis profilini saqlash</Text>
-                )}
-              </Pressable>
-            </View>
-          ) : null}
-
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -524,14 +324,14 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0f0f0f" },
+  container: { flex: 1, backgroundColor: palette.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingBottom: 10,
-    backgroundColor: "#212121",
+    backgroundColor: palette.bg,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
@@ -540,7 +340,7 @@ const styles = StyleSheet.create({
   headerLink: { color: LINK, fontSize: 16, fontWeight: "500" },
   headerTitle: { flex: 1, textAlign: "center", color: "#fff", fontSize: 17, fontWeight: "600" },
   avatarBlock: {
-    backgroundColor: "#212121",
+    backgroundColor: palette.bg,
     alignItems: "center",
     paddingTop: 24,
     paddingBottom: 20,
@@ -551,7 +351,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     overflow: "hidden",
-    backgroundColor: "#8774e1",
+    backgroundColor: palette.accent,
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -571,11 +371,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   photoLink: { marginTop: 12, color: LINK, fontSize: 15, fontWeight: "500" },
-  gap: { height: 12, backgroundColor: "#0f0f0f" },
-  pad: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: "#0f0f0f" },
+  gap: { height: 12, backgroundColor: palette.bg },
+  pad: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: palette.bg },
   card: {
     borderRadius: 12,
-    backgroundColor: "#181818",
+    backgroundColor: palette.surfaceSolid,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.04)",
@@ -595,39 +395,4 @@ const styles = StyleSheet.create({
   dateLabel: { color: MUTED, fontSize: 13, paddingHorizontal: 16, paddingTop: 12 },
   dateValue: { color: "#fff", fontSize: 16 },
   datePlaceholder: { color: MUTED, fontSize: 16 },
-  expertHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  expertTitle: { color: "#fff", fontSize: 16, fontWeight: "500" },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: "#181818",
-    borderRadius: 16,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.04)",
-  },
-  chipActive: { borderColor: LINK },
-  chipText: { color: MUTED, fontSize: 13 },
-  chipActiveText: { color: LINK },
-  iconField: { flexDirection: "row", alignItems: "center", paddingLeft: 16, gap: 8 },
-  row: { flexDirection: "row", gap: 10, marginTop: 12 },
-  radio: {
-    flex: 1,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    backgroundColor: "#181818",
-  },
-  radioActive: { borderWidth: 1, borderColor: LINK },
-  radioText: { color: MUTED, fontSize: 14 },
-  radioActiveText: { color: LINK },
-  expertSave: { marginTop: 16, paddingVertical: 14, alignItems: "center" },
-  expertSaveText: { color: LINK, fontSize: 16, fontWeight: "500" },
 });

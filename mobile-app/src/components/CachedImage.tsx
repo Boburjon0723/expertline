@@ -3,6 +3,7 @@ import { Image, ImageStyle, Pressable, StyleProp, View, ViewStyle } from "react-
 import { ArrowDown } from "lucide-react-native";
 import { getCachedMediaUri, peekCachedMediaUriSync } from "../lib/media-cache";
 import { subscribeMediaPrefs } from "../lib/media-prefs";
+import { palette } from "../lib/theme";
 
 interface CachedImageProps {
   uri: string;
@@ -93,7 +94,7 @@ export const CachedImage = ({
         onPress={() => void pull()}
         onLongPress={onLongPress}
         delayLongPress={280}
-        style={[style, { alignItems: "center", justifyContent: "center", backgroundColor: "#0e1621", overflow: "hidden" }]}
+        style={[style, { alignItems: "center", justifyContent: "center", backgroundColor: palette.bg, overflow: "hidden" }]}
       >
         {thumb ? (
           <Image source={{ uri: thumb }} blurRadius={12} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />

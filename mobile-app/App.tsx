@@ -14,12 +14,13 @@ import { RegisterScreen } from "./src/features/auth/screens/RegisterScreen";
 import { PasscodeScreen } from "./src/features/auth/screens/PasscodeScreen";
 import { ChatListScreen } from "./src/features/chat/screens/ChatListScreen";
 import { ChatDetailScreen } from "./src/features/chat/screens/ChatDetailScreen";
-import { SettingsScreen } from "./src/features/chat/screens/SettingsScreen";
 import { ThemeDesignScreen } from "./src/features/dashboard/screens/ThemeDesignScreen";
 
 import { ChatPeerInfoScreen } from "./src/features/chat/screens/ChatPeerInfoScreen";
 import { ProfileScreen } from "./src/features/dashboard/screens/ProfileScreen";
-import { WalletScreen } from "./src/features/dashboard/screens/WalletScreen";
+import { ExpertProfileScreen } from "./src/features/dashboard/screens/ExpertProfileScreen";
+import { ListingDetailScreen } from "./src/features/market/ListingDetailScreen";
+import { ListingComposeScreen } from "./src/features/market/ListingComposeScreen";
 import { LanguageSettingsScreen } from "./src/features/chat/screens/LanguageSettingsScreen";
 import { DataStorageSettingsScreen } from "./src/features/chat/screens/DataStorageSettingsScreen";
 import { PrivacySettingsScreen } from "./src/features/chat/screens/PrivacySettingsScreen";
@@ -34,6 +35,7 @@ import * as Notifications from 'expo-notifications';
 import { navigationRef, navigateToChatFromNotification } from "./src/lib/navigationRef";
 import { GlobalCallOverlay } from "./src/features/chat/components/GlobalCallOverlay";
 import { GlobalSongDock } from "./src/features/chat/components/ChatSongMiniBar";
+import { palette } from "./src/lib/theme";
 
 type RootStackParamList = {
   Login: undefined;
@@ -41,10 +43,11 @@ type RootStackParamList = {
   Messages: undefined;
   ChatDetail: { chatId: string; name: string; avatarUrl?: string | null; startCall?: "audio" | "video"; focusMessageId?: string };
   ChatPeerInfo: { chatId: string; name: string; avatarUrl?: string | null };
-  Settings: undefined;
   ThemeDesign: undefined;
   Profile: undefined;
-  Wallet: undefined;
+  ExpertProfile: undefined;
+  ListingDetail: { listing: unknown };
+  ListingCompose: { type?: "employer" | "seeker" } | undefined;
   LanguageSettings: undefined;
   DataStorageSettings: undefined;
   PrivacySettings: undefined;
@@ -161,8 +164,8 @@ export default function App() {
   if (isBootstrapping || !bootRoute) {
     return (
       <SafeAreaProvider>
-        <View style={{ flex: 1, backgroundColor: "#050505", alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color="#64b5ef" size="large" />
+        <View style={{ flex: 1, backgroundColor: palette.bg, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color={palette.accent} size="large" />
         </View>
       </SafeAreaProvider>
     );
@@ -186,7 +189,7 @@ export default function App() {
         initialRouteName={bootRoute}
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: "#050505" }
+          contentStyle: { backgroundColor: palette.bg }
         }}
       >
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -198,10 +201,15 @@ export default function App() {
           component={ChatPeerInfoScreen}
           options={{ presentation: "modal", animation: "slide_from_bottom" }}
         />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="ThemeDesign" component={ThemeDesignScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
-        <Stack.Screen name="Wallet" component={WalletScreen} />
+        <Stack.Screen name="ExpertProfile" component={ExpertProfileScreen} />
+        <Stack.Screen name="ListingDetail" component={ListingDetailScreen} />
+        <Stack.Screen
+          name="ListingCompose"
+          component={ListingComposeScreen}
+          options={{ presentation: "modal", animation: "slide_from_bottom" }}
+        />
         <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen} />
         <Stack.Screen name="DataStorageSettings" component={DataStorageSettingsScreen} />
         <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />

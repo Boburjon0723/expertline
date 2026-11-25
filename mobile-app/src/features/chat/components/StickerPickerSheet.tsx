@@ -15,6 +15,7 @@ import {
   STICKER_CATEGORIES,
   type Sticker,
 } from "../../../lib/sticker-packs";
+import { palette } from "../../../lib/theme";
 
 type Props = {
   visible: boolean;
@@ -97,7 +98,7 @@ export function StickerPickerSheet({ visible, onClose, onSelect }: Props) {
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)" },
   sheet: {
-    backgroundColor: "#212121",
+    backgroundColor: palette.bg,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: "52%",

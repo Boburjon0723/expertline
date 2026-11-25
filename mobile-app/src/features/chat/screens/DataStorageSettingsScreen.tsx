@@ -15,9 +15,10 @@ import {
   setKindAutoDownload,
   setSaveToGalleryEnabled,
 } from "../../../lib/media-prefs";
+import { palette } from "../../../lib/theme";
 
 const ICON = 22;
-const ICON_COLOR = "#aaaaaa";
+const ICON_COLOR = palette.textSecondary;
 
 export function DataStorageSettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -78,7 +79,7 @@ export function DataStorageSettingsScreen({ navigation }: any) {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBtn} hitSlop={10}>
-          <ArrowLeft color="#aaaaaa" size={22} />
+          <ArrowLeft color={palette.textSecondary} size={22} />
         </Pressable>
         <Text style={styles.headerTitle}>{t("dataTitle")}</Text>
         <View style={styles.headerBtn} />
@@ -95,7 +96,7 @@ export function DataStorageSettingsScreen({ navigation }: any) {
           <Switch
             value={master}
             onValueChange={onMaster}
-            trackColor={{ false: "rgba(255,255,255,0.12)", true: "#8774e1" }}
+            trackColor={{ false: "rgba(255,255,255,0.12)", true: palette.accent }}
             thumbColor="#fff"
           />
         </View>
@@ -108,7 +109,7 @@ export function DataStorageSettingsScreen({ navigation }: any) {
               setPhoto(on);
               void setKindAutoDownload("photo", on);
             }}
-            trackColor={{ false: "rgba(255,255,255,0.12)", true: "#8774e1" }}
+            trackColor={{ false: "rgba(255,255,255,0.12)", true: palette.accent }}
             thumbColor="#fff"
           />
         </View>
@@ -121,7 +122,7 @@ export function DataStorageSettingsScreen({ navigation }: any) {
               setVideo(on);
               void setKindAutoDownload("video", on);
             }}
-            trackColor={{ false: "rgba(255,255,255,0.12)", true: "#8774e1" }}
+            trackColor={{ false: "rgba(255,255,255,0.12)", true: palette.accent }}
             thumbColor="#fff"
           />
         </View>
@@ -134,7 +135,7 @@ export function DataStorageSettingsScreen({ navigation }: any) {
               setFile(on);
               void setKindAutoDownload("file", on);
             }}
-            trackColor={{ false: "rgba(255,255,255,0.12)", true: "#8774e1" }}
+            trackColor={{ false: "rgba(255,255,255,0.12)", true: palette.accent }}
             thumbColor="#fff"
           />
         </View>
@@ -150,7 +151,7 @@ export function DataStorageSettingsScreen({ navigation }: any) {
               setSaveToGallery(on);
               void setSaveToGalleryEnabled(on);
             }}
-            trackColor={{ false: "rgba(255,255,255,0.12)", true: "#8774e1" }}
+            trackColor={{ false: "rgba(255,255,255,0.12)", true: palette.accent }}
             thumbColor="#fff"
           />
         </View>
@@ -168,7 +169,7 @@ export function DataStorageSettingsScreen({ navigation }: any) {
           style={({ pressed }) => [styles.dangerBtn, pressed && styles.dangerPressed]}
           onPress={clearCache}
         >
-          <Trash2 color="#e53935" size={ICON} />
+          <Trash2 color={palette.danger} size={ICON} />
           <Text style={styles.dangerBtnText}>{t("dataClear")}</Text>
         </Pressable>
       </ScrollView>
@@ -177,7 +178,7 @@ export function DataStorageSettingsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#212121" },
+  container: { flex: 1, backgroundColor: palette.bg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, textAlign: "center", color: "#fff", fontSize: 20, fontWeight: "500" },
   content: { flex: 1 },
   sectionTitle: {
-    color: "#aaaaaa",
+    color: palette.textSecondary,
     fontSize: 13,
     fontWeight: "500",
     paddingHorizontal: 20,
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
   itemText: { flex: 1 },
   itemLabel: { color: "#fff", fontSize: 16 },
   itemLabelFlex: { flex: 1, color: "#fff", fontSize: 16 },
-  itemSub: { color: "#aaaaaa", fontSize: 13, marginTop: 2 },
+  itemSub: { color: palette.textSecondary, fontSize: 13, marginTop: 2 },
   dangerBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -222,5 +223,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   dangerPressed: { backgroundColor: "rgba(229,57,53,0.1)" },
-  dangerBtnText: { color: "#e53935", fontSize: 16 },
+  dangerBtnText: { color: palette.danger, fontSize: 16 },
 });

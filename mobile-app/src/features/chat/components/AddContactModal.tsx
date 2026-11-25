@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { apiFetch } from "../../../lib/api";
 import { addContactRequest } from "../service";
+import { palette } from "../../../lib/theme";
 
 /** Web `AddContactModal` bilan bir xil oqim: ism + familiya + telefon → aniq raqam bo'yicha qidiruv → kontakt. */
 export type AddedContact = {
@@ -135,7 +136,7 @@ export function AddContactModal({ visible, onClose, onAdded }: Props) {
             </Pressable>
             <Pressable onPress={() => void submit()} style={styles.btn} disabled={loading}>
               {loading ? (
-                <ActivityIndicator color="#8774e1" />
+                <ActivityIndicator color={palette.accent} />
               ) : (
                 <Text style={[styles.btnText, styles.btnPrimary]}>Qo'shish</Text>
               )}
@@ -155,13 +156,13 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   card: {
-    backgroundColor: "#212121",
+    backgroundColor: palette.bg,
     borderRadius: 16,
     padding: 20,
   },
   title: { color: "#fff", fontSize: 20, fontWeight: "600", marginBottom: 12 },
   error: { color: "#ff6b6b", fontSize: 14, marginBottom: 8 },
-  label: { color: "#8774e1", fontSize: 13, marginTop: 12 },
+  label: { color: palette.accent, fontSize: 13, marginTop: 12 },
   input: {
     color: "#fff",
     fontSize: 16,
@@ -171,6 +172,6 @@ const styles = StyleSheet.create({
   },
   actions: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 24 },
   btn: { paddingHorizontal: 14, paddingVertical: 10, minWidth: 80, alignItems: "center" },
-  btnText: { color: "#aaaaaa", fontSize: 15, fontWeight: "600" },
-  btnPrimary: { color: "#8774e1" },
+  btnText: { color: palette.textSecondary, fontSize: 15, fontWeight: "600" },
+  btnPrimary: { color: palette.accent },
 });

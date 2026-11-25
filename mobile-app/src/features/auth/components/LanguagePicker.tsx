@@ -14,6 +14,7 @@ import {
   LANGUAGE_META,
   useAuthLocale,
 } from "../locale";
+import { palette } from "../../../lib/theme";
 
 const FLAG: Record<AppLanguage, string> = {
   uz: "🇺🇿",
@@ -84,7 +85,7 @@ export function LanguagePicker() {
                     <Text style={styles.rowNative}>{item.native}</Text>
                   </View>
                   {active ? (
-                    <Check size={20} color="#38bdf8" strokeWidth={2.5} />
+                    <Check size={20} color={palette.accent} strokeWidth={2.5} />
                   ) : (
                     <View style={styles.radioOuter}>
                       <View style={styles.radioInner} />

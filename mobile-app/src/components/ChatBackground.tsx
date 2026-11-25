@@ -8,6 +8,7 @@ import {
 } from "../lib/appearance-store";
 
 import { THEMES } from "../lib/constants";
+import { palette } from "../lib/theme";
 
 type Props = {
   children: React.ReactNode;
@@ -64,8 +65,9 @@ export function ChatBackground({ children, contentStyle, isChatWindow }: Props) 
   const overlayA = overlayOpacityFromPanelBlur(panelBlur, themeData.isDark);
 
   
-  // If it's a solid theme but NOT the chat window, use solid background
-  const shouldUseSolidColor = (isTelegram || isPureDark) && !isChatWindow;
+  // Ro'yxat ekranlari (chatlar, kontaktlar, sozlamalar) — har doim bir xil rangli fon.
+  // Fon rasmi faqat chat oynasining ichida.
+  const shouldUseSolidColor = !isChatWindow;
   
   const remoteUri = themeId === "vibrant" || isChatWindow ? backgroundUri : themeData.background;
   // Fon rasmi diskda keshlanadi: chat har ochilganda tarmoqdan qayta yuklanib, 1 soniya qora turmasin.
@@ -73,7 +75,8 @@ export function ChatBackground({ children, contentStyle, isChatWindow }: Props) 
 
   // For solid colors, we use black overlay to "dim" the solid base color.
   // For image backgrounds, we use the theme color to "tint" the image.
-  const overlayBaseColor = (isTelegram || isPureDark) ? "14, 22, 33" : (shouldUseSolidColor ? "0, 0, 0" : "15, 23, 42");
+  // Rasm ustidagi qoplama palette.bg (#0e1621) bilan bir xil tonda — pufakchalar o'qiladi.
+  const overlayBaseColor = "14, 22, 33";
   const finalOverlay = `rgba(${overlayBaseColor}, ${overlayA})`;
 
 
@@ -87,8 +90,8 @@ export function ChatBackground({ children, contentStyle, isChatWindow }: Props) 
 
   if (shouldUseSolidColor) {
     return (
-      <View style={[styles.bg, { backgroundColor: `rgb(${overlayBaseColor})` }]}>
-        {content}
+      <View style={[styles.bg, { backgroundColor: palette.bg }]}>
+        <View style={[styles.content, contentStyle]}>{children}</View>
       </View>
     );
   }

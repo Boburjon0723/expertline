@@ -5,6 +5,7 @@ import { Camera, CameraView } from "expo-camera";
 import { Camera as CameraIcon, ChevronLeft, ChevronUp, Lock, Mic, Pause, Play, Send, Trash2 } from "lucide-react-native";
 import { ensureSpeakerPlayback, holdSongForVideo, releaseSongFromVideo } from "../../../lib/mobile-song-player";
 import { GlassBackground } from "../../../components/GlassBackground";
+import { palette } from "../../../lib/theme";
 
 /**
  * Telegram uslubidagi ovozli xabar tugmasi:
@@ -625,7 +626,7 @@ const styles = StyleSheet.create({
   slideHint: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 2 },
   slideText: { color: "rgba(255,255,255,0.6)", fontSize: 14 },
   cancelBtn: { flex: 1, alignItems: "center" },
-  cancelText: { color: "#64b5ef", fontSize: 15, fontWeight: "600" },
+  cancelText: { color: palette.accent, fontSize: 15, fontWeight: "600" },
   previewRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
   iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   previewPill: {
@@ -634,7 +635,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 20,
-    backgroundColor: "#3a8ee6",
+    backgroundColor: palette.accent,
     paddingHorizontal: 6,
     gap: 8,
   },
@@ -677,7 +678,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#3a8ee6",
+    backgroundColor: palette.accent,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 7,

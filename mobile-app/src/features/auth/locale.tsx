@@ -285,6 +285,64 @@ type Dict = {
   chatServiceBusy: string;
   chatSummaryError: string;
   chatSelectMessages: string;
+  errTitle: string;
+  successTitle: string;
+  errServer: string;
+  errNameRequired: string;
+  errSaveProfile: string;
+  errAvatarUpload: string;
+  errAvatarNetwork: string;
+  errRequiredFields: string;
+  errSaveFailed: string;
+  expertProfileTitle: string;
+  expertProfileSub: string;
+  expertStatusApproved: string;
+  expertStatusPending: string;
+  expertIntro: string;
+  expertOtherProfession: string;
+  expertSpecialization: string;
+  expertSaved: string;
+  expertFormIntro: string;
+  expertSectionMain: string;
+  expertLanguages: string;
+  expertLanguagesPh: string;
+  expertSectionResume: string;
+  expertResumeUpload: string;
+  expertResumeUploaded: string;
+  expertResumeReplace: string;
+  expertResumeHint: string;
+  errResumeRequired: string;
+  errResumeTooBig: string;
+  expertSectionAbout: string;
+  expertListing: string;
+  expertSubscriptionTitle: string;
+  expertSubscriptionPeriod: string;
+  expertSubscriptionDesc: string;
+  expertSend: string;
+  catListings: string;
+  tabExperts: string;
+  listingsEmployers: string;
+  listingsSeekers: string;
+  searchChatsPh: string;
+  searchListingsPh: string;
+  searchExpertsPh: string;
+  searchRecent: string;
+  searchPopular: string;
+  searchClear: string;
+  listingsEmpty: string;
+  listingNew: string;
+  listingTypeEmployer: string;
+  listingTypeSeeker: string;
+  listingPhEmployer: string;
+  listingPhSeeker: string;
+  listingPublish: string;
+  listingTooShort: string;
+  listingPublished: string;
+  listingContact: string;
+  listingYours: string;
+  listingClose: string;
+  listingTitle: string;
+  expertsEmpty: string;
 };
 
 const DICTS: Record<AppLanguage, Dict> = {
@@ -541,6 +599,64 @@ const DICTS: Record<AppLanguage, Dict> = {
     chatServiceBusy: "Xizmat band, keyinroq urinib ko'ring",
     chatSummaryError: "Xulosa olinmadi",
     chatSelectMessages: "Tanlash",
+    errTitle: "Xato",
+    successTitle: "Muvaffaqiyatli",
+    errServer: "Server bilan ulanishda muammo",
+    errNameRequired: "Ism kiritilishi shart.",
+    errSaveProfile: "Saqlab bo‘lmadi, username band bo‘lishi mumkin.",
+    errAvatarUpload: "Rasmni serverga yuklab bo‘lmadi.",
+    errAvatarNetwork: "Rasm yuklashda tarmoq xatosi yuz berdi.",
+    errRequiredFields: "Barcha majburiy maydonlarni to‘ldiring.",
+    errSaveFailed: "Saqlab bo‘lmadi",
+    expertProfileTitle: "Mutaxassis profili",
+    expertProfileSub: "Kasb, tajriba va narx",
+    expertStatusApproved: "Tasdiqlangan",
+    expertStatusPending: "Ko‘rib chiqilmoqda",
+    expertIntro: "Mutaxassis profilini to‘liq to‘ldiring. Xizmatlaringiz mijozlarga ko‘rinadi.",
+    expertOtherProfession: "Kasbingizni kiriting",
+    expertSpecialization: "Mutaxassislik",
+    expertSaved: "Mutaxassis profili yangilandi va tasdiqqa yuborildi.",
+    expertFormIntro: "Mijozlar sizni topishi uchun profilni to‘ldiring. Admin rezyumeni ko‘rib chiqib, profilni tasdiqlaydi.",
+    expertSectionMain: "Yo‘nalish",
+    expertLanguages: "Xizmat tillari",
+    expertLanguagesPh: "Masalan: o‘zbek, rus",
+    expertSectionResume: "Rezyume",
+    expertResumeUpload: "Rezyumeni yuklang (PDF)",
+    expertResumeUploaded: "Rezyume yuklandi",
+    expertResumeReplace: "Almashtirish uchun bosing",
+    expertResumeHint: "Majburiy. Ish tajribangiz, ma’lumotingiz va sertifikatlaringizni rezyumeda ko‘rsating.",
+    errResumeRequired: "Rezyume (PDF) yuklash majburiy.",
+    errResumeTooBig: "Fayl hajmi 10 MB dan oshmasin.",
+    expertSectionAbout: "Siz haqingizda",
+    expertListing: "Mutaxassislik tavsifi va mijozga taklif",
+    expertSubscriptionTitle: "Mutaxassis obunasi",
+    expertSubscriptionPeriod: "so‘m / oy",
+    expertSubscriptionDesc: "Profilingiz tasdiqlangach, mutaxassis sifatida ishlash uchun oylik obuna.",
+    expertSend: "Yuborish",
+    catListings: "E'lonlar",
+    tabExperts: "Mutaxassislar",
+    listingsEmployers: "Ish beruvchilar",
+    listingsSeekers: "Ish qidiruvchilar",
+    searchChatsPh: "Chatlardan qidirish",
+    searchListingsPh: "E'lonlardan qidirish",
+    searchExpertsPh: "Mutaxassis qidirish",
+    searchRecent: "Oxirgi qidiruvlar",
+    searchPopular: "Ommabop",
+    searchClear: "Tozalash",
+    listingsEmpty: "Hozircha e'lonlar yo'q",
+    listingNew: "E'lon berish",
+    listingTypeEmployer: "Ish beraman",
+    listingTypeSeeker: "Ish qidiryapman",
+    listingPhEmployer: "Masalan:\nFrontend dasturchi kerak (React)\n\nKompaniya: «Alfa Soft», Toshkent / masofaviy\nTalablar: React va TypeScript bo‘yicha 1+ yil tajriba\nIsh vaqti: 9:00–18:00, dushanba–juma\nMaosh: 8–12 mln so‘m, kelishiladi\nQo‘shimcha: rasmiy ishga joylashtirish, tushlik",
+    listingPhSeeker: "Masalan:\nSotuv menejeri sifatida ish qidiryapman\n\nIsmim: Aziz, 26 yosh, Toshkent\nTajriba: 3 yil chakana savdoda, mijozlar bilan ishlash\nBilimlar: 1C, Excel, CRM; o‘zbek, rus tillari\nKutilayotgan maosh: 6 mln so‘mdan\nIsh turi: to‘liq kun, ofisda yoki masofaviy",
+    listingPublish: "E'lonni joylash",
+    listingTooShort: "E'lon matni kamida 20 ta belgi bo‘lsin",
+    listingPublished: "E'lon joylandi",
+    listingContact: "Bog‘lanish",
+    listingYours: "Bu sizning e'loningiz",
+    listingClose: "E'lonni yopish",
+    listingTitle: "E'lon",
+    expertsEmpty: "Hozircha tasdiqlangan mutaxassislar yo'q",
   },
   ru: {
     loginTagline: "MALI PLATFORM",
@@ -795,6 +911,64 @@ const DICTS: Record<AppLanguage, Dict> = {
     chatServiceBusy: "Сервис занят, попробуйте позже",
     chatSummaryError: "Не удалось получить сводку",
     chatSelectMessages: "Выбрать",
+    errTitle: "Ошибка",
+    successTitle: "Успешно",
+    errServer: "Проблема соединения с сервером",
+    errNameRequired: "Введите имя.",
+    errSaveProfile: "Не удалось сохранить, возможно, username занят.",
+    errAvatarUpload: "Не удалось загрузить фото на сервер.",
+    errAvatarNetwork: "Сетевая ошибка при загрузке фото.",
+    errRequiredFields: "Заполните все обязательные поля.",
+    errSaveFailed: "Не удалось сохранить",
+    expertProfileTitle: "Профиль специалиста",
+    expertProfileSub: "Профессия, опыт и цена",
+    expertStatusApproved: "Подтверждён",
+    expertStatusPending: "На проверке",
+    expertIntro: "Заполните профиль специалиста полностью. Ваши услуги увидят клиенты.",
+    expertOtherProfession: "Введите профессию",
+    expertSpecialization: "Специализация",
+    expertSaved: "Профиль специалиста обновлён и отправлен на проверку.",
+    expertFormIntro: "Заполните профиль, чтобы клиенты могли вас найти. Администратор проверит резюме и подтвердит профиль.",
+    expertSectionMain: "Направление",
+    expertLanguages: "Языки обслуживания",
+    expertLanguagesPh: "Например: узбекский, русский",
+    expertSectionResume: "Резюме",
+    expertResumeUpload: "Загрузите резюме (PDF)",
+    expertResumeUploaded: "Резюме загружено",
+    expertResumeReplace: "Нажмите, чтобы заменить",
+    expertResumeHint: "Обязательно. Укажите в резюме опыт работы, образование и сертификаты.",
+    errResumeRequired: "Загрузка резюме (PDF) обязательна.",
+    errResumeTooBig: "Размер файла не должен превышать 10 МБ.",
+    expertSectionAbout: "О вас",
+    expertListing: "Описание специализации и предложение клиенту",
+    expertSubscriptionTitle: "Подписка специалиста",
+    expertSubscriptionPeriod: "сум / мес",
+    expertSubscriptionDesc: "Ежемесячная подписка для работы специалистом после подтверждения профиля.",
+    expertSend: "Отправить",
+    catListings: "Объявления",
+    tabExperts: "Специалисты",
+    listingsEmployers: "Работодатели",
+    listingsSeekers: "Соискатели",
+    searchChatsPh: "Поиск по чатам",
+    searchListingsPh: "Поиск объявлений",
+    searchExpertsPh: "Поиск специалиста",
+    searchRecent: "Недавние",
+    searchPopular: "Популярное",
+    searchClear: "Очистить",
+    listingsEmpty: "Пока нет объявлений",
+    listingNew: "Разместить объявление",
+    listingTypeEmployer: "Ищу сотрудника",
+    listingTypeSeeker: "Ищу работу",
+    listingPhEmployer: "Например:\nНужен frontend-разработчик (React)\n\nКомпания: «Alfa Soft», Ташкент / удалённо\nТребования: опыт React и TypeScript от 1 года\nГрафик: 9:00–18:00, пн–пт\nЗарплата: 8–12 млн сум, по договорённости\nДополнительно: официальное оформление, обед",
+    listingPhSeeker: "Например:\nИщу работу менеджером по продажам\n\nМеня зовут Азиз, 26 лет, Ташкент\nОпыт: 3 года в розничных продажах, работа с клиентами\nНавыки: 1C, Excel, CRM; узбекский, русский\nОжидаемая зарплата: от 6 млн сум\nФормат: полный день, офис или удалённо",
+    listingPublish: "Опубликовать",
+    listingTooShort: "Текст объявления — минимум 20 символов",
+    listingPublished: "Объявление опубликовано",
+    listingContact: "Связаться",
+    listingYours: "Это ваше объявление",
+    listingClose: "Закрыть объявление",
+    listingTitle: "Объявление",
+    expertsEmpty: "Пока нет подтверждённых специалистов",
   },
   en: {
     loginTagline: "MALI PLATFORM",
@@ -1049,6 +1223,64 @@ const DICTS: Record<AppLanguage, Dict> = {
     chatServiceBusy: "Service busy, try again later",
     chatSummaryError: "Could not get summary",
     chatSelectMessages: "Select",
+    errTitle: "Error",
+    successTitle: "Success",
+    errServer: "Could not reach the server",
+    errNameRequired: "Name is required.",
+    errSaveProfile: "Could not save — the username may be taken.",
+    errAvatarUpload: "Could not upload the photo.",
+    errAvatarNetwork: "Network error while uploading the photo.",
+    errRequiredFields: "Please fill in all required fields.",
+    errSaveFailed: "Could not save",
+    expertProfileTitle: "Specialist profile",
+    expertProfileSub: "Profession, experience and price",
+    expertStatusApproved: "Approved",
+    expertStatusPending: "Under review",
+    expertIntro: "Complete your specialist profile. Clients will see your services.",
+    expertOtherProfession: "Enter your profession",
+    expertSpecialization: "Specialization",
+    expertSaved: "Specialist profile updated and sent for review.",
+    expertFormIntro: "Fill in your profile so clients can find you. An admin reviews your resume and approves the profile.",
+    expertSectionMain: "Field",
+    expertLanguages: "Service languages",
+    expertLanguagesPh: "e.g. Uzbek, Russian",
+    expertSectionResume: "Resume",
+    expertResumeUpload: "Upload your resume (PDF)",
+    expertResumeUploaded: "Resume uploaded",
+    expertResumeReplace: "Tap to replace",
+    expertResumeHint: "Required. Include your work experience, education and certificates in the resume.",
+    errResumeRequired: "Uploading a resume (PDF) is required.",
+    errResumeTooBig: "File must be under 10 MB.",
+    expertSectionAbout: "About you",
+    expertListing: "Your specialty and offer to clients",
+    expertSubscriptionTitle: "Specialist subscription",
+    expertSubscriptionPeriod: "UZS / month",
+    expertSubscriptionDesc: "Monthly subscription to work as a specialist once your profile is approved.",
+    expertSend: "Submit",
+    catListings: "Listings",
+    tabExperts: "Specialists",
+    listingsEmployers: "Employers",
+    listingsSeekers: "Job seekers",
+    searchChatsPh: "Search chats",
+    searchListingsPh: "Search listings",
+    searchExpertsPh: "Search specialists",
+    searchRecent: "Recent",
+    searchPopular: "Popular",
+    searchClear: "Clear",
+    listingsEmpty: "No listings yet",
+    listingNew: "Post a listing",
+    listingTypeEmployer: "I'm hiring",
+    listingTypeSeeker: "I'm looking for work",
+    listingPhEmployer: "Example:\nFrontend developer needed (React)\n\nCompany: Alfa Soft, Tashkent / remote\nRequirements: 1+ year with React and TypeScript\nHours: 9:00–18:00, Mon–Fri\nSalary: 8–12M UZS, negotiable\nExtras: official contract, lunch",
+    listingPhSeeker: "Example:\nLooking for a sales manager position\n\nName: Aziz, 26, Tashkent\nExperience: 3 years in retail sales, customer service\nSkills: 1C, Excel, CRM; Uzbek, Russian\nExpected salary: from 6M UZS\nFormat: full-time, office or remote",
+    listingPublish: "Publish",
+    listingTooShort: "Listing text must be at least 20 characters",
+    listingPublished: "Listing published",
+    listingContact: "Contact",
+    listingYours: "This is your listing",
+    listingClose: "Close listing",
+    listingTitle: "Listing",
+    expertsEmpty: "No approved specialists yet",
   },
 };
 

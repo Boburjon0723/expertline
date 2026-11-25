@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { apiFetch } from "../../../lib/api";
 import { getSocket } from "../../../lib/socket";
+import { palette } from "../../../lib/theme";
 
 export type ListingDeal = {
   id: string;
@@ -236,7 +237,7 @@ export function ListingDealBar({
               })
             }
           >
-            <Text style={[styles.btnGhostText, { color: "#f87171" }]}>Nizo</Text>
+            <Text style={[styles.btnGhostText, { color: palette.danger }]}>Nizo</Text>
           </Pressable>
         </View>
       ) : null}
@@ -250,10 +251,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     padding: 12,
     borderRadius: 16,
-    backgroundColor: "#212121",
+    backgroundColor: palette.bg,
     gap: 8,
   },
-  title: { color: "#8774e1", fontSize: 13, fontWeight: "600" },
+  title: { color: palette.accent, fontSize: 13, fontWeight: "600" },
   msg: { color: "rgba(255,255,255,0.8)", fontSize: 11 },
   meta: { color: "rgba(255,255,255,0.55)", fontSize: 11 },
   row: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },

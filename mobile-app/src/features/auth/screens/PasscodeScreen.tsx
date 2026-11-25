@@ -5,6 +5,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from 'expo-secure-store';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../store";
+import { palette } from "../../../lib/theme";
 
 interface PasscodeScreenProps {
   navigation: any;
@@ -216,14 +217,14 @@ export function PasscodeScreen({ navigation, route }: PasscodeScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#050505", alignItems: "center" },
+  container: { flex: 1, backgroundColor: palette.bg, alignItems: "center" },
   header: { alignItems: "center", marginBottom: 40 },
   lockIconBox: { width: 70, height: 70, borderRadius: 35, backgroundColor: "rgba(59, 130, 246, 0.2)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
   title: { color: "#fff", fontSize: 24, fontWeight: "bold", marginBottom: 10 },
   subTitle: { color: "rgba(255,255,255,0.4)", fontSize: 13, textAlign: "center", paddingHorizontal: 40 },
   dotsContainer: { flexDirection: "row", marginBottom: 60 },
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)", marginHorizontal: 15 },
-  dotActive: { backgroundColor: "#3b82f6", borderColor: "#3b82f6" },
+  dotActive: { backgroundColor: palette.accent, borderColor: palette.accent },
   numpad: { width: "100%", paddingHorizontal: 40 },
   row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
   numBtn: { width: 75, height: 75, borderRadius: 38, backgroundColor: "rgba(255,255,255,0.05)", justifyContent: "center", alignItems: "center" },

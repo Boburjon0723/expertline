@@ -19,6 +19,7 @@ import {
 } from "../message-preview";
 import { getActionMessage, subscribeActionMessage } from "../message-action-store";
 import { AnimatedPressable } from "../../../components/AnimatedPressable";
+import { palette } from "../../../lib/theme";
 
 export type MessageMenuLabels = {
   reply: string;
@@ -192,7 +193,7 @@ export function MessageContextMenu({
       allowed.delete && {
         key: "delete",
         label: labels.delete,
-        icon: <Trash2 color="#f87171" size={22} />,
+        icon: <Trash2 color={palette.danger} size={22} />,
         danger: true,
         onPress: () => run(() => onDelete(held)),
       },
@@ -313,5 +314,5 @@ const styles = StyleSheet.create({
   },
   iconWrapDanger: { backgroundColor: "rgba(248,113,113,0.14)" },
   cellLabel: { color: "rgba(255,255,255,0.88)", fontSize: 11, fontWeight: "600" },
-  cellDanger: { color: "#f87171" },
+  cellDanger: { color: palette.danger },
 });

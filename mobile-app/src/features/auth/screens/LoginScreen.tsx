@@ -24,6 +24,7 @@ import { useAuthLocale } from "../locale";
 import { LanguagePicker } from "../components/LanguagePicker";
 import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
+import { palette } from "../../../lib/theme";
 
 const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1080&auto=format&fit=crop";
 
@@ -291,7 +292,7 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingTop: Platform.OS === "ios" ? 80 : 60 },
   brandingContainer: { marginBottom: 35, marginTop: -20 },
   taglineBox: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(56, 189, 248, 0.12)", borderWidth: 1, borderColor: "rgba(56, 189, 248, 0.3)", paddingHorizontal: 16, paddingVertical: 6, borderRadius: 24, alignSelf: "flex-start", marginBottom: 20 },
-  pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#38bdf8", marginRight: 10, shadowColor: "#38bdf8", shadowOpacity: 1, shadowRadius: 10, elevation: 5 },
+  pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: palette.accent, marginRight: 10, shadowColor: palette.accent, shadowOpacity: 1, shadowRadius: 10, elevation: 5 },
   taglineText: { color: "#bae6fd", fontSize: 10, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase" },
   title: { fontSize: 32, fontWeight: "900", color: "#ffffff", letterSpacing: -1 },
   titleSuffix: { color: "rgba(255,255,255,0.4)" },
@@ -312,15 +313,15 @@ const styles = StyleSheet.create({
   actionsRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 28, marginTop: 4 },
   checkboxRow: { flexDirection: "row", alignItems: "center" },
   checkbox: { width: 22, height: 22, borderRadius: 8, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.3)", marginRight: 12, justifyContent: "center", alignItems: "center" },
-  checkboxActive: { backgroundColor: "#0ea5e9", borderColor: "#0ea5e9" },
+  checkboxActive: { backgroundColor: palette.accent, borderColor: palette.accent },
   checkMark: { color: "#fff", fontSize: 14, fontWeight: "900" },
   actionText: { color: "rgba(203, 213, 225, 0.9)", fontSize: 13, fontWeight: "600" },
-  forgotText: { color: "#38bdf8", fontSize: 13, fontWeight: "700" },
-  submitButton: { height: 60, borderRadius: 30, backgroundColor: "#0ea5e9", justifyContent: "center", alignItems: "center", shadowColor: "#0ea5e9", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 12 },
+  forgotText: { color: palette.accent, fontSize: 13, fontWeight: "700" },
+  submitButton: { height: 60, borderRadius: 30, backgroundColor: palette.accent, justifyContent: "center", alignItems: "center", shadowColor: palette.accent, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 12 },
   submitButtonDisabled: { opacity: 0.5, backgroundColor: "#475569" },
   submitText: { color: "#ffffff", fontSize: 12, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase", textAlign: "center" },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 20, marginBottom: 8 },
   footerText: { color: "rgba(148, 163, 184, 0.8)", fontSize: 15, fontWeight: "500" },
-  linkText: { color: "#38bdf8", fontSize: 15, fontWeight: "900" },
+  linkText: { color: palette.accent, fontSize: 15, fontWeight: "900" },
 });
 

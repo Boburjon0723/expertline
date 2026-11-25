@@ -15,6 +15,7 @@ import {
 import { Search, Briefcase, MapPin, DollarSign, Filter, ChevronRight } from "lucide-react-native";
 import { getJobsRequest, getCategoriesRequest, Job, JobCategory } from "../service";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { palette } from "../../../lib/theme";
 
 
 type RootStackParamList = {
@@ -73,7 +74,7 @@ export function JobListScreen({ navigation }: Pick<Props, "navigation">) {
     >
       <View style={styles.cardHeader}>
         <View style={styles.iconContainer}>
-          <Briefcase size={20} color="#38bdf8" />
+          <Briefcase size={20} color={palette.accent} />
         </View>
         <View style={styles.titleContainer}>
           <Text style={styles.jobTitle} numberOfLines={1}>{item.title}</Text>
@@ -150,7 +151,7 @@ export function JobListScreen({ navigation }: Pick<Props, "navigation">) {
       {/* Job List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#0ea5e9" size="large" />
+          <ActivityIndicator color={palette.accent} size="large" />
         </View>
       ) : (
         <FlatList
@@ -159,7 +160,7 @@ export function JobListScreen({ navigation }: Pick<Props, "navigation">) {
           renderItem={renderJobItem}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0ea5e9" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.accent} />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -180,11 +181,11 @@ const styles = StyleSheet.create({
   searchContainer: { flexDirection: "row", paddingHorizontal: 20, marginBottom: 16, alignItems: "center" },
   searchWrapper: { flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, paddingHorizontal: 16, height: 50, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
   searchInput: { flex: 1, color: "#fff", marginLeft: 10, fontSize: 15 },
-  filterBtn: { width: 50, height: 50, backgroundColor: "#0ea5e9", borderRadius: 16, marginLeft: 12, justifyContent: "center", alignItems: "center", shadowColor: "#0ea5e9", shadowOpacity: 0.3, shadowRadius: 10 },
+  filterBtn: { width: 50, height: 50, backgroundColor: palette.accent, borderRadius: 16, marginLeft: 12, justifyContent: "center", alignItems: "center", shadowColor: palette.accent, shadowOpacity: 0.3, shadowRadius: 10 },
   categoriesSection: { marginBottom: 16 },
   categoryScroll: { paddingHorizontal: 20 },
   categoryCard: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.05)", marginRight: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
-  categoryCardActive: { backgroundColor: "#0ea5e9", borderColor: "#0ea5e9" },
+  categoryCardActive: { backgroundColor: palette.accent, borderColor: palette.accent },
   categoryText: { color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: "700" },
   categoryTextActive: { color: "#fff" },
   listContent: { paddingHorizontal: 20, paddingBottom: 40 },

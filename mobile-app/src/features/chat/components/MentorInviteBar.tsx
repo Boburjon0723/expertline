@@ -14,6 +14,7 @@ import {
   getMentorInviteEligibilityRequest,
   sendMentorGroupInviteInPrivateChat,
 } from "../service";
+import { palette } from "../../../lib/theme";
 
 type Props = {
   chatId: string;
@@ -77,7 +78,7 @@ export function MentorInviteBar({ chatId, expertName }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Users color="#8774e1" size={16} />
+      <Users color={palette.accent} size={16} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
         {groups.map((g) => (
           <Pressable
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
   },
   chipText: { color: "#fff", fontSize: 12 },
   btn: {
-    backgroundColor: "#8774e1",
+    backgroundColor: palette.accent,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
