@@ -126,9 +126,14 @@ export const updateProfile = async (req: Request, res: Response) => {
         try {
             await client.query('BEGIN');
 
+            // Username ixtiyoriy: bo'sh qator — "olib tashlash" (NULL). UNIQUE ustunda '' to'qnashmasin.
+            const usernameValue: string | null | undefined =
+                typeof username === 'string' ? username.trim().replace(/^@+/, '') || null : username;
+            const clearUsername = typeof username === 'string' && usernameValue === null;
+
             // Check Username Uniqueness
-            if (username) {
-                const check = await client.query('SELECT id FROM users WHERE username = $1 AND id != $2', [username, userId]);
+            if (usernameValue) {
+                const check = await client.query('SELECT id FROM users WHERE username = $1 AND id != $2', [usernameValue, userId]);
                 if (check.rows.length > 0) {
                     throw new Error('Username already taken');
                 }
@@ -136,8 +141,8 @@ export const updateProfile = async (req: Request, res: Response) => {
 
             // Update User Table
             await client.query(
-                `UPDATE users SET name = COALESCE($1, name), surname = COALESCE($2, surname), username = COALESCE($3, username), avatar_url = COALESCE($4, avatar_url), updated_at = NOW() WHERE id = $5`,
-                [name, surname, username, avatar_url, userId]
+                `UPDATE users SET name = COALESCE($1, name), surname = COALESCE($2, surname), username = CASE WHEN $6::boolean THEN NULL ELSE COALESCE($3, username) END, avatar_url = COALESCE($4, avatar_url), updated_at = NOW() WHERE id = $5`,
+                [name, surname, usernameValue ?? null, avatar_url, userId, clearUsername]
             );
 
             // Update Profile Table
@@ -261,7 +266,7 @@ export const updateProfile = async (req: Request, res: Response) => {
                     avatar_url: avatar_url,
                     name: name,
                     surname: surname,
-                    username: username,
+                    username: clearUsername ? null : usernameValue,
                     bio: bio,
                     birthday: birthday
                 });
@@ -292,7 +297,7 @@ export const listExperts = async (req: Request, res: Response) => {
                    p.is_expert, p.profession, p.specialization, p.specialization_details,
                    p.experience_years, p.service_price, p.hourly_rate, p.pricing_model, p.currency,
                    p.verified_status, p.specialty_desc, p.expert_proposal, p.service_format,
-                   p.bio_expert, p.wiloyat, p.rating AS expert_rating
+                   p.bio_expert, p.wiloyat, p.rating AS expert_rating, p.service_languages
             FROM users u
             INNER JOIN user_profiles p ON u.id = p.user_id
             WHERE p.is_expert = TRUE AND p.verified_status = 'approved'

@@ -4,6 +4,9 @@ import { JobCategoryModel } from '../../models/postgres/JobCategory';
 import { pool } from '../../config/database';
 import { safeClearCache } from '../../config/redis';
 
+const JOB_TEXT_MIN = 20;
+const JOB_TEXT_MAX = 3000;
+
 export class JobController {
     private jobModel: JobModel;
     private categoryModel: JobCategoryModel;
@@ -17,19 +20,39 @@ export class JobController {
         const client = await pool.connect();
         try {
             const userId = (req as any).user.id;
-            const jobData = req.body;
+            const body = req.body || {};
 
-            if (!jobData.sub_type || !jobData.category_id || !jobData.type) {
-                return res.status(400).json({ message: 'Missing required fields' });
+            // Soddalashtirilgan e'lon: tur (ish beruvchi / ish qidiruvchi) + bitta erkin matn.
+            const subType = String(body.sub_type || '');
+            if (subType !== 'employer' && subType !== 'seeker') {
+                return res.status(400).json({ message: "sub_type 'employer' yoki 'seeker' bo'lishi kerak" });
+            }
+            const text = String(body.short_text || '').trim();
+            if (text.length < JOB_TEXT_MIN) {
+                return res.status(400).json({ message: `E'lon matni kamida ${JOB_TEXT_MIN} ta belgidan iborat bo'lsin` });
+            }
+            if (text.length > JOB_TEXT_MAX) {
+                return res.status(400).json({ message: `E'lon matni ${JOB_TEXT_MAX} ta belgidan oshmasin` });
             }
 
             await client.query('BEGIN');
 
-            const catRes = await client.query('SELECT 1 FROM job_categories WHERE id = $1', [jobData.category_id]);
-            if (catRes.rows.length === 0) {
-                await client.query('ROLLBACK');
-                return res.status(400).json({ message: 'Category not found' });
+            // Kategoriya ixtiyoriy (eski klientlar yuborishi mumkin) — berilsa, mavjudligini tekshiramiz
+            let categoryId: number | null = null;
+            if (body.category_id != null && body.category_id !== '') {
+                const catRes = await client.query('SELECT id FROM job_categories WHERE id = $1', [body.category_id]);
+                if (catRes.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Category not found' });
+                }
+                categoryId = catRes.rows[0].id;
             }
+            const jobData = {
+                sub_type: subType as 'employer' | 'seeker',
+                short_text: text,
+                category_id: categoryId as any,
+                type: (body.type === 'online' || body.type === 'offline' ? body.type : null) as any,
+            };
 
             // MVP: e'lon joylash bepul (hamyon olib tashlangan). job_categories.publication_price_mali hisobga olinmaydi.
             const job = await this.jobModel.create({
@@ -56,11 +79,15 @@ export class JobController {
 
     getJobs = async (req: Request, res: Response) => {
         try {
-            const { type, category_id, sub_type } = req.query;
+            const { type, category_id, sub_type, q, limit, offset } = req.query;
+            const lim = limit != null ? Math.min(Math.max(parseInt(String(limit), 10) || 50, 1), 100) : undefined;
             const jobs = await this.jobModel.findAll({
                 type: type as string,
                 category_id: category_id ? parseInt(category_id as string) : undefined,
-                sub_type: sub_type as string
+                sub_type: sub_type as string,
+                q: typeof q === 'string' ? q.slice(0, 100) : undefined,
+                limit: lim,
+                offset: lim ? Math.max(parseInt(String(offset), 10) || 0, 0) : undefined,
             });
             res.json(jobs);
         } catch (error) {
