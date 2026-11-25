@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { LayoutGrid, MapPin, X } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useLanguage } from '@/context/LanguageContext';
 import type { ListingSubType } from './ListingsFeed';
+import { REGIONS, type RegionCode } from '@/lib/regions';
+import { DIRECTIONS, type DirectionCode } from '@/lib/directions';
+import { useListingFilters } from '@/hooks/useListingFilters';
 
 const MIN_LEN = 20;
 const MAX_LEN = 3000;
@@ -20,8 +23,12 @@ type Props = {
  * Placeholder'da to'liq namuna — foydalanuvchi shartlarini yoki o'zi haqida erkin yozadi.
  */
 export default function ListingComposeModal({ initialType, onClose, onPublished }: Props) {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [type, setType] = useState<ListingSubType>(initialType);
+    // Ro'yxatda tanlangan viloyat va yo'nalish oldindan qo'yiladi
+    const filters = useListingFilters();
+    const [region, setRegion] = useState<RegionCode | ''>(filters.region !== 'all' ? filters.region : '');
+    const [direction, setDirection] = useState<DirectionCode | ''>(filters.direction !== 'all' ? filters.direction : '');
     const [text, setText] = useState('');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
@@ -39,6 +46,14 @@ export default function ListingComposeModal({ initialType, onClose, onPublished 
     const len = text.trim().length;
 
     const publish = async () => {
+        if (!region) {
+            setError(t('region_required'));
+            return;
+        }
+        if (!direction) {
+            setError(t('direction_required'));
+            return;
+        }
         if (len < MIN_LEN) {
             setError(t('listing_text_too_short'));
             return;
@@ -48,7 +63,7 @@ export default function ListingComposeModal({ initialType, onClose, onPublished 
         try {
             const res = await apiFetch('/api/jobs', {
                 method: 'POST',
-                body: JSON.stringify({ sub_type: type, short_text: text.trim() }),
+                body: JSON.stringify({ sub_type: type, short_text: text.trim(), region, direction }),
             });
             if (!res.ok) {
                 const err = (await res.json().catch(() => ({}))) as { message?: string };
@@ -101,6 +116,55 @@ export default function ListingComposeModal({ initialType, onClose, onPublished 
                             </button>
                         ))}
                     </div>
+                </div>
+
+                <div className="px-5 pb-3 shrink-0">
+                    <label className="relative flex items-center">
+                        <MapPin className={`absolute left-3.5 h-4 w-4 pointer-events-none ${region ? 'text-[#8774e1]' : 'text-[#6d7f8f]'}`} />
+                        <select
+                            value={region}
+                            onChange={(e) => {
+                                setRegion(e.target.value as RegionCode);
+                                if (error) setError('');
+                            }}
+                            className={`w-full h-11 rounded-xl bg-transparent border pl-10 pr-4 text-[15px] focus:outline-none focus:border-[#8774e1] ${
+                                region ? 'text-white' : 'text-[#6d7f8f]'
+                            } ${error && !region ? 'border-[#e53935]' : 'border-white/[0.12]'}`}
+                            aria-label={t('region_pick')}
+                        >
+                            <option value="" disabled className="bg-[#212121]">
+                                {t('region_pick')}
+                            </option>
+                            {REGIONS.map((r) => (
+                                <option key={r.code} value={r.code} className="bg-[#212121] text-white">
+                                    {r[language]}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="relative flex items-center mt-2.5">
+                        <LayoutGrid className={`absolute left-3.5 h-4 w-4 pointer-events-none ${direction ? 'text-[#8774e1]' : 'text-[#6d7f8f]'}`} />
+                        <select
+                            value={direction}
+                            onChange={(e) => {
+                                setDirection(e.target.value as DirectionCode);
+                                if (error) setError('');
+                            }}
+                            className={`w-full h-11 rounded-xl bg-transparent border pl-10 pr-4 text-[15px] focus:outline-none focus:border-[#8774e1] ${
+                                direction ? 'text-white' : 'text-[#6d7f8f]'
+                            } ${error && region && !direction ? 'border-[#e53935]' : 'border-white/[0.12]'}`}
+                            aria-label={t('direction_pick')}
+                        >
+                            <option value="" disabled className="bg-[#212121]">
+                                {t('direction_pick')}
+                            </option>
+                            {DIRECTIONS.map((d) => (
+                                <option key={d.code} value={d.code} className="bg-[#212121] text-white">
+                                    {d.emoji}  {d[language]}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
                 </div>
 
                 <div className="flex-1 min-h-0 px-5 flex flex-col">

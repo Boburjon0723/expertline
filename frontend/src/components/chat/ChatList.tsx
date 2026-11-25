@@ -18,6 +18,7 @@ import { useChatTypingMap } from '@/lib/chat-typing-store';
 import ChatSongPlayerBar from './ChatSongPlayerBar';
 import ListingsFeed, { type ListingSubType } from '@/components/market/ListingsFeed';
 import SearchSuggestions from '@/components/market/SearchSuggestions';
+import ListingFabMenu from '@/components/market/ListingFabMenu';
 import type { ListingRow } from '@/components/market/marketUi';
 import { addSearchHistory } from '@/lib/search-history';
 
@@ -1021,17 +1022,7 @@ export default function ChatList({
             )}
 
             {!searchActive && !viewingArchive && isListingsFolder && (
-                <button
-                    type="button"
-                    onClick={() => onComposeListing?.()}
-                    className="absolute right-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-30 h-14 w-14 rounded-full bg-[#8774e1] hover:bg-[#7a67d4] text-white shadow-[0_4px_16px_rgba(0,0,0,0.4)] flex items-center justify-center transition-colors"
-                    aria-label={t('listing_new')}
-                    title={t('listing_new')}
-                >
-                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <path strokeLinecap="round" d="M12 5v14M5 12h14" />
-                    </svg>
-                </button>
+                <ListingFabMenu subType={listingSubType} onCompose={() => onComposeListing?.()} />
             )}
             {!searchActive && !viewingArchive && !isListingsFolder && (
                 <ComposeFabMenu

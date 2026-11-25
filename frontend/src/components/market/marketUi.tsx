@@ -90,6 +90,10 @@ export type ListingRow = {
     description?: string | null;
     created_at?: string;
     status?: string;
+    /** Viloyat kodi (lib/regions) */
+    location?: string | null;
+    /** Yo'nalish kodi (lib/directions) */
+    direction?: string | null;
     user?: { name?: string; surname?: string; username?: string; avatar_url?: string | null };
 };
 
