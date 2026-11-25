@@ -43,9 +43,16 @@ export function ListingComposeScreen({ navigation, route }: any) {
   const [directionOpen, setDirectionOpen] = useState(false);
   const [type, setType] = useState<ListingSubType>(route?.params?.type === "seeker" ? "seeker" : "employer");
   const [text, setText] = useState("");
+  const [title, setTitle] = useState("");
+  const [company, setCompany] = useState("");
   const [busy, setBusy] = useState(false);
 
   const publish = async () => {
+    const cleanTitle = title.replace(/\s+/g, " ").trim();
+    if (cleanTitle.length < 5 || cleanTitle.length > 80) {
+      Alert.alert(t("errTitle"), t("listingTitleRequired"));
+      return;
+    }
     if (!region) {
       Alert.alert(t("errTitle"), t("regionRequired"));
       setRegionOpen(true);
@@ -62,7 +69,7 @@ export function ListingComposeScreen({ navigation, route }: any) {
     }
     setBusy(true);
     try {
-      await createListing(type, text, region, direction);
+      await createListing({ subType: type, title: cleanTitle, text, region, direction, company });
       Alert.alert(t("successTitle"), t("listingPublished"));
       navigation.goBack();
     } catch (e: any) {
@@ -86,6 +93,25 @@ export function ListingComposeScreen({ navigation, route }: any) {
           <View style={styles.typeRow}>
             <ListingTypeSwitchInline value={type} onChange={setType} />
           </View>
+          <TextInput
+            style={styles.titleInput}
+            value={title}
+            onChangeText={(v) => setTitle(v.replace(/\n/g, " ").slice(0, 80))}
+            placeholder={type === "employer" ? t("listingTitlePhEmployer") : t("listingTitlePhSeeker")}
+            placeholderTextColor={palette.textMuted}
+            autoFocus
+            returnKeyType="next"
+          />
+          {type === "employer" ? (
+            <TextInput
+              style={styles.companyInput}
+              value={company}
+              onChangeText={(v) => setCompany(v.slice(0, 80))}
+              placeholder={t("listingCompanyPh")}
+              placeholderTextColor={palette.textMuted}
+              returnKeyType="next"
+            />
+          ) : null}
           <Pressable
             onPress={() => setRegionOpen(true)}
             style={({ pressed }) => [styles.regionBtn, pressed && { opacity: 0.8 }]}
@@ -117,7 +143,6 @@ export function ListingComposeScreen({ navigation, route }: any) {
             placeholder={type === "employer" ? t("listingPhEmployer") : t("listingPhSeeker")}
             placeholderTextColor={palette.textMuted}
             multiline
-            autoFocus
             textAlignVertical="top"
           />
           <Text style={styles.counter}>
@@ -189,6 +214,27 @@ const styles = StyleSheet.create({
     borderColor: palette.border,
   },
   regionText: { flex: 1, color: palette.text, fontSize: 15 },
+  titleInput: {
+    height: 48,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    color: palette.text,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  companyInput: {
+    height: 46,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    color: palette.text,
+    fontSize: 15,
+  },
   switch: {
     flexDirection: "row",
     padding: 4,

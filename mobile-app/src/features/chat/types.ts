@@ -18,6 +18,8 @@ export interface Chat {
   lastMessageIsRead?: boolean;
   /** ISO — ro'yxatda vaqt/sana yorlig'i uchun */
   lastMessageAt?: string | null;
+  /** E'lon orqali ochilgan chat ("Murojaatlar" tabi) */
+  listing?: { jobId: string; title: string; company?: string | null } | null;
 }
 
 export interface Message {

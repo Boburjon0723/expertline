@@ -23,10 +23,8 @@ import {
   fetchListings,
   formatListDate,
   getSavedFilter,
-  listingAuthor,
-  listingText,
+  listingParts,
   saveFilter,
-  splitListingText,
   type ListingFacets,
   type ListingRow,
   type ListingSubType,
@@ -213,8 +211,7 @@ export function ListingsFeed({ navigation, searchQuery, subType, onSubTypeChange
           )
         }
         renderItem={({ item, index }) => {
-          const { title, rest } = splitListingText(listingText(item));
-          const author = listingAuthor(item);
+          const { title, rest, byline: author } = listingParts(item);
           const own = !!me?.id && String(item.user_id) === String(me.id);
           const meta = [
             item.location ? regionShortLabel(item.location, lang) : "",

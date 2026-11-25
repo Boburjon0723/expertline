@@ -93,9 +93,12 @@ function categoryMatchesChat(categoryId: string, chat: Chat): boolean {
   if (chat.archived) return false;
   if (categoryId === "all") return true;
   if (categoryId === "listings") return false;
+  if (categoryId === "requests") return !!chat.listing;
   const t = (chat.type || "").toLowerCase();
   switch (categoryId) {
     case "user":
+      // E'lon orqali kelganlar "Murojaatlar" da — shaxsiy suhbatlar bilan aralashmasin
+      if (chat.listing) return false;
       return !t || t === "private" || t === "user" || t === "direct";
     case "group":
       return t === "group";
@@ -202,23 +205,30 @@ export function ChatListScreen({ navigation }: any) {
     [chats]
   );
 
+  /** "Murojaatlar" tabi faqat e'lon orqali kelgan chat bo'lsa ko'rinadi */
+  const hasListingChats = chats.some((c) => !!c.listing && !c.archived);
+  const categoryItems = useMemo(
+    () => CHAT_CATEGORY_ITEMS.filter((c) => c.id !== "requests" || hasListingChats),
+    [hasListingChats]
+  );
+
   /** ✎ tugmasi ostidagi "Yangi chat" menyusi */
   const [composeMenuOpen, setComposeMenuOpen] = useState(false);
 
   /** Papka tablaridagi son — o'qilmagan xabari bor chatlar soni (web kabi; ovozsiz chatlar sanalmaydi) */
   const unreadByCategory = useMemo(() => {
     const out: Record<string, number> = {};
-    for (const cat of CHAT_CATEGORY_ITEMS) {
+    for (const cat of categoryItems) {
       if (cat.id === "listings") continue;
       out[cat.id] = chats.filter(
         (c) => (c.unreadCount || 0) > 0 && !(c as { muted?: boolean }).muted && categoryMatchesChat(cat.id, c)
       ).length;
     }
     return out;
-  }, [chats]);
+  }, [chats, categoryItems]);
 
   /** Qaysi papka ochiq bo'lsa — qidiruv o'sha papkaga oid */
-  const activeCategoryId = CHAT_CATEGORY_ITEMS[pageIndex]?.id ?? "all";
+  const activeCategoryId = categoryItems[pageIndex]?.id ?? "all";
   const isListingsPage = activeCategoryId === "listings";
 
   const searchFilteredChats = useMemo(() => {
@@ -387,10 +397,27 @@ export function ChatListScreen({ navigation }: any) {
   }, [searchQuery]);
 
   const goToCategoryPage = useCallback((index: number) => {
-    const safe = Math.max(0, Math.min(CHAT_CATEGORY_ITEMS.length - 1, index));
+    const safe = Math.max(0, Math.min(categoryItems.length - 1, index));
     setPageIndex(safe);
     pagerRef.current?.setPage(safe);
-  }, []);
+  }, [categoryItems.length]);
+
+  // Tab paydo bo'lsa/yo'qolsa indekslar siljiydi — ochiq papka o'zgarmasin
+  const activeCatIdRef = useRef("all");
+  const prevCategoryItemsRef = useRef(categoryItems);
+  useEffect(() => {
+    const prev = prevCategoryItemsRef.current;
+    prevCategoryItemsRef.current = categoryItems;
+    if (prev === categoryItems) return;
+    const id = prev[pageIndex]?.id ?? activeCatIdRef.current;
+    const next = Math.max(0, categoryItems.findIndex((c) => c.id === id));
+    if (next !== pageIndex) {
+      setPageIndex(next);
+      pagerRef.current?.setPageWithoutAnimation(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryItems]);
+  activeCatIdRef.current = categoryItems[pageIndex]?.id ?? "all";
 
   const scrollCategoryNavToIndex = useCallback(
     (index: number) => {
@@ -769,6 +796,11 @@ export function ChatListScreen({ navigation }: any) {
                 </View>
               ) : null}
             </View>
+            {item.listing?.title ? (
+              <Text style={styles.chatListingLine} numberOfLines={1}>
+                📋 {item.listing.title}
+              </Text>
+            ) : null}
             <View style={styles.chatMsgRow}>
               <Text
                 style={[
@@ -947,7 +979,7 @@ export function ChatListScreen({ navigation }: any) {
                     onLayout={(e) => setCategoryStripWidth(e.nativeEvent.layout.width)}
                     onContentSizeChange={(w) => setCategoryContentWidth(w)}
                   >
-                    {CHAT_CATEGORY_ITEMS.map((cat, idx) => {
+                    {categoryItems.map((cat, idx) => {
                       const active = pageIndex === idx;
                       const CatIcon = getMenuIcon(cat.icon);
                       return (
@@ -989,7 +1021,7 @@ export function ChatListScreen({ navigation }: any) {
                   initialPage={pageIndex}
                   onPageSelected={(e) => setPageIndex(e.nativeEvent.position)}
                 >
-                  {CHAT_CATEGORY_ITEMS.map((cat) => (
+                  {categoryItems.map((cat) => (
                     <View key={cat.id} style={styles.pagerPage} collapsable={false}>
                       {cat.id === "listings" ? (
                         <ListingsFeed
@@ -1378,6 +1410,7 @@ const styles = StyleSheet.create({
   unreadText: { color: "#fff", fontSize: 11, fontWeight: "bold" },
   unreadBadgeMuted: { backgroundColor: "#5b6b7c" },
   chatMsgRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  chatListingLine: { color: palette.accent, fontSize: 13, fontWeight: "500", marginTop: 1 },
   chatMetaRight: { flexDirection: "row", alignItems: "center", gap: 3 },
   chatTime: { color: "rgba(255,255,255,0.45)", fontSize: 12 },
   chatTicks: { color: "rgba(255,255,255,0.45)", fontSize: 12 },

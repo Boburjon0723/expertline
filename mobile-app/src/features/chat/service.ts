@@ -143,14 +143,22 @@ export function mapApiMessageToMessage(msg: any): Message {
 }
 
 /** Shaxsiy chat: mavjud bo‘lsa qaytaradi, yo‘q bo‘lsa yaratadi (`POST /api/chats`) */
-export async function createOrOpenPrivateChat(participantId: string): Promise<{
+export async function createOrOpenPrivateChat(
+  participantId: string,
+  /** E'lon orqali yozilganda — chat "Murojaatlar" tabiga tushadi */
+  opts?: { jobId?: string }
+): Promise<{
   chatId: string;
   name: string;
   avatarUrl: string | null;
 }> {
   const response = await apiFetch("/api/chats", {
     method: "POST",
-    body: JSON.stringify({ participantId }),
+    body: JSON.stringify(
+      opts?.jobId
+        ? { participantId, fromJobListing: true, jobId: opts.jobId, jobIntent: "chat" }
+        : { participantId }
+    ),
   });
   if (!response.ok) {
     let message = "Chat ochilmadi";
@@ -255,6 +263,14 @@ export async function getChatsRequest(): Promise<Chat[]> {
         muted: chat.muted != null ? !!chat.muted : undefined,
         pinned: chat.pinned != null ? !!chat.pinned : undefined,
         archived: chat.archived != null ? !!chat.archived : undefined,
+        listing:
+          chat.listing && chat.listing.jobId
+            ? {
+                jobId: String(chat.listing.jobId),
+                title: String(chat.listing.title || ""),
+                company: chat.listing.company ? String(chat.listing.company) : null,
+              }
+            : null,
       };
     })
   );

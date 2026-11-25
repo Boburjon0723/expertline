@@ -350,6 +350,13 @@ type Dict = {
   directionAll: string;
   directionPick: string;
   directionRequired: string;
+  catRequests: string;
+  listingTitlePhEmployer: string;
+  listingTitlePhSeeker: string;
+  listingCompanyPh: string;
+  listingTitleRequired: string;
+  listingBarLabel: string;
+  listingClosedMsg: string;
   listingClose: string;
   listingTitle: string;
   expertsEmpty: string;
@@ -674,6 +681,13 @@ const DICTS: Record<AppLanguage, Dict> = {
     directionAll: "Barcha yo'nalishlar",
     directionPick: "Yo'nalishni tanlang",
     directionRequired: "E'lon yo'nalishini tanlang",
+    catRequests: "Murojaatlar",
+    listingTitlePhEmployer: "Sarlavha, masalan: Frontend dasturchi kerak",
+    listingTitlePhSeeker: "Sarlavha, masalan: Buxgalter, 5 yil tajriba",
+    listingCompanyPh: "Kompaniya nomi (ixtiyoriy)",
+    listingTitleRequired: "Sarlavha 5–80 belgi bo'lsin",
+    listingBarLabel: "E'lon",
+    listingClosedMsg: "Bu e'lon yopilgan yoki o'chirilgan",
     listingClose: "E'lonni yopish",
     listingTitle: "E'lon",
     expertsEmpty: "Hozircha tasdiqlangan mutaxassislar yo'q",
@@ -996,6 +1010,13 @@ const DICTS: Record<AppLanguage, Dict> = {
     directionAll: "Все направления",
     directionPick: "Выберите направление",
     directionRequired: "Выберите направление объявления",
+    catRequests: "Отклики",
+    listingTitlePhEmployer: "Заголовок, например: Нужен frontend-разработчик",
+    listingTitlePhSeeker: "Заголовок, например: Бухгалтер, опыт 5 лет",
+    listingCompanyPh: "Название компании (необязательно)",
+    listingTitleRequired: "Заголовок: 5–80 символов",
+    listingBarLabel: "Объявление",
+    listingClosedMsg: "Объявление закрыто или удалено",
     listingClose: "Закрыть объявление",
     listingTitle: "Объявление",
     expertsEmpty: "Пока нет подтверждённых специалистов",
@@ -1318,6 +1339,13 @@ const DICTS: Record<AppLanguage, Dict> = {
     directionAll: "All categories",
     directionPick: "Choose a category",
     directionRequired: "Choose the listing's category",
+    catRequests: "Responses",
+    listingTitlePhEmployer: "Title, e.g. Frontend developer needed",
+    listingTitlePhSeeker: "Title, e.g. Accountant, 5 years of experience",
+    listingCompanyPh: "Company name (optional)",
+    listingTitleRequired: "Title must be 5–80 characters",
+    listingBarLabel: "Listing",
+    listingClosedMsg: "This listing is closed or removed",
     listingClose: "Close listing",
     listingTitle: "Listing",
     expertsEmpty: "No approved specialists yet",

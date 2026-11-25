@@ -12,6 +12,7 @@ import {
   Bookmark,
   Archive,
   ClipboardList,
+  Inbox,
   type LucideIcon,
 } from "lucide-react-native";
 
@@ -48,6 +49,7 @@ export const MENU_ICONS = {
   Bookmark,
   Archive,
   ClipboardList,
+  Inbox,
 } satisfies Record<string, LucideIcon>;
 
 export type MenuIconName = keyof typeof MENU_ICONS;
@@ -64,6 +66,8 @@ export const CHAT_CATEGORY_ITEMS: {
 }[] = [
   { id: "all", label: "Hammasi", icon: "Globe" },
   { id: "user", label: "Shaxsiy", icon: "User" },
+  /** E'lon orqali kelgan chatlar — faqat shunday chat bo'lsa ko'rinadi */
+  { id: "requests", label: "Murojaatlar", icon: "Inbox" },
   { id: "group", label: "Guruh", icon: "Users" },
   { id: "channel", label: "Kanal", icon: "Radio" },
   { id: "listings", label: "E'lonlar", icon: "ClipboardList" },

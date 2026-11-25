@@ -9,7 +9,7 @@ import { useAuthLocale } from "../auth/locale";
 import { regionShortLabel } from "../../lib/regions";
 import { directionEmoji, directionLabel } from "../../lib/directions";
 import { createOrOpenPrivateChat } from "../chat/service";
-import { closeListing, formatListDate, listingAuthor, listingText, type ListingRow } from "./api";
+import { closeListing, formatListDate, listingAuthor, listingParts, type ListingRow } from "./api";
 
 /** E'lon: muallif, to'liq matn va bitta "Bog'lanish" tugmasi */
 export function ListingDetailScreen({ navigation, route }: any) {
@@ -21,12 +21,15 @@ export function ListingDetailScreen({ navigation, route }: any) {
 
   if (!listing) return null;
   const author = listingAuthor(listing);
+  const parts = listingParts(listing);
+  const company = String(listing.company_name || "").trim();
   const own = !!me?.id && String(listing.user_id) === String(me.id);
 
   const contact = async () => {
     setBusy(true);
     try {
-      const chat = await createOrOpenPrivateChat(String(listing.user_id));
+      // E'lon orqali — chat "Murojaatlar" tabiga tushadi
+      const chat = await createOrOpenPrivateChat(String(listing.user_id), { jobId: String(listing.id) });
       navigation.navigate("ChatDetail", {
         chatId: chat.chatId,
         name: chat.name || author,
@@ -71,9 +74,13 @@ export function ListingDetailScreen({ navigation, route }: any) {
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
         <View style={styles.card}>
-          <Text style={styles.text} selectable>
-            {listingText(listing)}
-          </Text>
+          {parts.title ? <Text style={styles.title}>{parts.title}</Text> : null}
+          {company ? <Text style={styles.company}>{company}</Text> : null}
+          {parts.body ? (
+            <Text style={[styles.text, (parts.title || company) && { marginTop: 10 }]} selectable>
+              {parts.body}
+            </Text>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -127,6 +134,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   text: { color: palette.text, fontSize: 15, lineHeight: 22 },
+  title: { color: palette.text, fontSize: 19, fontWeight: "700", lineHeight: 25 },
+  company: { color: palette.accent, fontSize: 14, fontWeight: "600", marginTop: 4 },
   footer: {
     paddingHorizontal: 16,
     paddingTop: 12,

@@ -16,6 +16,7 @@ export type ListingRow = {
   location?: string | null;
   /** Yo'nalish kodi (lib/directions) */
   direction?: string | null;
+  company_name?: string | null;
   user?: { name?: string; surname?: string; username?: string; avatar_url?: string | null };
 };
 
@@ -77,16 +78,37 @@ export async function saveFilter(kind: keyof typeof FILTER_KEYS, code: string): 
   }
 }
 
-export async function createListing(
-  subType: ListingSubType,
-  text: string,
-  region: string,
-  direction: string
-): Promise<void> {
+/** Bitta e'lon (chatdagi "E'lon: ..." qatoridan ochish uchun); yopilgan bo'lsa null */
+export async function fetchListingById(id: string): Promise<ListingRow | null> {
+  try {
+    const res = await apiFetch(`/api/jobs/${encodeURIComponent(id)}`);
+    if (!res.ok) return null;
+    return (await res.json()) as ListingRow;
+  } catch {
+    return null;
+  }
+}
+
+export async function createListing(params: {
+  subType: ListingSubType;
+  title: string;
+  text: string;
+  region: string;
+  direction: string;
+  company?: string;
+}): Promise<void> {
+  const { subType, title, text, region, direction, company } = params;
   const res = await apiFetch("/api/jobs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sub_type: subType, short_text: text.trim(), region, direction }),
+    body: JSON.stringify({
+      sub_type: subType,
+      title: title.trim(),
+      short_text: text.trim(),
+      region,
+      direction,
+      company_name: subType === "employer" ? (company || "").trim() : undefined,
+    }),
   });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { message?: string };
@@ -163,6 +185,25 @@ export function splitListingText(text: string): { title: string; rest: string } 
   const idx = lines.findIndex((x) => x.length > 0);
   if (idx < 0) return { title: "", rest: "" };
   return { title: lines[idx], rest: lines.slice(idx + 1).filter(Boolean).join(" · ") };
+}
+
+/**
+ * Ro'yxat/sahifa uchun: sarlavha (alohida maydon yoki matnning birinchi qatori), qolgan matn
+ * va kim tomonidan (kompaniya nomi bo'lsa — u, aks holda muallif ismi).
+ */
+export function listingParts(l: ListingRow): { title: string; rest: string; body: string; byline: string } {
+  const raw = String(l.short_text || l.description || "");
+  const split = splitListingText(raw);
+  const explicit = String(l.title || "").trim();
+  // Eski e'lonlarda title = birinchi qator (120 belgigacha kesilgan) — takrorlanmasin
+  const sameAsFirst = !!explicit && !!split.title && split.title.startsWith(explicit);
+  const title = explicit || split.title;
+  const rest = !explicit || sameAsFirst ? split.rest : [split.title, split.rest].filter(Boolean).join(" · ");
+  let body = raw.trim();
+  if (sameAsFirst) body = raw.trim().slice(split.title.length).trim();
+  if (!explicit) body = raw.trim().split("\n").slice(1).join("\n").trim() || raw.trim();
+  const byline = String(l.company_name || "").trim() || listingAuthor(l);
+  return { title, rest, body, byline };
 }
 
 export function listingAuthor(l: ListingRow): string {

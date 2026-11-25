@@ -20,7 +20,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Send, ArrowLeft, MoreVertical, Paperclip, Smile, Phone, Video as VideoIcon, Play, Download, X, CloudDownload, ArrowDown, Trash2, Forward, CheckCircle, Save, Mic, MicOff, VideoOff, Circle, Search, Pin, Copy } from "lucide-react-native";
+import { Send, ArrowLeft, MoreVertical, Paperclip, Smile, Phone, Video as VideoIcon, Play, Download, X, CloudDownload, ArrowDown, Trash2, Forward, CheckCircle, Save, Mic, MicOff, VideoOff, Circle, Search, Pin, Copy, ClipboardList } from "lucide-react-native";
 import * as Clipboard from "expo-clipboard";
 import { useAuthLocale } from "../../auth/locale";
 import { Chat, Message } from "../types";
@@ -86,6 +86,7 @@ import {
 import { liveKitRoomOptionsMobile } from "../../../lib/livekit-media";
 import { useAuthStore } from "../../auth/store";
 import { LinkifiedText } from "../../../components/LinkifiedText";
+import { fetchListingById } from "../../market/api";
 import { AvatarImage } from "../../../components/AvatarImage";
 import { CachedImage } from "../../../components/CachedImage";
 import { API_URL } from "../../../lib/config";
@@ -929,6 +930,14 @@ export function ChatDetailScreen({ route, navigation }: Props) {
 
   const peerSpecialization = peerInfo?.specialization || (peerInfo as any)?.profession || "";
 
+  /** Ish e'loni orqali ochilgan chat — tepada "E'lon: ..." qatori */
+  const jobListingInfo = useMemo(() => {
+    const md = chatDetails?.metadata as { source?: string; job_id?: unknown; snapshot?: Record<string, unknown> } | undefined;
+    if (md?.source !== "job_listing" || !md.job_id) return null;
+    const snap = md.snapshot || {};
+    const firstLine = String(snap.short_text || "").split("\n")[0].trim();
+    return { jobId: String(md.job_id), title: String(snap.title || firstLine || "E'lon") };
+  }, [chatDetails?.metadata]);
   const isListingChat = chatDetails?.chat_type === 'expert_listing' || chatDetails?.chat_type === 'job_listing' ||
     chatDetails?.metadata?.source === 'expert_listing' || chatDetails?.metadata?.source === 'job_listing';
   const isGroupOrChannel =
@@ -3312,6 +3321,28 @@ export function ChatDetailScreen({ route, navigation }: Props) {
               />
             </View>
           </View>
+        ) : null}
+
+        {jobListingInfo ? (
+          // E'lon orqali ochilgan chat: qaysi e'lon bo'yicha yozilgani; bosilsa e'lon ochiladi
+          <Pressable
+            style={styles.pinnedBar}
+            onPress={() => {
+              void (async () => {
+                const l = await fetchListingById(jobListingInfo.jobId);
+                if (l) navigation.navigate("ListingDetail", { listing: l });
+                else Alert.alert(t("listingBarLabel"), t("listingClosedMsg"));
+              })();
+            }}
+          >
+            <ClipboardList color="#a78bfa" size={16} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.pinnedLabel}>{t("listingBarLabel")}</Text>
+              <Text style={styles.pinnedPreview} numberOfLines={1}>
+                {jobListingInfo.title}
+              </Text>
+            </View>
+          </Pressable>
         ) : null}
 
         {pinnedMessage ? (
