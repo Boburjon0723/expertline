@@ -6,6 +6,8 @@ import { AvatarImage } from "../../components/AvatarImage";
 import { palette } from "../../lib/theme";
 import { useAuthStore } from "../auth/store";
 import { useAuthLocale } from "../auth/locale";
+import { regionShortLabel } from "../../lib/regions";
+import { directionEmoji, directionLabel } from "../../lib/directions";
 import { createOrOpenPrivateChat } from "../chat/service";
 import { closeListing, formatListDate, listingAuthor, listingText, type ListingRow } from "./api";
 
@@ -13,7 +15,7 @@ import { closeListing, formatListDate, listingAuthor, listingText, type ListingR
 export function ListingDetailScreen({ navigation, route }: any) {
   const listing = route?.params?.listing as ListingRow;
   const insets = useSafeAreaInsets();
-  const { t } = useAuthLocale();
+  const { t, lang } = useAuthLocale();
   const me = useAuthStore((s) => s.user) as { id?: string } | null;
   const [busy, setBusy] = useState(false);
 
@@ -60,6 +62,8 @@ export function ListingDetailScreen({ navigation, route }: any) {
           </Text>
           <Text style={styles.meta} numberOfLines={1}>
             {listing.sub_type === "employer" ? t("listingTypeEmployer") : t("listingTypeSeeker")}
+            {listing.location ? ` · ${regionShortLabel(listing.location, lang)}` : ""}
+            {listing.direction ? ` · ${directionEmoji(listing.direction)} ${directionLabel(listing.direction, lang)}` : ""}
             {listing.created_at ? ` · ${formatListDate(listing.created_at)}` : ""}
           </Text>
         </View>

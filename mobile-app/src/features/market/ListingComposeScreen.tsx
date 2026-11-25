@@ -11,10 +11,14 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X } from "lucide-react-native";
+import { ChevronDown, LayoutGrid, MapPin, X } from "lucide-react-native";
 import { palette } from "../../lib/theme";
 import { useAuthLocale } from "../auth/locale";
 import { createListing, type ListingSubType } from "./api";
+import { isRegionCode, regionLabel, type RegionCode } from "../../lib/regions";
+import { directionEmoji, directionLabel, isDirectionCode, type DirectionCode } from "../../lib/directions";
+import { useAuthStore } from "../auth/store";
+import { DirectionSheet, RegionSheet } from "./RegionSheet";
 
 const MIN_LEN = 20;
 const MAX_LEN = 3000;
@@ -22,19 +26,43 @@ const MAX_LEN = 3000;
 /** E'lon berish: tur + bitta matn maydoni + bitta tugma (placeholder'da to'liq namuna) */
 export function ListingComposeScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
-  const { t } = useAuthLocale();
+  const { t, lang } = useAuthLocale();
+  const profileRegion = useAuthStore((s) => (s.user as { region?: string } | null)?.region);
+  // Ro'yxatda tanlangan viloyat, bo'lmasa profildagi viloyat oldindan tanlanadi
+  const initialRegion = isRegionCode(route?.params?.region)
+    ? route.params.region
+    : isRegionCode(profileRegion)
+      ? profileRegion
+      : null;
+  const [region, setRegion] = useState<RegionCode | null>(initialRegion);
+  const [regionOpen, setRegionOpen] = useState(false);
+  // Ro'yxatda tanlangan yo'nalish oldindan qo'yiladi
+  const [direction, setDirection] = useState<DirectionCode | null>(
+    isDirectionCode(route?.params?.direction) ? route.params.direction : null
+  );
+  const [directionOpen, setDirectionOpen] = useState(false);
   const [type, setType] = useState<ListingSubType>(route?.params?.type === "seeker" ? "seeker" : "employer");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
 
   const publish = async () => {
+    if (!region) {
+      Alert.alert(t("errTitle"), t("regionRequired"));
+      setRegionOpen(true);
+      return;
+    }
+    if (!direction) {
+      Alert.alert(t("errTitle"), t("directionRequired"));
+      setDirectionOpen(true);
+      return;
+    }
     if (text.trim().length < MIN_LEN) {
       Alert.alert(t("errTitle"), t("listingTooShort"));
       return;
     }
     setBusy(true);
     try {
-      await createListing(type, text);
+      await createListing(type, text, region, direction);
       Alert.alert(t("successTitle"), t("listingPublished"));
       navigation.goBack();
     } catch (e: any) {
@@ -58,6 +86,30 @@ export function ListingComposeScreen({ navigation, route }: any) {
           <View style={styles.typeRow}>
             <ListingTypeSwitchInline value={type} onChange={setType} />
           </View>
+          <Pressable
+            onPress={() => setRegionOpen(true)}
+            style={({ pressed }) => [styles.regionBtn, pressed && { opacity: 0.8 }]}
+          >
+            <MapPin color={region ? palette.accent : palette.textMuted} size={18} />
+            <Text style={[styles.regionText, !region && { color: palette.textMuted }]} numberOfLines={1}>
+              {region ? regionLabel(region, lang) : t("regionPick")}
+            </Text>
+            <ChevronDown color={palette.textMuted} size={18} />
+          </Pressable>
+          <Pressable
+            onPress={() => setDirectionOpen(true)}
+            style={({ pressed }) => [styles.regionBtn, pressed && { opacity: 0.8 }]}
+          >
+            {direction ? (
+              <Text style={{ fontSize: 16 }}>{directionEmoji(direction)}</Text>
+            ) : (
+              <LayoutGrid color={palette.textMuted} size={18} />
+            )}
+            <Text style={[styles.regionText, !direction && { color: palette.textMuted }]} numberOfLines={1}>
+              {direction ? directionLabel(direction, lang) : t("directionPick")}
+            </Text>
+            <ChevronDown color={palette.textMuted} size={18} />
+          </Pressable>
           <TextInput
             style={styles.input}
             value={text}
@@ -83,6 +135,19 @@ export function ListingComposeScreen({ navigation, route }: any) {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <RegionSheet
+        visible={regionOpen}
+        value={region}
+        onSelect={(v) => v !== "all" && setRegion(v)}
+        onClose={() => setRegionOpen(false)}
+      />
+      <DirectionSheet
+        visible={directionOpen}
+        value={direction}
+        onSelect={(v) => v !== "all" && setDirection(v)}
+        onClose={() => setDirectionOpen(false)}
+      />
     </View>
   );
 }
@@ -111,7 +176,19 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 10 },
   title: { flex: 1, color: palette.text, fontSize: 20, fontWeight: "600" },
   headerBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  typeRow: { marginBottom: 12 },
+  typeRow: { marginBottom: 10 },
+  regionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    height: 46,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  regionText: { flex: 1, color: palette.text, fontSize: 15 },
   switch: {
     flexDirection: "row",
     padding: 4,

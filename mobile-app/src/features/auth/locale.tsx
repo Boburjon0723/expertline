@@ -340,6 +340,16 @@ type Dict = {
   listingPublished: string;
   listingContact: string;
   listingYours: string;
+  headerEdit: string;
+  regionAll: string;
+  regionPick: string;
+  regionOthers: string;
+  regionRequired: string;
+  regionLabel: string;
+  directionLabel: string;
+  directionAll: string;
+  directionPick: string;
+  directionRequired: string;
   listingClose: string;
   listingTitle: string;
   expertsEmpty: string;
@@ -654,6 +664,16 @@ const DICTS: Record<AppLanguage, Dict> = {
     listingPublished: "E'lon joylandi",
     listingContact: "Bog‘lanish",
     listingYours: "Bu sizning e'loningiz",
+    headerEdit: "Tahrir",
+    regionAll: "Barcha viloyatlar",
+    regionPick: "Viloyatni tanlang",
+    regionOthers: "Boshqa viloyatlardan",
+    regionRequired: "E'lon qaysi viloyat uchunligini tanlang",
+    regionLabel: "Viloyat",
+    directionLabel: "Yo'nalish",
+    directionAll: "Barcha yo'nalishlar",
+    directionPick: "Yo'nalishni tanlang",
+    directionRequired: "E'lon yo'nalishini tanlang",
     listingClose: "E'lonni yopish",
     listingTitle: "E'lon",
     expertsEmpty: "Hozircha tasdiqlangan mutaxassislar yo'q",
@@ -966,6 +986,16 @@ const DICTS: Record<AppLanguage, Dict> = {
     listingPublished: "Объявление опубликовано",
     listingContact: "Связаться",
     listingYours: "Это ваше объявление",
+    headerEdit: "Изм.",
+    regionAll: "Все регионы",
+    regionPick: "Выберите регион",
+    regionOthers: "Из других регионов",
+    regionRequired: "Выберите регион объявления",
+    regionLabel: "Регион",
+    directionLabel: "Направление",
+    directionAll: "Все направления",
+    directionPick: "Выберите направление",
+    directionRequired: "Выберите направление объявления",
     listingClose: "Закрыть объявление",
     listingTitle: "Объявление",
     expertsEmpty: "Пока нет подтверждённых специалистов",
@@ -1278,6 +1308,16 @@ const DICTS: Record<AppLanguage, Dict> = {
     listingPublished: "Listing published",
     listingContact: "Contact",
     listingYours: "This is your listing",
+    headerEdit: "Edit",
+    regionAll: "All regions",
+    regionPick: "Choose a region",
+    regionOthers: "From other regions",
+    regionRequired: "Choose the listing's region",
+    regionLabel: "Region",
+    directionLabel: "Category",
+    directionAll: "All categories",
+    directionPick: "Choose a category",
+    directionRequired: "Choose the listing's category",
     listingClose: "Close listing",
     listingTitle: "Listing",
     expertsEmpty: "No approved specialists yet",

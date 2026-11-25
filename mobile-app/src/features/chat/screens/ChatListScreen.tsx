@@ -909,7 +909,7 @@ export function ChatListScreen({ navigation }: any) {
                       style={styles.headerEditBtn}
                       accessibilityLabel={t("msgEdit")}
                     >
-                      <Text style={styles.headerEditText}>{t("msgEdit")}</Text>
+                      <Text style={styles.headerEditText}>{t("headerEdit")}</Text>
                     </Pressable>
                     <View style={styles.searchBox}>
                       <Search color="rgba(255,255,255,0.45)" size={18} />
@@ -1221,7 +1221,7 @@ const styles = StyleSheet.create({
   },
   headerEditBtn: {
     height: 44,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.12)",
     borderWidth: 1,
@@ -1384,7 +1384,7 @@ const styles = StyleSheet.create({
     bottom: 30,
     left: 20,
     right: 20,
-    height: 80,
+    height: 64,
     zIndex: 1000,
   },
   glassTab: {
@@ -1392,14 +1392,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    borderRadius: 30,
+    borderRadius: 32,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
     overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.15)",
   },
   tabItem: { alignItems: "center", justifyContent: "center" },
-  tabText: { color: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: "500", marginTop: 4 },
+  tabText: { color: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: "500", marginTop: 3 },
   tabTextActive: { color: "#fff" },
   tabAvatar: {
     borderRadius: 15,

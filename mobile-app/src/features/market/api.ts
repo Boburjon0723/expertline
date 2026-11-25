@@ -12,25 +12,81 @@ export type ListingRow = {
   description?: string | null;
   created_at?: string;
   status?: string;
+  /** Viloyat kodi (lib/regions) */
+  location?: string | null;
+  /** Yo'nalish kodi (lib/directions) */
+  direction?: string | null;
   user?: { name?: string; surname?: string; username?: string; avatar_url?: string | null };
 };
 
 export type SearchScope = "chats" | "listings" | "experts";
 
-export async function fetchListings(subType: ListingSubType, q?: string): Promise<ListingRow[]> {
+export async function fetchListings(
+  subType: ListingSubType,
+  q?: string,
+  region?: string,
+  direction?: string
+): Promise<ListingRow[]> {
   const params = new URLSearchParams({ sub_type: subType, limit: "60" });
   if (q?.trim()) params.set("q", q.trim());
+  if (region && region !== "all") params.set("region", region);
+  if (direction && direction !== "all") params.set("direction", direction);
   const res = await apiFetch(`/api/jobs?${params.toString()}`);
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data) ? data : [];
 }
 
-export async function createListing(subType: ListingSubType, text: string): Promise<void> {
+export type ListingFacets = { regions: Record<string, number>; directions: Record<string, number> };
+
+/** Filtr menyusi uchun viloyat va yo'nalishlar bo'yicha faol e'lonlar soni */
+export async function fetchFacets(subType: ListingSubType, region?: string, direction?: string): Promise<ListingFacets> {
+  const empty = { regions: {}, directions: {} };
+  try {
+    const params = new URLSearchParams({ sub_type: subType });
+    if (region && region !== "all") params.set("region", region);
+    if (direction && direction !== "all") params.set("direction", direction);
+    const res = await apiFetch(`/api/jobs/facets?${params.toString()}`);
+    if (!res.ok) return empty;
+    const data = await res.json();
+    return {
+      regions: data?.regions && typeof data.regions === "object" ? data.regions : {},
+      directions: data?.directions && typeof data.directions === "object" ? data.directions : {},
+    };
+  } catch {
+    return empty;
+  }
+}
+
+/** Ro'yxat filtrlari (qurilmada eslab qolinadi) */
+const FILTER_KEYS = { region: "el_listing_region", direction: "el_listing_direction" } as const;
+
+export async function getSavedFilter(kind: keyof typeof FILTER_KEYS): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(FILTER_KEYS[kind]);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveFilter(kind: keyof typeof FILTER_KEYS, code: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(FILTER_KEYS[kind], code);
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function createListing(
+  subType: ListingSubType,
+  text: string,
+  region: string,
+  direction: string
+): Promise<void> {
   const res = await apiFetch("/api/jobs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sub_type: subType, short_text: text.trim() }),
+    body: JSON.stringify({ sub_type: subType, short_text: text.trim(), region, direction }),
   });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { message?: string };
