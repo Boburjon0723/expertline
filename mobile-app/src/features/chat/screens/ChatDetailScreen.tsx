@@ -85,6 +85,7 @@ import {
 } from "../../../lib/livekit-call-session";
 import { liveKitRoomOptionsMobile } from "../../../lib/livekit-media";
 import { useAuthStore } from "../../auth/store";
+import { LinkifiedText } from "../../../components/LinkifiedText";
 import { AvatarImage } from "../../../components/AvatarImage";
 import { CachedImage } from "../../../components/CachedImage";
 import { API_URL } from "../../../lib/config";
@@ -93,6 +94,8 @@ import { decryptMessage } from "../../../lib/e2e-chat";
 import {
   enqueueChatUpload,
   MEDIA_BUBBLE_WIDTH,
+  imageBubbleSize,
+  knownMediaAspect,
   mediaAspect,
   newAlbumId,
   type UploadInfo,
@@ -647,6 +650,7 @@ const MediaAttachment = ({
   timeLabel,
   ticks,
   aspect = 3 / 4,
+  imageAspect = null,
   isMe = false,
   thumb,
 }: {
@@ -660,6 +664,8 @@ const MediaAttachment = ({
   ticks?: string;
   /** eni/bo'yi — joy yuklanishdan oldin ham shu nisbatda (sakrash yo'q). */
   aspect?: number;
+  /** Rasmning haqiqiy nisbati (metadata dan). Yo'q bo'lsa rasm yuklangach o'lchab olinadi. */
+  imageAspect?: number | null;
   /** O'z rasmlari avtomatik yuklash o'chiq bo'lsa ham darhol ko'rinadi. */
   isMe?: boolean;
 }) => {
@@ -668,6 +674,27 @@ const MediaAttachment = ({
   const [fetching, setFetching] = useState(false);
   const cached = useCachedMedia(uri, isVideo ? "video" : "image", isMe && !isVideo);
   const src = cached.localUri;
+  // Rasm: metadata da o'lcham bo'lmasa (masalan, webdan kelgan) — fayldan o'lchaymiz
+  const [measuredAspect, setMeasuredAspect] = useState<number | null>(null);
+  useEffect(() => {
+    if (isVideo || imageAspect || !src) return;
+    let alive = true;
+    Image.getSize(
+      src,
+      (w, h) => {
+        if (alive && w > 0 && h > 0) setMeasuredAspect(w / h);
+      },
+      () => {}
+    );
+    return () => {
+      alive = false;
+    };
+  }, [isVideo, imageAspect, src]);
+  const fitAspect = imageAspect || measuredAspect;
+  const boxStyle =
+    !isVideo && fitAspect
+      ? { ...imageBubbleSize(fitAspect), aspectRatio: undefined, maxWidth: undefined }
+      : { width: MEDIA_BUBBLE_WIDTH, aspectRatio: aspect };
 
   // Telegram: avtomatik yuklash o'chiq bo'lsa birinchi bosish faqat yuklaydi (chatning o'zida ko'rinadi),
   // keyingi bosish to'liq ekranda ochadi.
@@ -688,7 +715,7 @@ const MediaAttachment = ({
   };
 
   return (
-    <View style={[styles.mediaWrapper, { width: MEDIA_BUBBLE_WIDTH, aspectRatio: aspect }]}>
+    <View style={[styles.mediaWrapper, boxStyle]}>
       <Pressable
         onPress={() => void handlePress()}
         onLongPress={onLongPress}
@@ -886,6 +913,11 @@ export function ChatDetailScreen({ route, navigation }: Props) {
 
   const listRef = useRef<FlatList<Message>>(null);
   const stickToBottomRef = useRef(true);
+  /** Foydalanuvchi barmog'i bilan aylantiryaptimi (yoki inersiya) — faqat shunda "pastdamiz" qayta hisoblanadi.
+   *  Aks holda yangi xabar balandlikni oshirganda iOS yuboradigan scroll hodisasi pastda turishni o'chirib qo'yardi. */
+  const userScrollingRef = useRef(false);
+  const [showJumpDown, setShowJumpDown] = useState(false);
+  const [newBelowCount, setNewBelowCount] = useState(0);
   const joinLiveSessionRef = useRef<(roomId?: string | null) => Promise<void>>(async () => {});
   const liveJoinRef = useRef(false);
 
@@ -1055,7 +1087,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
             const decrypted = await decryptMessage({ ...msg, chatId: String(chatId) });
             addMessageLocally(chatId, decrypted);
             markChatReadRequest(chatId).catch(() => {});
-            setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
           } catch (e) {
             console.warn("[ChatDetail] receive_message", e);
             addMessageLocally(chatId, { ...msg, chatId: String(chatId) });
@@ -1610,6 +1641,44 @@ export function ChatDetailScreen({ route, navigation }: Props) {
       listRef.current?.scrollToEnd({ animated: false });
     });
   }, []);
+
+  /** "↓" tugmasi: eng oxirgi xabarga silliq olib boradi */
+  const jumpToLatest = useCallback(() => {
+    stickToBottomRef.current = true;
+    setShowJumpDown(false);
+    setNewBelowCount(0);
+    listRef.current?.scrollToEnd({ animated: true });
+  }, []);
+
+  // Yangi xabar ro'yxat oxiriga qo'shilganda: o'zimniki yoki pastda turgan bo'lsak — unga olib boramiz
+  // (rasm/animatsiya balandligi keyin o'zgarishi uchun yana bir marta); tepada o'qiyotgan bo'lsak — "↓" ustida son.
+  const lastMsg = messages.length ? messages[messages.length - 1] : null;
+  const lastMsgKey = lastMsg ? String(lastMsg.localKey || lastMsg.id) : "";
+  const lastMsgKeyRef = useRef(lastMsgKey);
+  useEffect(() => {
+    const prev = lastMsgKeyRef.current;
+    lastMsgKeyRef.current = lastMsgKey;
+    if (!lastMsgKey || !prev || prev === lastMsgKey) return;
+    const mine = !!lastMsg && currentUserId.length > 0 && lastMsg.senderId === currentUserId;
+    if (mine || stickToBottomRef.current) {
+      stickToBottomRef.current = true;
+      setNewBelowCount(0);
+      setShowJumpDown(false);
+      scrollToEnd();
+      const t = setTimeout(scrollToEnd, 300);
+      return () => clearTimeout(t);
+    }
+    setNewBelowCount((c) => c + 1);
+    setShowJumpDown(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastMsgKey]);
+
+  // Chat almashganda holatni tiklash
+  useEffect(() => {
+    stickToBottomRef.current = true;
+    setShowJumpDown(false);
+    setNewBelowCount(0);
+  }, [chatId]);
 
   /**
    * Klaviatura ochiq: pastki inset = klaviatura balandligi (iOS + Android).
@@ -2545,6 +2614,7 @@ export function ChatDetailScreen({ route, navigation }: Props) {
              uri={item.remoteFileUrl!} 
              isVideo={false} 
              aspect={mediaAspect(item.metadata)}
+             imageAspect={knownMediaAspect(item.metadata)}
              isMe={isMe}
              thumb={typeof item.metadata?.thumb === "string" ? item.metadata.thumb : null}
              timeLabel={!displayText ? String(item.timestamp || "") : undefined}
@@ -2697,7 +2767,14 @@ export function ChatDetailScreen({ route, navigation }: Props) {
 
         {(!isMedia || displayText) ? (
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 2 }}>
-           {displayText ? <Text style={[styles.messageText, (hasAttachment && !isMedia) && { marginTop: 8 }]}>{displayText}</Text> : null}
+           {displayText ? (
+             <LinkifiedText
+               style={[styles.messageText, (hasAttachment && !isMedia) && { marginTop: 8 }]}
+               onLongPress={() => openMessageMenu(item)}
+             >
+               {String(displayText)}
+             </LinkifiedText>
+           ) : null}
            <View style={[
              styles.bubbleFooter,
              displayText ? { marginLeft: 8, marginBottom: 2 } : {},
@@ -2850,9 +2927,28 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           scrollIndicatorInsets={{ top: topBarH, bottom: bottomBarH + keyboardBottomInset }}
           showsVerticalScrollIndicator={false}
           onScroll={(e) => {
+            if (!userScrollingRef.current) return;
             const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-            stickToBottomRef.current =
-              contentOffset.y + layoutMeasurement.height >= contentSize.height - 96;
+            const atBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - 96;
+            stickToBottomRef.current = atBottom;
+            const far = contentOffset.y + layoutMeasurement.height < contentSize.height - 400;
+            if (atBottom) {
+              setShowJumpDown(false);
+              setNewBelowCount(0);
+            } else if (far) {
+              setShowJumpDown(true);
+            }
+          }}
+          onScrollBeginDrag={() => {
+            userScrollingRef.current = true;
+          }}
+          onScrollEndDrag={(e) => {
+            // Inersiya bo'lmasa shu yerda tugaydi
+            const v = e.nativeEvent.velocity?.y ?? 0;
+            if (Math.abs(v) < 0.05) userScrollingRef.current = false;
+          }}
+          onMomentumScrollEnd={() => {
+            userScrollingRef.current = false;
           }}
           scrollEventThrottle={16}
           onContentSizeChange={() => {
@@ -2863,6 +2959,21 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           }
         />
       )}
+      {showJumpDown && !isSelecting ? (
+        <Pressable
+          onPress={jumpToLatest}
+          style={[styles.jumpDownBtn, { bottom: bottomBarH + keyboardBottomInset + 12 }]}
+          hitSlop={6}
+          accessibilityLabel="Oxirgi xabarga"
+        >
+          <ArrowDown color="#fff" size={22} />
+          {newBelowCount > 0 ? (
+            <View style={styles.jumpDownBadge}>
+              <Text style={styles.jumpDownBadgeText}>{newBelowCount > 99 ? "99+" : newBelowCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      ) : null}
       {!isSelecting ? (
       // Pastki qatlam: chat ustida suzadi (xira shisha), klaviatura bilan birga ko'tariladi.
       <View
@@ -3524,6 +3635,36 @@ const styles = StyleSheet.create({
     zIndex: 20,
     elevation: 16,
   },
+  jumpDownBtn: {
+    position: "absolute",
+    right: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(30,36,48,0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 5,
+  },
+  jumpDownBadge: {
+    position: "absolute",
+    top: -6,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: palette.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  jumpDownBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
   chatBody: {
     flex: 1,
     minHeight: 0,

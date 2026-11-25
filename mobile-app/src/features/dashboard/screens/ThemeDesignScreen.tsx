@@ -16,7 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import { ChevronLeft, Check, Moon, Zap, Send, Image as ImageIcon } from "lucide-react-native";
 
 
-import { useAppearanceStore } from "../../../lib/appearance-store";
+import { saveCustomWallpaper, useAppearanceStore } from "../../../lib/appearance-store";
 import { THEMES, BACKGROUND_PRESETS } from "../../../lib/constants";
 import { palette } from "../../../lib/theme";
 
@@ -41,7 +41,12 @@ export function ThemeDesignScreen({ navigation }: any) {
 
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setBackgroundUri(result.assets[0].uri);
+      try {
+        // Doimiy papkaga nusxa — ilova yangilanganda fon yo'qolmasin
+        setBackgroundUri(await saveCustomWallpaper(result.assets[0].uri));
+      } catch {
+        /* saqlab bo'lmadi — eski fon qoladi */
+      }
     }
   };
 

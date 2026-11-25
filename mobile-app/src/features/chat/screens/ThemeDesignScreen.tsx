@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
 import { ArrowLeft, Check, Plus } from "lucide-react-native";
-import { useAppearanceStore } from "../../../lib/appearance-store";
+import { saveCustomWallpaper, useAppearanceStore } from "../../../lib/appearance-store";
 import { CHAT_BACKGROUND_PRESETS } from "../../../lib/wallpapers";
 import { useAuthLocale } from "../../auth/locale";
 import { palette } from "../../../lib/theme";
@@ -52,7 +52,12 @@ export function ThemeDesignScreen({ navigation }: Props) {
       quality: 0.85,
     });
     if (!res.canceled && res.assets[0]?.uri) {
-      setBackgroundUri(res.assets[0].uri);
+      try {
+        // Doimiy papkaga nusxa — ilova yangilanganda fon yo'qolmasin
+        setBackgroundUri(await saveCustomWallpaper(res.assets[0].uri));
+      } catch {
+        Alert.alert("Fon", "Rasmni saqlab bo'lmadi. Qayta urinib ko'ring.");
+      }
     }
   }, [setBackgroundUri]);
 

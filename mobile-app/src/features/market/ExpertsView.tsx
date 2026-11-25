@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -38,6 +39,9 @@ async function fetchExperts(q: string): Promise<ExpertRow[]> {
   return Array.isArray(data) ? data : [];
 }
 
+/** Kasb kaliti: katta-kichik harf va bo'shliqlardan qat'i nazar bir xil guruh */
+const professionKey = (e: ExpertRow) => String(e.profession || "").trim().toLowerCase();
+
 const fullName = (e: ExpertRow) => `${e.name || ""} ${e.surname || ""}`.trim() || (e.username ? `@${e.username}` : "—");
 
 /**
@@ -52,7 +56,34 @@ export function ExpertsView({ navigation }: { navigation: any }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [historyVersion, setHistoryVersion] = useState(0);
+  /** Tanlangan kategoriya (kasb kaliti); null — hammasi */
+  const [category, setCategory] = useState<string | null>(null);
   const q = query.trim();
+
+  // Kategoriyalar — mavjud mutaxassislarning kasblaridan (ko'pi birinchi); "Boshqa" da o'zi yozganlar ham chiqadi
+  const categories = useMemo(() => {
+    const map = new Map<string, { label: string; n: number }>();
+    for (const e of items) {
+      const key = professionKey(e);
+      if (!key) continue;
+      const cur = map.get(key);
+      if (cur) cur.n++;
+      else map.set(key, { label: String(e.profession).trim(), n: 1 });
+    }
+    return [...map.entries()]
+      .map(([key, v]) => ({ key, ...v }))
+      .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
+  }, [items]);
+
+  // Tanlangan kategoriya qidiruv natijalarida qolmasa — "Hammasi" ga qaytamiz
+  useEffect(() => {
+    if (category && !loading && !categories.some((c) => c.key === category)) setCategory(null);
+  }, [categories, category, loading]);
+
+  const visible = useMemo(
+    () => (category ? items.filter((e) => professionKey(e) === category) : items),
+    [items, category]
+  );
 
   const load = useCallback(async () => {
     try {
@@ -100,8 +131,34 @@ export function ExpertsView({ navigation }: { navigation: any }) {
         <SearchSuggestions scope="experts" query={query} historyVersion={historyVersion} onPick={setQuery} />
       ) : null}
 
+      {categories.length > 1 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={styles.chipsStrip}
+          contentContainerStyle={styles.chips}
+        >
+          {[{ key: null as string | null, label: t("catAll"), n: items.length }, ...categories].map((c) => {
+            const on = category === c.key;
+            return (
+              <Pressable
+                key={c.key ?? "__all"}
+                onPress={() => setCategory(c.key)}
+                style={[styles.chip, on && styles.chipOn]}
+              >
+                <Text style={[styles.chipText, on && styles.chipTextOn]} numberOfLines={1}>
+                  {c.label}
+                </Text>
+                <Text style={[styles.chipCount, on && styles.chipCountOn]}>{c.n}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+
       <FlatList
-        data={items}
+        data={visible}
         keyExtractor={(e) => e.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 140 }}
@@ -164,6 +221,24 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.22)",
   },
   searchInput: { flex: 1, color: palette.text, fontSize: 15, paddingVertical: 0 },
+  chipsStrip: { flexGrow: 0, marginTop: 10, marginBottom: 4, marginHorizontal: -16 },
+  chips: { paddingHorizontal: 16, gap: 8 },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 34,
+    paddingHorizontal: 14,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+  },
+  chipOn: { backgroundColor: palette.accent, borderColor: palette.accent },
+  chipText: { color: "rgba(255,255,255,0.85)", fontSize: 14, fontWeight: "600", maxWidth: 180 },
+  chipTextOn: { color: "#fff" },
+  chipCount: { color: "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: "600" },
+  chipCountOn: { color: "rgba(255,255,255,0.85)" },
   row: {
     flexDirection: "row",
     alignItems: "center",

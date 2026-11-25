@@ -199,7 +199,7 @@ export default function App() {
         <Stack.Screen
           name="ChatPeerInfo"
           component={ChatPeerInfoScreen}
-          options={{ presentation: "modal", animation: "slide_from_bottom" }}
+          options={{ animation: "slide_from_right" }}
         />
         <Stack.Screen name="ThemeDesign" component={ThemeDesignScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />

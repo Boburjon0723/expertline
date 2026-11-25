@@ -1,6 +1,6 @@
 import { apiFetch } from "../../lib/api";
 import { writeChatsToCache, writeMessagesToCache } from "../../lib/app-cache";
-import { API_URL } from "../../lib/config";
+import { API_URL, WEB_URL } from "../../lib/config";
 import { getToken, getUser } from "../../lib/auth-storage";
 import { Chat, Message } from "./types";
 import { sanitizeMappedText } from "./message-preview";
@@ -409,6 +409,8 @@ export type ChatDetailsParticipant = {
   surname?: string;
   avatar?: string | null;
   phone?: string | null;
+  /** Bo'sh bo'lsa kelmaydi */
+  username?: string | null;
   listing_privacy?: boolean;
   specialization?: string;
   profession?: string;
@@ -979,17 +981,8 @@ export async function getChatSharedRequest(
   }));
 }
 
-/** Web bilan bir xil taklif havolasi (frontend :3000) */
+/** Web bilan bir xil taklif havolasi — sayt manzilida (backend emas) */
 export function buildGroupInviteLink(chatId: string): string {
-  try {
-    const u = new URL(API_URL);
-    if (u.port === "4000") u.port = "3000";
-    u.pathname = "/";
-    u.search = `invite=${encodeURIComponent(chatId)}`;
-    u.hash = "";
-    return u.toString();
-  } catch {
-    return `/?invite=${encodeURIComponent(chatId)}`;
-  }
+  return `${WEB_URL}/?invite=${encodeURIComponent(chatId)}`;
 }
 

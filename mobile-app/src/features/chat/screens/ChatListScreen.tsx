@@ -32,6 +32,8 @@ import {
   Archive,
   CheckCheck,
   Trash2,
+  UserPlus,
+  Megaphone,
 } from "lucide-react-native";
 import { Chat } from "../types";
 import { ChatBackground } from "../../../components/ChatBackground";
@@ -199,6 +201,21 @@ export function ChatListScreen({ navigation }: any) {
     (catId: string) => sortChats(chats.filter((c) => categoryMatchesChat(catId, c))),
     [chats]
   );
+
+  /** ✎ tugmasi ostidagi "Yangi chat" menyusi */
+  const [composeMenuOpen, setComposeMenuOpen] = useState(false);
+
+  /** Papka tablaridagi son — o'qilmagan xabari bor chatlar soni (web kabi; ovozsiz chatlar sanalmaydi) */
+  const unreadByCategory = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const cat of CHAT_CATEGORY_ITEMS) {
+      if (cat.id === "listings") continue;
+      out[cat.id] = chats.filter(
+        (c) => (c.unreadCount || 0) > 0 && !(c as { muted?: boolean }).muted && categoryMatchesChat(cat.id, c)
+      ).length;
+    }
+    return out;
+  }, [chats]);
 
   /** Qaysi papka ochiq bo'lsa — qidiruv o'sha papkaga oid */
   const activeCategoryId = CHAT_CATEGORY_ITEMS[pageIndex]?.id ?? "all";
@@ -677,40 +694,8 @@ export function ChatListScreen({ navigation }: any) {
   const onHeaderAction = useCallback(
     (id: string) => {
       if (id === "compose") {
-        const items = getVisibleComposeMenuItems({ isExpert });
-        if (items.length === 0) return;
-
-        const cancelLabel = t("msgCancel");
-
-        if (Platform.OS === "ios") {
-          const options = [...items.map((item) => t(item.titleKey)), cancelLabel];
-          const cancelButtonIndex = options.length - 1;
-          ActionSheetIOS.showActionSheetWithOptions(
-            {
-              options,
-              cancelButtonIndex,
-              title: t("composeChatTitle"),
-            },
-            (buttonIndex) => {
-              if (buttonIndex === cancelButtonIndex || buttonIndex < 0) return;
-              const chosen = items[buttonIndex];
-              if (chosen) onComposeAction(chosen.id);
-            }
-          );
-          return;
-        }
-
-        Alert.alert(
-          t("composeChatTitle"),
-          t("composeChatDesc"),
-          [
-            ...items.map((item) => ({
-              text: t(item.titleKey),
-              onPress: () => onComposeAction(item.id),
-            })),
-            { text: cancelLabel, style: "cancel" as const },
-          ]
-        );
+        if (getVisibleComposeMenuItems({ isExpert }).length === 0) return;
+        setComposeMenuOpen(true);
         return;
       }
       if (id === "expert_tools") {
@@ -979,6 +964,13 @@ export function ChatListScreen({ navigation }: any) {
                           <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>
                             {t(`cat${cat.id.charAt(0).toUpperCase() + cat.id.slice(1)}` as any)}
                           </Text>
+                          {(unreadByCategory[cat.id] ?? 0) > 0 ? (
+                            <View style={styles.categoryBadge}>
+                              <Text style={styles.categoryBadgeText}>
+                                {unreadByCategory[cat.id] > 99 ? "99+" : unreadByCategory[cat.id]}
+                              </Text>
+                            </View>
+                          ) : null}
                         </Pressable>
                       );
                     })}
@@ -1065,6 +1057,37 @@ export function ChatListScreen({ navigation }: any) {
             <ExpertsView navigation={navigation} />
           )}
         </View>
+
+        {/* "Yangi chat" — ✎ tugmasi ostidan ochiladigan ixcham menyu (Telegram kabi) */}
+        <Modal
+          visible={composeMenuOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setComposeMenuOpen(false)}
+        >
+          <Pressable style={styles.composeOverlay} onPress={() => setComposeMenuOpen(false)}>
+            <View style={[styles.composeMenu, { top: insets.top + 10 + 44 + 8 }]}>
+              {getVisibleComposeMenuItems({ isExpert }).map((item, idx) => {
+                const Icon = item.id === "new_contact" ? UserPlus : item.id === "new_group" ? Users : Megaphone;
+                return (
+                  <React.Fragment key={item.id}>
+                    {idx > 0 ? <View style={styles.composeSep} /> : null}
+                    <Pressable
+                      onPress={() => {
+                        setComposeMenuOpen(false);
+                        onComposeAction(item.id);
+                      }}
+                      style={({ pressed }) => [styles.composeRow, pressed && styles.composeRowPressed]}
+                    >
+                      <Icon color="#fff" size={20} />
+                      <Text style={styles.composeRowText}>{t(item.titleKey)}</Text>
+                    </Pressable>
+                  </React.Fragment>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Modal>
 
         <View style={styles.tabWrapper}>
           <View style={styles.glassTab}>
@@ -1259,6 +1282,36 @@ const styles = StyleSheet.create({
   },
   categoryChipText: { color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: "600" },
   categoryChipTextActive: { color: "#0f172a" },
+  composeOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)" },
+  composeMenu: {
+    position: "absolute",
+    right: 12,
+    width: 230,
+    borderRadius: 16,
+    backgroundColor: "#1e2430",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  composeRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, height: 50 },
+  composeRowPressed: { backgroundColor: "rgba(255,255,255,0.06)" },
+  composeRowText: { color: "#fff", fontSize: 16 },
+  composeSep: { height: StyleSheet.hairlineWidth, backgroundColor: "rgba(255,255,255,0.1)", marginLeft: 50 },
+  categoryBadge: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 5,
+    borderRadius: 9,
+    backgroundColor: palette.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
   loadingBox: { flex: 1, justifyContent: "center", alignItems: "center" },
   emptyList: { textAlign: "center", color: "rgba(255,255,255,0.45)", marginTop: 24, fontSize: 15 },
   listPadding: { paddingHorizontal: 12, paddingBottom: 120 },

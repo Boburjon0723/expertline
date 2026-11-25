@@ -369,3 +369,30 @@ export function mediaAspect(meta?: { width?: unknown; height?: unknown } | null)
 
 /** Barcha media pufakchalari uchun bir xil en. */
 export const MEDIA_BUBBLE_WIDTH = 260;
+
+/** Rasmning haqiqiy nisbati (metadata da o'lcham bo'lsa), aks holda null. */
+export function knownMediaAspect(meta?: { width?: unknown; height?: unknown } | null): number | null {
+  const w = Number(meta?.width) || 0;
+  const h = Number(meta?.height) || 0;
+  return w > 0 && h > 0 ? w / h : null;
+}
+
+const IMAGE_MAX_H = 400;
+const IMAGE_MIN_W = 120;
+const IMAGE_MIN_H = 90;
+
+/**
+ * Rasm pufakchasi o'lchami — rasm qirqilmasdan to'liq ko'rinsin (Telegram kabi):
+ * eni 260 gacha, bo'yi 400 gacha; baland rasmda eni toraytiriladi.
+ * Faqat juda cho'zilgan rasmlar (masalan, 1:5 panorama) chekka qismi qirqiladi.
+ */
+export function imageBubbleSize(aspect: number): { width: number; height: number } {
+  let w = MEDIA_BUBBLE_WIDTH;
+  let h = w / aspect;
+  if (h > IMAGE_MAX_H) {
+    h = IMAGE_MAX_H;
+    w = Math.max(IMAGE_MIN_W, h * aspect);
+  }
+  if (h < IMAGE_MIN_H) h = IMAGE_MIN_H;
+  return { width: Math.round(w), height: Math.round(h) };
+}

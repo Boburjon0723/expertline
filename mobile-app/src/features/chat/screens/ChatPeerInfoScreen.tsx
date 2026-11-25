@@ -105,6 +105,16 @@ function formatShortTime(iso?: string): string {
   });
 }
 
+/** Oxirgi ochilgan profillar — qayta ochilganda darhol ko'rinsin, yangilanishi fonda */
+type PeerInfoSnapshot = {
+  details: ChatDetailsResponse | null;
+  stats?: { linksCount: number; voiceCount: number; commonGroupsCount: number };
+  isBlocked?: boolean;
+  peerInContacts?: boolean;
+  editForm?: { name: string; surname: string };
+};
+const peerInfoCache = new Map<string, PeerInfoSnapshot>();
+
 export function ChatPeerInfoScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
   const chatId = route.params?.chatId ? String(route.params.chatId) : "";
@@ -118,9 +128,10 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
   const isExpert = !!useAuthStore.getState().user?.is_expert;
   const expertName = useAuthStore.getState().user?.name || "Ustoz";
 
-  const [loading, setLoading] = useState(true);
+  const cachedSnap = chatId ? peerInfoCache.get(chatId) : undefined;
+  const [loading, setLoading] = useState(!cachedSnap);
   const [error, setError] = useState<string | null>(null);
-  const [details, setDetails] = useState<ChatDetailsResponse | null>(null);
+  const [details, setDetails] = useState<ChatDetailsResponse | null>(cachedSnap?.details ?? null);
   const [muted, setMuted] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
@@ -139,14 +150,14 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
   const [memberMenu, setMemberMenu] = useState<ChatDetailsParticipant | null>(null);
 
   // Private peer
-  const [stats, setStats] = useState({ linksCount: 0, voiceCount: 0, commonGroupsCount: 0 });
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [peerInContacts, setPeerInContacts] = useState(false);
+  const [stats, setStats] = useState(cachedSnap?.stats ?? { linksCount: 0, voiceCount: 0, commonGroupsCount: 0 });
+  const [isBlocked, setIsBlocked] = useState(!!cachedSnap?.isBlocked);
+  const [peerInContacts, setPeerInContacts] = useState(!!cachedSnap?.peerInContacts);
   const [sharedView, setSharedView] = useState<PrivateSharedView>("main");
   const [sharedLoading, setSharedLoading] = useState(false);
   const [sharedItems, setSharedItems] = useState<ChatSharedItem[]>([]);
   const [isEditingContact, setIsEditingContact] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", surname: "" });
+  const [editForm, setEditForm] = useState(cachedSnap?.editForm ?? { name: "", surname: "" });
 
   const load = useCallback(async () => {
     if (!chatId) {
@@ -155,41 +166,54 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
       return;
     }
     setError(null);
+    const fromList = useChatStore.getState().chats.find((c) => String(c.id) === String(chatId));
+    if (fromList?.muted != null) setMuted(!!fromList.muted);
+    // Statistika chat tafsilotlariga bog'liq emas — parallel boshlanadi
+    const statsPromise = getChatStatsRequest(chatId).catch(() => null);
+    let d: ChatDetailsResponse | null = null;
     try {
-      const d = await getChatDetailsRequest(chatId);
+      d = await getChatDetailsRequest(chatId);
       setDetails(d);
       setNameDraft(d?.name || fallbackName || "");
-      const fromList = useChatStore.getState().chats.find((c) => String(c.id) === String(chatId));
-      if (fromList?.muted != null) setMuted(!!fromList.muted);
-
-      const chatType = String(d?.type ?? "private").toLowerCase();
-      const group = chatType === "group" || chatType === "channel";
-      if (!group) {
-        const parts = d?.participants ?? [];
-        const other =
-          parts.find((p) => normalizeUserId(p.id) !== selfId) ?? parts[0] ?? null;
-        const peerId = other?.id ? String(other.id) : "";
-        if (peerId) {
-          const [user, contactList, chatStats] = await Promise.all([
-            getUserByIdRequest(peerId),
-            getContactsRequest(),
-            getChatStatsRequest(chatId),
-          ]);
-          if (user) {
-            setIsBlocked(!!user.blockedByMe);
-            setEditForm({
-              name: user.name || other?.name || "",
-              surname: user.surname || other?.surname || "",
-            });
-          }
-          setPeerInContacts(contactList.some((c) => normalizeUserId(c.id) === normalizeUserId(peerId)));
-          setStats(chatStats);
-        }
-      }
+      peerInfoCache.set(chatId, { ...peerInfoCache.get(chatId), details: d });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Yuklashda xatolik");
+      if (!peerInfoCache.has(chatId)) setError(e instanceof Error ? e.message : "Yuklashda xatolik");
+      return;
     } finally {
+      // Sahifa chat tafsilotlari kelishi bilan ko'rinadi; qolganlari fonda to'ldiriladi
       setLoading(false);
+    }
+
+    const chatType = String(d?.type ?? "private").toLowerCase();
+    if (chatType === "group" || chatType === "channel") return;
+    const parts = d?.participants ?? [];
+    const other = parts.find((p) => normalizeUserId(p.id) !== selfId) ?? parts[0] ?? null;
+    const peerId = other?.id ? String(other.id) : "";
+    if (!peerId) return;
+    try {
+      const [user, contactList, chatStats] = await Promise.all([
+        getUserByIdRequest(peerId).catch(() => null),
+        getContactsRequest().catch(() => []),
+        statsPromise,
+      ]);
+      const snap: PeerInfoSnapshot = { ...peerInfoCache.get(chatId), details: d };
+      if (user) {
+        setIsBlocked(!!user.blockedByMe);
+        const form = { name: user.name || other?.name || "", surname: user.surname || other?.surname || "" };
+        setEditForm(form);
+        snap.isBlocked = !!user.blockedByMe;
+        snap.editForm = form;
+      }
+      const inContacts = contactList.some((c) => normalizeUserId(c.id) === normalizeUserId(peerId));
+      setPeerInContacts(inContacts);
+      snap.peerInContacts = inContacts;
+      if (chatStats) {
+        setStats(chatStats);
+        snap.stats = chatStats;
+      }
+      peerInfoCache.set(chatId, snap);
+    } catch {
+      /* qo'shimcha ma'lumotlar — asosiy sahifa allaqachon ko'rinib turibdi */
     }
   }, [chatId, fallbackName, selfId]);
 
@@ -1047,11 +1071,8 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
   }
 
   /* ——— PRIVATE peer ——— */
-  const handle = (() => {
-    if (phone) return `@${phone.replace(/\D/g, "").slice(-4)}`;
-    if (peer?.id) return `@user_${String(peer.id).slice(0, 8)}`;
-    return "@user";
-  })();
+  // Faqat haqiqiy username — yo'q bo'lsa qator ko'rsatilmaydi (telefon/ID dan soxta "@..." yasalmaydi)
+  const handle = peer?.username?.trim() ? `@${peer.username.trim()}` : "";
 
   const statusLine =
     peer?.specialization || peer?.profession || "Oxirgi faollik: yaqinda";
@@ -1103,7 +1124,7 @@ export function ChatPeerInfoScreen({ route, navigation }: Props) {
             ) : (
               <>
                 <Text style={styles.name}>{displayName}</Text>
-                <Text style={styles.handle}>{handle}</Text>
+                {handle ? <Text style={styles.handle}>{handle}</Text> : null}
               </>
             )}
             <Text style={styles.status}>{statusLine}</Text>

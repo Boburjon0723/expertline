@@ -2,10 +2,15 @@ import React, { useEffect, useState } from "react";
 import { getCachedMediaUri, peekCachedMediaUriSync } from "../lib/media-cache";
 import { ImageBackground, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import {
+  ensureBackgroundExists,
   nativeImageBlurRadius,
   overlayOpacityFromPanelBlur,
+  resolveBackgroundUri,
   useAppearanceStore,
 } from "../lib/appearance-store";
+
+/** Ilova ochilganda bir marta: saqlangan lokal fon fayli hali bormi */
+let backgroundChecked = false;
 
 import { THEMES } from "../lib/constants";
 import { palette } from "../lib/theme";
@@ -53,8 +58,15 @@ function useCachedBackground(remote?: string | null): string | null {
 export function ChatBackground({ children, contentStyle, isChatWindow }: Props) {
   const imageBlur = useAppearanceStore((s) => s.imageBlur);
   const panelBlur = useAppearanceStore((s) => s.panelBlur);
-  const backgroundUri = useAppearanceStore((s) => s.backgroundUri);
+  const backgroundUri = resolveBackgroundUri(useAppearanceStore((s) => s.backgroundUri));
   const themeId = useAppearanceStore((s) => s.themeId);
+  useEffect(() => {
+    if (backgroundChecked) return;
+    backgroundChecked = true;
+    // Saqlangan sozlamalar AsyncStorage dan tiklanishiga biroz vaqt beramiz
+    const timer = setTimeout(() => void ensureBackgroundExists(), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Theme support
   const isTelegram = themeId === "telegram";
