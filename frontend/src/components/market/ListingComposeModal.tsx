@@ -30,12 +30,15 @@ export default function ListingComposeModal({ initialType, onClose, onPublished 
     const [region, setRegion] = useState<RegionCode | ''>(filters.region !== 'all' ? filters.region : '');
     const [direction, setDirection] = useState<DirectionCode | ''>(filters.direction !== 'all' ? filters.direction : '');
     const [text, setText] = useState('');
+    const [title, setTitle] = useState('');
+    const [company, setCompany] = useState('');
+    const titleRef = useRef<HTMLInputElement>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const areaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
-        areaRef.current?.focus();
+        titleRef.current?.focus();
         const onKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
         };
@@ -46,6 +49,12 @@ export default function ListingComposeModal({ initialType, onClose, onPublished 
     const len = text.trim().length;
 
     const publish = async () => {
+        const cleanTitle = title.replace(/\s+/g, ' ').trim();
+        if (cleanTitle.length < 5 || cleanTitle.length > 80) {
+            setError(t('listing_title_required'));
+            titleRef.current?.focus();
+            return;
+        }
         if (!region) {
             setError(t('region_required'));
             return;
@@ -63,7 +72,14 @@ export default function ListingComposeModal({ initialType, onClose, onPublished 
         try {
             const res = await apiFetch('/api/jobs', {
                 method: 'POST',
-                body: JSON.stringify({ sub_type: type, short_text: text.trim(), region, direction }),
+                body: JSON.stringify({
+                    sub_type: type,
+                    title: title.replace(/\s+/g, ' ').trim(),
+                    short_text: text.trim(),
+                    region,
+                    direction,
+                    company_name: type === 'employer' ? company.trim() : undefined,
+                }),
             });
             if (!res.ok) {
                 const err = (await res.json().catch(() => ({}))) as { message?: string };
@@ -116,6 +132,27 @@ export default function ListingComposeModal({ initialType, onClose, onPublished 
                             </button>
                         ))}
                     </div>
+                </div>
+
+                <div className="px-5 pb-3 shrink-0 space-y-2.5">
+                    <input
+                        ref={titleRef}
+                        value={title}
+                        onChange={(e) => {
+                            setTitle(e.target.value.slice(0, 80));
+                            if (error) setError('');
+                        }}
+                        placeholder={type === 'employer' ? t('listing_title_ph_employer') : t('listing_title_ph_seeker')}
+                        className="w-full h-11 rounded-xl bg-transparent border border-white/[0.12] focus:border-[#8774e1] px-4 text-[16px] font-medium text-white placeholder:text-[#6d7f8f] placeholder:font-normal focus:outline-none"
+                    />
+                    {type === 'employer' && (
+                        <input
+                            value={company}
+                            onChange={(e) => setCompany(e.target.value.slice(0, 80))}
+                            placeholder={t('listing_company_ph')}
+                            className="w-full h-11 rounded-xl bg-transparent border border-white/[0.12] focus:border-[#8774e1] px-4 text-[15px] text-white placeholder:text-[#6d7f8f] focus:outline-none"
+                        />
+                    )}
                 </div>
 
                 <div className="px-5 pb-3 shrink-0">

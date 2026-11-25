@@ -11,9 +11,7 @@ import { useListingFilters } from '@/hooks/useListingFilters';
 import {
     MarketAvatar,
     formatListDate,
-    listingAuthor,
-    listingText,
-    splitListingText,
+    listingParts,
     type ListingRow,
 } from './marketUi';
 
@@ -155,8 +153,7 @@ export default function ListingsFeed({
                 </div>
             ) : (
                 items.map((l, idx) => {
-                    const { title, rest } = splitListingText(listingText(l));
-                    const author = listingAuthor(l);
+                    const { title, rest, byline: author } = listingParts(l);
                     const own = !!currentUserId && String(l.user_id) === String(currentUserId);
                     const place = [
                         l.location ? regionShortLabel(l.location, language) : '',

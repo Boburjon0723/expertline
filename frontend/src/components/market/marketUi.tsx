@@ -94,11 +94,31 @@ export type ListingRow = {
     location?: string | null;
     /** Yo'nalish kodi (lib/directions) */
     direction?: string | null;
+    company_name?: string | null;
     user?: { name?: string; surname?: string; username?: string; avatar_url?: string | null };
 };
 
 export function listingText(l: ListingRow): string {
     return String(l.short_text || l.description || l.title || '');
+}
+
+/**
+ * Ro'yxat/sahifa uchun: sarlavha (alohida maydon yoki matnning birinchi qatori), qolgan matn,
+ * to'liq tavsif va kim tomonidan (kompaniya nomi bo'lsa — u, aks holda muallif). Mobil bilan bir xil.
+ */
+export function listingParts(l: ListingRow): { title: string; rest: string; body: string; byline: string } {
+    const raw = String(l.short_text || l.description || '');
+    const split = splitListingText(raw);
+    const explicit = String(l.title || '').trim();
+    // Eski e'lonlarda title = birinchi qator (120 belgigacha kesilgan) — takrorlanmasin
+    const sameAsFirst = !!explicit && !!split.title && split.title.startsWith(explicit);
+    const title = explicit || split.title;
+    const rest = !explicit || sameAsFirst ? split.rest : [split.title, split.rest].filter(Boolean).join(' · ');
+    let body = raw.trim();
+    if (sameAsFirst) body = raw.trim().slice(split.title.length).trim();
+    if (!explicit) body = raw.trim().split('\n').slice(1).join('\n').trim() || raw.trim();
+    const byline = String(l.company_name || '').trim() || listingAuthor(l);
+    return { title, rest, body, byline };
 }
 
 export function listingAuthor(l: ListingRow): string {

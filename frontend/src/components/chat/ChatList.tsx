@@ -1,6 +1,6 @@
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { isExpertListingChat, getMurojaatSidebarSections, isListingMarketplacePrivateChat, isClientSideListingChat } from '@/lib/listing-chat';
+import { isExpertListingChat, getMurojaatSidebarSections, isListingMarketplacePrivateChat, isClientSideListingChat, isJobResponseChat, jobResponseTitle } from '@/lib/listing-chat';
 import { useLanguage } from '@/context/LanguageContext';
 import { useHorizontalNavWheel } from '@/hooks/useHorizontalNavWheel';
 import { Search, Menu, X, Bookmark } from 'lucide-react';
@@ -26,6 +26,8 @@ import { addSearchHistory } from '@/lib/search-history';
 export const CHAT_FOLDERS = [
     { id: 'all', label: 'all' },
     { id: 'user', label: 'personal' },
+    /** E'lon orqali kelgan chatlar — faqat shunday chat bo'lsa ko'rinadi */
+    { id: 'requests', label: 'folder_requests' },
     { id: 'group', label: 'groups' },
     { id: 'channel', label: 'channels' },
     { id: 'listings', label: 'folder_listings' },
@@ -187,11 +189,24 @@ export default function ChatList({
         if (onCategoryChange) onCategoryChange(catId);
     };
 
-    const useCategoryPager = isMobile && !searchActive && CHAT_FOLDERS.some((f) => f.id === activeCategory);
+    /** "Murojaatlar" papkasi faqat e'lon orqali kelgan chat bo'lsa ko'rinadi */
+    const hasJobResponses = (chats || []).some((c: any) => isJobResponseChat(c));
+    const folders = useMemo(
+        () => CHAT_FOLDERS.filter((f) => f.id !== 'requests' || hasJobResponses),
+        [hasJobResponses]
+    );
+    useEffect(() => {
+        // Oxirgi murojaat yo'qolsa — "Barchasi" ga qaytamiz
+        if (activeCategory === 'requests' && !hasJobResponses && (chats || []).length > 0) {
+            onCategoryChange?.('all');
+        }
+    }, [activeCategory, hasJobResponses, chats, onCategoryChange]);
+
+    const useCategoryPager = isMobile && !searchActive && folders.some((f) => f.id === activeCategory);
 
     const prevCategoryIdRef = useRef(activeCategory);
-    const prevIdx = CHAT_FOLDERS.findIndex((c) => c.id === prevCategoryIdRef.current);
-    const currIdx = CHAT_FOLDERS.findIndex((c) => c.id === activeCategory);
+    const prevIdx = folders.findIndex((c) => c.id === prevCategoryIdRef.current);
+    const currIdx = folders.findIndex((c) => c.id === activeCategory);
     const categoryListTransitionClass =
         !useCategoryPager &&
         prevCategoryIdRef.current !== activeCategory &&
@@ -223,7 +238,7 @@ export default function ChatList({
         pagerScrollRaf.current = requestAnimationFrame(() => {
             pagerScrollRaf.current = null;
             const idx = Math.round(el.scrollLeft / w);
-            const nextCat = CHAT_FOLDERS[idx]?.id;
+            const nextCat = folders[idx]?.id;
             if (nextCat && nextCat !== activeCategoryRef.current) {
                 activeCategoryRef.current = nextCat;
                 handleCategoryChange(nextCat);
@@ -234,7 +249,7 @@ export default function ChatList({
     useLayoutEffect(() => {
         if (!useCategoryPager || !categoryPagerRef.current) return;
         const el = categoryPagerRef.current;
-        const idx = CHAT_FOLDERS.findIndex((c) => c.id === activeCategory);
+        const idx = folders.findIndex((c) => c.id === activeCategory);
         if (idx < 0) return;
         const run = () => {
             const w = el.clientWidth;
@@ -262,7 +277,7 @@ export default function ChatList({
             if (programmaticPagerScrollRef.current) return;
             const w = el.clientWidth;
             if (w <= 0) return;
-            const maxIdx = CHAT_FOLDERS.length - 1;
+            const maxIdx = folders.length - 1;
             let idx = Math.round(el.scrollLeft / w);
             idx = Math.max(0, Math.min(maxIdx, idx));
             const target = Math.round(idx * w);
@@ -316,21 +331,24 @@ export default function ChatList({
         const minDx = 72;
         if (Math.abs(dx) < minDx || Math.abs(dx) < Math.abs(dy) * 1.75) return;
 
-        const currentIndex = CHAT_FOLDERS.findIndex((c) => c.id === activeCategory);
+        const currentIndex = folders.findIndex((c) => c.id === activeCategory);
         if (currentIndex === -1) return;
 
         let nextIndex = currentIndex;
-        if (dx < 0) nextIndex = Math.min(CHAT_FOLDERS.length - 1, currentIndex + 1);
+        if (dx < 0) nextIndex = Math.min(folders.length - 1, currentIndex + 1);
         else if (dx > 0) nextIndex = Math.max(0, currentIndex - 1);
         if (nextIndex !== currentIndex) {
-            handleCategoryChange(CHAT_FOLDERS[nextIndex].id);
+            handleCategoryChange(folders[nextIndex].id);
         }
     };
 
     const matchesFolder = (chat: any, catId: string) => {
         if (catId === 'all') return true;
         if (catId === 'listings') return false;
+        if (catId === 'requests') return isJobResponseChat(chat);
         if (catId === 'user') {
+            // E'lon orqali kelganlar "Murojaatlar" da — shaxsiy suhbatlar bilan aralashmasin
+            if (isJobResponseChat(chat)) return false;
             // Oddiy private + mijozning o‘z murojaatlari (e'lon chatlari Userlar’da ham ko‘rinsin)
             if (!(chat.type === 'private' || !chat.type)) return false;
             if (!isListingMarketplacePrivateChat(chat)) return true;
@@ -637,7 +655,12 @@ export default function ChatList({
                             </span>
                         </div>
                         <div className="flex justify-between items-center gap-2 mt-[3px]">
-                            <p className="text-[14px] text-[#aaaaaa] truncate leading-[18px]">{subtitleNode}</p>
+                            <p className="text-[14px] text-[#aaaaaa] truncate leading-[18px]">
+                                {isJobResponseChat(chat) && jobResponseTitle(chat) ? (
+                                    <span className="text-[#8774e1]">📋 {jobResponseTitle(chat)}: </span>
+                                ) : null}
+                                {subtitleNode}
+                            </p>
                             {showUnread ? (
                                 <div className={`min-w-[22px] h-[22px] rounded-full flex items-center justify-center text-[13px] font-medium text-white px-1.5 shrink-0 ${pref.muted ? 'bg-[#3e546a]' : 'bg-[#8774e1]'}`}>
                                     {chat.unread > 0
@@ -825,7 +848,7 @@ export default function ChatList({
                 hideCategories ? 'hidden lg:flex' : 'flex'
             }`}
         >
-            {CHAT_FOLDERS.map((cat) => {
+            {folders.map((cat) => {
                 const { unmuted, mutedOnly } = getCategoryUnreadInfo(cat.id);
                 const count = unmuted > 0 ? unmuted : mutedOnly;
                 const badgeMuted = unmuted === 0 && mutedOnly > 0;
@@ -998,7 +1021,7 @@ export default function ChatList({
                     className="messages-category-pager [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                     onScroll={handlePagerScroll}
                 >
-                    {CHAT_FOLDERS.map((cat) => (
+                    {folders.map((cat) => (
                         <div
                             key={cat.id}
                             className="messages-category-pager-slide h-full min-h-0 flex flex-col overflow-hidden"

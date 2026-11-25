@@ -39,6 +39,24 @@ export function isJobListingChat(chat: any): boolean {
   return meta.source === 'job_listing' && !!meta.job_id && !!meta.snapshot;
 }
 
+/**
+ * E'lon orqali "Yozish" bilan ochilgan oddiy chat (ariza emas) — "Murojaatlar" papkasida.
+ * Backend ro'yxatda `listing` maydonini beradi; bo'lmasa metadata dan aniqlanadi.
+ */
+export function isJobResponseChat(chat: any): boolean {
+  if (chat?.type !== 'private') return false;
+  if (chat?.listing?.jobId) return true;
+  const meta = getChatMetadata(chat);
+  return meta.source === 'job_listing' && !!meta.job_id && meta.intent !== 'apply';
+}
+
+/** "Murojaatlar" qatori uchun e'lon sarlavhasi */
+export function jobResponseTitle(chat: any): string {
+  if (chat?.listing?.title) return String(chat.listing.title);
+  const snap = getChatMetadata(chat).snapshot || {};
+  return String(snap.title || String(snap.short_text || '').split('\n')[0] || '').trim();
+}
+
 export function getJobListingSnapshot(chat: any): Record<string, any> | null {
   if (!isJobListingChat(chat)) return null;
   const snap = getChatMetadata(chat).snapshot;

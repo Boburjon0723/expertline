@@ -5,7 +5,7 @@ import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useLanguage } from '@/context/LanguageContext';
 import type { MarketplaceContactPayload } from '@/lib/marketplace-chat';
-import { MarketAvatar, listingAuthor, listingText, splitListingText, type ListingRow } from './marketUi';
+import { MarketAvatar, listingAuthor, listingParts, type ListingRow } from './marketUi';
 
 type Props = {
     listing: ListingRow;
@@ -19,8 +19,8 @@ type Props = {
 export default function ListingDetail({ listing, currentUserId, onBack, onContact, onClosed }: Props) {
     const { t, language } = useLanguage();
     const [closing, setClosing] = useState(false);
-    const text = listingText(listing);
-    const { title } = splitListingText(text);
+    const { title, body } = listingParts(listing);
+    const company = String(listing.company_name || '').trim();
     const author = listingAuthor(listing);
     const own = !!currentUserId && String(listing.user_id) === String(currentUserId);
     const created = listing.created_at ? new Date(listing.created_at) : null;
@@ -45,7 +45,7 @@ export default function ListingDetail({ listing, currentUserId, onBack, onContac
             jobId: String(listing.id),
             jobIntent: 'chat',
             jobTitle: title,
-            jobCompany: author,
+            jobCompany: company || author,
         });
     };
 
@@ -86,7 +86,13 @@ export default function ListingDetail({ listing, currentUserId, onBack, onContac
             <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                 <div className="mx-auto w-full max-w-[640px] px-4 py-5">
                     <div className="rounded-2xl bg-[#212121] border border-white/[0.06] px-5 py-4">
-                        <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white">{text}</p>
+                        {title && <h2 className="text-[19px] font-semibold leading-snug text-white">{title}</h2>}
+                        {company && <p className="mt-1 text-[14px] font-medium text-[#8774e1]">{company}</p>}
+                        {body && (
+                            <p className={`whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white ${title || company ? 'mt-3' : ''}`}>
+                                {body}
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
