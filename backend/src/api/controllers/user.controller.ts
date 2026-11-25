@@ -695,10 +695,11 @@ export const getChatStats = async (req: Request, res: Response) => {
         // @ts-ignore
         const userId = req.user.id;
 
-        // 1. Link count (Search for http/https in content) - Simple regex
+        // 1. Havolalar soni — faqat matnli xabarlar (media xabarlarida content = fayl manzili)
         const linksRes = await pool.query(`
             SELECT COUNT(*) FROM messages 
-            WHERE chat_id = $1 AND (content ILIKE '%http://%' OR content ILIKE '%https://%')
+            WHERE chat_id = $1 AND COALESCE(type, 'text') = 'text'
+              AND (content ILIKE '%http://%' OR content ILIKE '%https://%' OR content ILIKE '%www.%')
         `, [chatId]);
 
         // 2. Voice messages count
@@ -759,7 +760,9 @@ export const getChatSharedMedia = async (req: Request, res: Response) => {
                 `SELECT id, content, type, created_at, sender_id
                  FROM messages
                  WHERE chat_id = $1
-                   AND (content ILIKE '%http://%' OR content ILIKE '%https://%')
+                   -- Faqat matnli xabarlar: rasm/fayl/stiker xabarlarida content = fayl manzili, ular havola emas
+                   AND COALESCE(type, 'text') = 'text'
+                   AND (content ILIKE '%http://%' OR content ILIKE '%https://%' OR content ILIKE '%www.%')
                  ORDER BY created_at DESC
                  LIMIT 100`,
                 [cid]

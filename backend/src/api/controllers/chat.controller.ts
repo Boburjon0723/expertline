@@ -799,6 +799,8 @@ export const getChatDetails = async (req: Request, res: Response) => {
                     surname: user.surname,
                     avatar: user.avatar_url,
                     phone: user.phone,
+                    // Bo'sh username yuborilmaydi — klientlar "@" ni yolg'iz ko'rsatmasin
+                    username: (user as { username?: string | null }).username?.trim() || undefined,
                 };
             })
         );
