@@ -9,7 +9,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { apiFetch } from '@/lib/api';
 import { TranslationKeys } from '@/lib/translations';
 import { getUser } from '@/lib/auth-storage';
-import { getExpertPanelMode, isMentorPanelMode } from '@/lib/expert-roles';
+import { getExpertPanelMode } from '@/lib/expert-roles';
 import { getExpertComplianceNotice } from '@/lib/expert-compliance-copy';
 import {
     isExpertListingChat,
@@ -18,7 +18,6 @@ import {
     isListingMarketplacePrivateChat,
 } from '@/lib/listing-chat';
 import { isListingChat, isMessagingUnlocked } from '@/lib/chat-consent';
-import { MentorGroupInviteBar } from './MentorGroupInviteBar';
 import ChatForwardModal from './ChatForwardModal';
 import ChatWindowHeader from './ChatWindowHeader';
 import PinnedMessageBar from './PinnedMessageBar';
@@ -2212,14 +2211,6 @@ export default function ChatWindow({
         ? (t('application_rejected_banner') as string)
         : (t('consent_waiting_message') as string);
     const groupCreatorId = chat?.creator_id ?? chat?.creatorId ?? null;
-    const isMentorMode = isMentorPanelMode(
-        getExpertPanelMode(currentUser as Parameters<typeof getExpertPanelMode>[0])
-    );
-    const showMentorGroupInvite =
-        chat?.type === 'private' && !!currentUser?.is_expert && isMentorMode;
-    const mentorDisplayName =
-        [currentUser?.name, currentUser?.surname].filter(Boolean).join(' ').trim() ||
-        String(currentUser?.name || 'Ustoz');
 
     return (
         <div
@@ -2390,9 +2381,6 @@ export default function ChatWindow({
             {/* Input Area — kanalda faqat yaratuvchi xabar/fayl qo'yadi; boshqalar faqat ko'radi */}
             <div className="relative z-30 shrink-0 w-full px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:px-4 lg:pb-4">
                 <div className="tg-chat-column">
-                {chat?.type === 'private' && showMentorGroupInvite && chat?.id && (
-                    <MentorGroupInviteBar chatId={String(chat.id)} expertName={mentorDisplayName} />
-                )}
                 {chat?.type === 'channel' && !isChannelCreator && (
                     <div className="mb-2 flex h-12 items-center justify-center rounded-[24px] bg-[#212121] text-[16px] font-medium text-[#8774e1] shadow-[0_1px_8px_rgba(0,0,0,0.12)]">
                         {t('channel_admin_only')}

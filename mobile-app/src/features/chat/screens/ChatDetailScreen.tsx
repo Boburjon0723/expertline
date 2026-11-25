@@ -35,7 +35,6 @@ import * as Sharing from "expo-sharing";
 import { ChatHeaderMoreMenu } from "../components/ChatHeaderMoreMenu";
 import { MessageContextMenu } from "../components/MessageContextMenu";
 import { StickerPickerSheet } from "../components/StickerPickerSheet";
-import { MentorInviteBar } from "../components/MentorInviteBar";
 import { TelegramAttachSheet, type AttachAction } from "../components/TelegramAttachSheet";
 import {
   TelegramSendPreviewSheet,
@@ -3345,15 +3344,6 @@ export function ChatDetailScreen({ route, navigation }: Props) {
           <View style={styles.errorBanner}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
-        ) : null}
-
-        {isExpert && !isGroupOrChannel && !isListingChat ? (
-          <MentorInviteBar
-            chatId={chatId}
-            expertName={
-              (useAuthStore.getState().user as { name?: string } | null)?.name || "Ekspert"
-            }
-          />
         ) : null}
 
         <View style={styles.songLayer}>
